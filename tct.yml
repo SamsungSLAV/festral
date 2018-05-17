@@ -1,0 +1,18 @@
+device_type: rpi3
+job_name: rpi3-mini
+priority: medium
+
+actions:
+  - boot:
+      login: root
+      password: tizen
+  - test:
+      name: tct-test
+      test_cases:
+        - case_name: try_test
+          test_actions:
+            - run:
+                name: '"uname -a | tee /tmp/tct-test.ta.log"'
+            - pull:
+                src: /tmp/tct-test-ta.log
+                alias: tct-test-ta.log
