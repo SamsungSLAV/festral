@@ -1,8 +1,8 @@
-#Festral 
+# Festral 
 It is a simple client for tests management using Weles as test server.
 
 ----------
-###How to build
+### How to build
 Installation scripts presented below are made on Ubuntu 16.04.
 
 `Festral` is written in Haskell and for building it from sources your need to have installed `haskell-platform` package for your distribution:
