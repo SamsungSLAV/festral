@@ -36,9 +36,9 @@ runCmd ["start", "job", f] = show <$> startJob f >>= putStrLn
 
 runCmd ["list", "job", "files", id] = show <$> getFileList (read id :: Int) >>= putStrLn
 
-runCmd ["get", "job", "file", id, fname] = show <$> getJobOutFile (read id :: Int) fname >>= putStrLn
+runCmd ["get", "job", "file", id, fname] = getJobOutFile (read id :: Int) fname >>= justPutStrLn "No such job."
 
-runCmd ["get", "job", "stdout", id] = show <$> getJobOut (read id :: Int) >>= putStrLn
+runCmd ["get", "job", "stdout", id] = getJobOut (read id :: Int) >>= putStrLn
 
 runCmd _ = do
     pname <- getProgName
@@ -51,6 +51,10 @@ runCmd _ = do
                 ++ pname ++ " get job file <id> <filename> - get content of the file with <filename> of the jod with given id>\n" 
                 ++ pname ++ " get job stdout <id> - get standard out and standard error outputs of the job given by id\n" 
 
+justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
+justPutStrLn errMsg x
+    | x == Nothing = putStrLn errMsg
+    | otherwise = let Just y = x in putStrLn $ (read $ show y :: String)
 
 -- |Job datatype describes json job object got from weles
 data Job = Job {
@@ -60,10 +64,17 @@ data Job = Job {
     ,updated:: String
     ,status :: String
     ,info   :: String
-} deriving (Show, Generic)
+} deriving (Generic)
 
 instance FromJSON Job 
 instance ToJSON Job 
+instance Show Job where
+    show (Job id n c u s i) = "{\n \"jobid\" : " ++ show id ++ ",\n \"name\" : "
+                ++ show n ++ ",\n \"created\" : " 
+                ++ show c ++ ",\n \"updated\" : "
+                ++ show u ++ ",\n \"status\" : "
+                ++ show s ++ ",\n \"info\" : "
+                ++ show i ++ "\n}\n"
 
 welesAddr = "127.0.0.1"
 welesPort = "5010"
