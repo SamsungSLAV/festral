@@ -14,20 +14,32 @@ import qualified Data.ByteString.Char8 as B
 import System.Environment
 import Data.List.Split
 import Data.List
+import Control.Monad
 
 main = do
     args <- getArgs
     runCmd args
 
 runCmd :: [String] -> IO ()
+
 runCmd ["all", "jobs"] = show <$> curlJobs >>= putStrLn
+
 runCmd ["get", "job", y] = do
     let id = read y :: Int
     show <$> getJob id >>= putStrLn
+
 runCmd ["get", "job", "when", "done", y] = do
     let id = read y :: Int
     show <$> getJobWhenDone id >>= putStrLn
+
 runCmd ["start", "job", f] = show <$> startJob f >>= putStrLn
+
+runCmd ["list", "job", "files", id] = show <$> getFileList (read id :: Int) >>= putStrLn
+
+runCmd ["get", "job", "file", id, fname] = show <$> getJobOutFile (read id :: Int) fname >>= putStrLn
+
+runCmd ["get", "job", "stdout", id] = show <$> getJobOut (read id :: Int) >>= putStrLn
+
 runCmd _ = do
     pname <- getProgName
     putStrLn $ "Usage: \n" 
@@ -35,6 +47,9 @@ runCmd _ = do
                 ++ pname ++ " get job <id> - show information about job with given id\n"
                 ++ pname ++ " get job when done <id> - like 'get job' but waiting until given job finished\n"
                 ++ pname ++ " start job <yamlname> - start job described in 'yamlfile' and returns its id>\n" 
+                ++ pname ++ " list job files <id> - list all output files created by job with given id>\n" 
+                ++ pname ++ " get job file <id> <filename> - get content of the file with <filename> of the jod with given id>\n" 
+                ++ pname ++ " get job stdout <id> - get standard out and standard error outputs of the job given by id\n" 
 
 
 -- |Job datatype describes json job object got from weles
@@ -120,10 +135,21 @@ getFileList id = do
 
 -- |Returns just contents of the file with given name located on Weles server
 -- for job with given id. If file or job does not exists returns Nothing.
-getJobOut :: Int -> String -> IO (Maybe String)
-getJobOut id fname = do
+getJobOutFile :: Int -> String -> IO (Maybe String)
+getJobOutFile id fname = do
     (errCode, content) <- curlGetString ((testFileUrl id) ++ fname) [CurlFollowLocation True]
     let res = if errCode == CurlOK
             then Just content
             else Nothing
     return res
+
+-- |Returns standard output of job given by id (contents of the results file).
+getJobOut :: Int -> IO String
+getJobOut id = do
+    fnames <- getFileList id
+    let resFnames = filter (isInfixOf "results") <$> fnames
+    let Just resName = if resFnames == Nothing
+            then Just []
+            else resFnames
+    let contents = map (getJobOutFile id) resName
+    concat <$> (liftM concat) <$> (sequence contents)
