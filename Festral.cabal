@@ -19,8 +19,9 @@ Library
         split
     Exposed-modules:
        Festral
+    Hs-Source-Dirs: Festral
 
 Executable festral
-    Main-Is:        Festral.hs
-    Hs-Source-Dirs: .
-    Other-Modules:  
+    Main-Is:        Main.hs
+    Hs-Source-Dirs: Festral
+    Other-Modules:  Festral
