@@ -1,6 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
+module Festral (
+    curlJobs,
+    getJob,
+    getJobWhenDone,
+    startJob,
+    getFileList,
+    getJobOutFile,
+    getJobOut
+) where
+
 import Network.Curl.Aeson
 import Network.Curl
 import Control.Applicative
@@ -46,7 +56,7 @@ runCmd _ = do
                 ++ pname ++ " all jobs - list all jobs on weles\n"
                 ++ pname ++ " get job <id> - show information about job with given id\n"
                 ++ pname ++ " get job when done <id> - like 'get job' but waiting until given job finished\n"
-                ++ pname ++ " start job <yamlname> - start job described in 'yamlfile' and returns its id>\n" 
+                ++ pname ++ " start job <yamlname> - start job described in 'yamlfile' and returns its id\n" 
                 ++ pname ++ " list job files <id> - list all output files created by job with given id>\n" 
                 ++ pname ++ " get job file <id> <filename> - get content of the file with <filename> of the jod with given id>\n" 
                 ++ pname ++ " get job stdout <id> - get standard out and standard error outputs of the job given by id\n" 
