@@ -1,0 +1,26 @@
+Name:       Festral
+Version:    0.0.1
+Cabal-Version: >= 1.2
+License:    BSD3
+Author:     Uladzislau Harbuz
+Homepage:
+Category:   Testing
+Synopsis:   Manage jobs and tests of Weles server
+Build-Type: Simple
+
+Library
+    Build-Depends:
+        base,
+        curl-aeson,
+        curl,
+        aeson,
+        process,
+        bytestring,
+        split
+    Exposed-modules:
+       Festral
+
+Executable festral
+    Main-Is:        Festral.hs
+    Hs-Source-Dirs: .
+    Other-Modules:  
