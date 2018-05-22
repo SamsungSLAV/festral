@@ -16,7 +16,9 @@ Library
         aeson,
         process,
         bytestring,
-        split
+        split,
+        optparse-applicative,
+        semigroups
     Exposed-modules:
        Festral
     Hs-Source-Dirs: Festral

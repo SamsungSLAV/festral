@@ -12,7 +12,7 @@ actions:
         - case_name: try_test
           test_actions:
             - run:
-                name: '"uname -a | tee /tmp/tct-test.ta.log"'
+                name: uname -a 
             - pull:
                 src: /tmp/tct-test-ta.log
                 alias: tct-test-ta.log
