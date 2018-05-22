@@ -15,7 +15,8 @@ The next step is to install `cabal` package manager which will configure `Festra
 
 ``` 
  $ sudo apt install cabal-install
- $ cabal update```
+ $ cabal update
+ ```
 
 Now you can build the package. Go to the root directory of the `Festral` sources (it contains Setup.hs file) and run:
 
