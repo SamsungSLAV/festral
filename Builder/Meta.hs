@@ -1,11 +1,12 @@
 module Builder.Meta (
     Meta(..),
     MetaParser(..),
-    tofile
+    toFile
 ) where
 
 class MetaParser a where
     parse :: a -> IO Meta
+    fromFile :: FilePath -> IO a
 
 data Meta = Meta {
     board       :: String
@@ -19,8 +20,8 @@ data Meta = Meta {
 } deriving Show
 
 -- |Write 'Meta' to the file at given path
-tofile :: Meta -> FilePath -> IO ()
-tofile m fname = do
+toFile :: Meta -> FilePath -> IO ()
+toFile m fname = do
     let content = ("BOARD=" ++ board m
                     ++ "\nBUILD_TYPE=" ++ buildType m
                     ++ "\nCOMMIT="     ++ commit m

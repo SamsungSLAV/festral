@@ -1,7 +1,9 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Builder.GBSParser (
-    fromFiles
+    GBSParser (..),
+    parse,
+    fromFile
 ) where
 
 import Builder.Meta
@@ -18,7 +20,7 @@ instance MetaParser GBSParser where
     parse :: GBSParser -> IO Meta
     parse gbsParser = do
         let content = buildHtml gbsParser
-        let [_, year,mounth,day,hour,min,_] = splitOneOf " -:" $ last $ splitOn "</B>" $ head $ filter (isInfixOf "Start Time:") $ lines content
+        let [_, year,mounth,day,hour,min,_] = splitOneOf " :-" $ head $ splitOn "\n" $ last $ splitOn "Start Time:" content
         let time = year ++ mounth ++ day ++ hour ++ min ++ "00"
 
         let stat = map (takeWhile ((/= '<'))) $ map (!!1) $ map (splitOn "<td>") $ take 2 $ filter (isInfixOf "<td>") $ lines content
@@ -34,8 +36,9 @@ instance MetaParser GBSParser where
         return $ Meta arch "" "" time "" "" status hash
 
 
-fromFiles :: (FilePath, FilePath) -> IO GBSParser
-fromFiles (fhtml, flog) = do
-    html <- readFile fhtml
-    log <- readFile flog
-    return $ GBSParser html log
+    fromFile :: FilePath -> IO GBSParser
+    fromFile flog = do
+        log <- readFile flog
+        let fhtml = last $ splitOneOf " " $ head $ lines $ last $ splitOn "generated html format report:\n" log
+        html <- readFile fhtml
+        return $ GBSParser html log
