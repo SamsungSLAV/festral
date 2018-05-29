@@ -14,6 +14,9 @@ import qualified Data.ByteString.Lazy as LB
 import System.Process
 import System.IO
 import System.Directory
+import System.Environment
+import System.Exit
+import Control.Exception
 
 data Build = Build
     { buildName         :: String
@@ -39,16 +42,18 @@ builderFromFile fname = do
     file <- LB.readFile fname
     return $ decode file
 
--- |Build target located in the first path and put meta file to the directory tree with given in seconf path root directory
+-- |Build target located in the first path + build name and put meta file to the directory tree with given in seconf path root directory
 build :: Build -> FilePath -> FilePath -> IO ()
 build build wdir outdir = do
     (logfile, _) <- openTempFile "/tmp" "build.log"
-    buildWithLog logfile (buildCmd build) wdir
+    let srcDir = wdir ++ "/" ++ buildName build
+    buildWithLog logfile (buildCmd build) srcDir
     parser <- getParser (buildResParser build) logfile
     meta <- parse parser
-    let outDirName = outdir ++ "/"  ++ buildTime meta ++ "_" ++ hash meta
+    let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
     createDirectory outDirName
-    toFile meta (outDirName ++ "/Meta.txt")
+    renameFile logfile (outDirName ++ "/build.log")
+    toFile meta (outDirName ++ "/meta.txt")
 
 getParser :: String -> FilePath -> IO (Parser a)
 getParser "GBS" f = do
@@ -60,4 +65,17 @@ getParser exec f = do
     return $ Own p'
 
 buildWithLog fname cmd wdir = do
-    callCommand $ "cd " ++ wdir ++ " ; " ++ cmd ++ " > " ++ fname
+    catch (callCommand $ "cd " ++ wdir ++ " ; " ++ cmd ++ " | tee " ++ fname) handler
+    where
+        handler :: SomeException -> IO ()
+        handler ex = putStrLn "Build failed"
+
+main = do
+    args <- getArgs
+    let res = if (length args) /= 3
+        then putStrLn "Usage: festral-build <config json> <repositoy location> <output directory>"
+        else do
+            let [cfg, repodir, outdir] = args
+            Just builder <- builderFromFile cfg
+            mapM_ (\x -> build x repodir outdir) builder
+    res        
