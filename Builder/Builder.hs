@@ -23,6 +23,7 @@ data Build = Build
     , buildCmd          :: String
     , buildRepo         :: String
     , buildResParser    :: String
+    , branches          :: [String]
     } deriving (Show, Generic)
 
 instance FromJSON Build
@@ -47,13 +48,17 @@ build :: Build -> FilePath -> FilePath -> IO ()
 build build wdir outdir = do
     (logfile, _) <- openTempFile "/tmp" "build.log"
     let srcDir = wdir ++ "/" ++ buildName build
-    buildWithLog logfile (buildCmd build) srcDir
-    parser <- getParser (buildResParser build) logfile
-    meta <- parse parser
-    let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
-    createDirectory outDirName
-    renameFile logfile (outDirName ++ "/build.log")
-    toFile meta (outDirName ++ "/meta.txt")
+    mapM_ (buildOne logfile srcDir) (branches build)
+    where
+        buildOne logfile srcDir branch = do
+            prepareRepo srcDir branch
+            buildWithLog logfile (buildCmd build) srcDir
+            parser <- getParser (buildResParser build) logfile
+            meta <- parse parser
+            let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
+            createDirectory outDirName
+            renameFile logfile (outDirName ++ "/build.log")
+            toFile meta (outDirName ++ "/meta.txt")
 
 getParser :: String -> FilePath -> IO (Parser a)
 getParser "GBS" f = do
@@ -63,6 +68,13 @@ getParser exec f = do
     p <- fromFile f
     let p' = setExec exec p
     return $ Own p'
+
+prepareRepo srcDir brunch = 
+    catch (callCommand $ "cd "++ srcDir ++ " ; git checkout --force " 
+        ++ brunch ++ " ; git fetch ; git pull origin " ++ brunch) handler
+    where
+        handler :: SomeException -> IO ()
+        handler e = putStrLn "Setting up working branch failed. Build current..."
 
 buildWithLog fname cmd wdir = do
     catch (callCommand $ "cd " ++ wdir ++ " ; " ++ cmd ++ " | tee " ++ fname) handler
