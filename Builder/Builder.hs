@@ -1,5 +1,24 @@
 {-# LANGUAGE DeriveGeneric #-}
 
+-- |Module for building process managament. It get information about build targets
+-- from given .json file formatted as follow:
+-- [{"buildName": "name of the project to build",
+--   "buildCmd" : "command used to build, e.g. gbs build -A armv7l ...",
+--   "buildRepo": "origin repusitory address of the project",
+--   "buildResParser" : "name of the built-in parsers ("GBS") or path to the own binary parser, see below",
+--   "branch":["master", "other branch", "etc"]
+--   }, another build targets ... ]
+-- Parser is some script or binary which generates meta.txt file from output of your 'buildCmd' command.
+-- meta.txt file has format:
+--  BOARD=name of the board or arch of target
+--  BUILD_TYPE= debug or somthing else, I don't know for what it is
+--  COMMIT=name of the built commit
+--  BUILD_TIME=build time in format YYYYMMDDHHMMSS
+--  TOOLCHAIN=name of toolchain used for build
+--  BUILDER=username of builder
+--  BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there are other ones)
+--  BUILD_HASH=hash of the build
+-- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes meta file to the 'stdout'
 module Builder.Builder (
     builderFromFile,
     build
@@ -18,12 +37,13 @@ import System.Environment
 import System.Exit
 import Control.Exception
 
+-- |Build structure which represents config json format.
 data Build = Build
-    { buildName         :: String
-    , buildCmd          :: String
-    , buildRepo         :: String
-    , buildResParser    :: String
-    , branches          :: [String]
+    { buildName         :: String -- ^ Name of the project to be built, it must be name of the root directory containing project
+    , buildCmd          :: String -- ^ Command used for building
+    , buildRepo         :: String -- ^ Remote adress of the repository, used for first cloning project
+    , buildResParser    :: String -- ^ Parser of the 'buildCmd' output, it can be "GBS" for using standard GBS parser or name of uour own binary
+    , branches          :: [String] -- ^ List of branch names to be built
     } deriving (Show, Generic)
 
 instance FromJSON Build
@@ -38,12 +58,14 @@ instance MetaParser (Parser a) where
         p <- fromFile f
         return $ GBS p
 
+-- |Gets builder object from given configuration json.
 builderFromFile :: FilePath -> IO (Maybe [Build])
 builderFromFile fname = do
     file <- LB.readFile fname
     return $ decode file
 
 -- |Build target located in the first path + build name and put meta file to the directory tree with given in seconf path root directory
+-- build buildObject rood_dir_of_project root_dir_of_output_files
 build :: Build -> FilePath -> FilePath -> IO ()
 build build wdir outdir = do
     (logfile, _) <- openTempFile "/tmp" "build.log"
