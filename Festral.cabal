@@ -18,12 +18,24 @@ Library
         bytestring,
         split,
         optparse-applicative,
-        semigroups
+        semigroups,
+        time,
+        directory,
+        unix
     Exposed-modules:
-       Festral
+       Festral,
+       Builder.Builder,
+       Builder.Meta,
+       Builder.GBSParser,
+       Builder.OwnParser
     Hs-Source-Dirs: Festral
 
 Executable festral
     Main-Is:        Main.hs
     Hs-Source-Dirs: Festral
     Other-Modules:  Festral
+
+Executable festral-build
+    Main-Is:        Builder/Main.hs
+    Hs-Source-Dirs: Festral
+    Other-Modules:  Builder.GBSParser, Builder.Meta, Builder.OwnParser

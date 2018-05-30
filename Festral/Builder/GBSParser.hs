@@ -30,8 +30,8 @@ instance MetaParser GBSParser where
         let stat = map (takeWhile ((/= '<'))) $ map (!!1) $ map (splitOn "<td>") $ take 2 $ filter (isInfixOf "<td>") $ lines content
         let [total, succ] = parseStat $ (map read stat) :: [Int]
         let status = if total > succ
-            then "FAILED"
-            else "SUSSEED"
+                     then "FAILED"
+                     else "SUSSEED"
 
         let log = buildLog gbsParser
         let arch = dropWhile isSpace $ last $ splitOn "</B>" $ head $ splitOn "</p>" $ last $  splitOn "Arch" content

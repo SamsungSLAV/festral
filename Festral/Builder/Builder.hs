@@ -90,7 +90,6 @@ cloneRepo wdir (Build name _ remote _ _) = do
         where
             handler :: SomeException -> IO ()
             handler ex = return ()
-cloneRepo _ = return ()
 
 getMeta :: Parser a -> IO Meta
 getMeta p = do
@@ -126,13 +125,3 @@ buildWithLog fname cmd wdir = do
     where
         handler :: SomeException -> IO ()
         handler ex = putStrLn "Build failed"
-
-main = do
-    args <- getArgs
-    let res = if (length args) /= 3
-        then putStrLn "Usage: festral-build <config json> <repositoy location> <output directory>"
-        else do
-            let [cfg, repodir, outdir] = args
-            Just builder <- builderFromFile cfg
-            mapM_ (\x -> build x repodir outdir) builder
-    res        
