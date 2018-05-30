@@ -34,13 +34,10 @@ instance MetaParser GBSParser where
             else "SUSSEED"
 
         let log = buildLog gbsParser
-        let (_,hash') = partition (`elem` [""]) $  splitOneOf " '" $ head $ reverse $ splitOn "from" $ head $ splitOn "\n" $ last $ splitOn "Creating (native) source archive" log
-        let hash = if hash' == []
-            then "0000000000000000000000000000000000000000"
-            else head hash'
-
         let arch = dropWhile isSpace $ last $ splitOn "</B>" $ head $ splitOn "</p>" $ last $  splitOn "Arch" content
-        return $ Meta arch "" "" time "" "" status hash
+        -- Use it later for getting hash of build
+        let rpmdir = head $ splitOneOf " \n" $ dropWhile isSpace $ last $ splitOn "generated RPM packages can be found from local repo:\n" log
+        return $ Meta arch "unknown" "unknown" time "unknown" "unknown" status (replicate 40 '0')
         where
             parseStat x@[_,_] = x
             parseStat _ = [0, -1]

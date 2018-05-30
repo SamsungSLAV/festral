@@ -1,8 +1,9 @@
 [
     {
-        "buildName" : "tct-test-ta armv7 GBS",
+        "buildName" : "tct-test-ta",
         "buildCmd" : "gbs build -A armv7l -P tizen_vd --include-all",
         "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
-        "buildResParser" : "GBS"
+        "buildResParser" : "GBS",
+        "branches" : ["master", "devel"]
     }
 ]

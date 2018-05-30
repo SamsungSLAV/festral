@@ -36,6 +36,7 @@ import System.Directory
 import System.Environment
 import System.Exit
 import Control.Exception
+import System.Posix.User
 
 -- |Build structure which represents config json format.
 data Build = Build
@@ -70,17 +71,25 @@ build :: Build -> FilePath -> FilePath -> IO ()
 build build wdir outdir = do
     (logfile, _) <- openTempFile "/tmp" "build.log"
     let srcDir = wdir ++ "/" ++ buildName build
-    mapM_ (buildOne logfile srcDir) (branches build)
+    mapM_ (\x -> withCurrentDirectory srcDir (buildOne logfile srcDir x)) (branches build)
     where
         buildOne logfile srcDir branch = do
             prepareRepo srcDir branch
             buildWithLog logfile (buildCmd build) srcDir
             parser <- getParser (buildResParser build) logfile
-            meta <- parse parser
+            meta <- getMeta parser
             let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
             createDirectory outDirName
             renameFile logfile (outDirName ++ "/build.log")
             toFile meta (outDirName ++ "/meta.txt")
+
+getMeta :: Parser a -> IO Meta
+getMeta p = do
+    commit <- getCommitHash
+    builder <- getEffectiveUserName
+    m <- parse p
+    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) (hash m)
+    return m'
 
 getParser :: String -> FilePath -> IO (Parser a)
 getParser "GBS" f = do
@@ -91,8 +100,13 @@ getParser exec f = do
     let p' = setExec exec p
     return $ Own p'
 
+getCommitHash = do
+    (_, out, _, pid) <- runInteractiveCommand "git rev-parse HEAD"
+    waitForProcess pid
+    hGetLine out
+
 prepareRepo srcDir brunch = 
-    catch (callCommand $ "cd "++ srcDir ++ " ; git checkout --force " 
+    catch (callCommand $ "git checkout --force "
         ++ brunch ++ " ; git fetch ; git pull origin " ++ brunch) handler
     where
         handler :: SomeException -> IO ()
