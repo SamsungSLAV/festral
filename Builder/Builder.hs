@@ -69,6 +69,7 @@ builderFromFile fname = do
 -- build buildObject rood_dir_of_project root_dir_of_output_files
 build :: Build -> FilePath -> FilePath -> IO ()
 build build wdir outdir = do
+    cloneRepo wdir build
     (logfile, _) <- openTempFile "/tmp" "build.log"
     let srcDir = wdir ++ "/" ++ buildName build
     mapM_ (\x -> withCurrentDirectory srcDir (buildOne logfile srcDir x)) (branches build)
@@ -83,12 +84,20 @@ build build wdir outdir = do
             renameFile logfile (outDirName ++ "/build.log")
             toFile meta (outDirName ++ "/meta.txt")
 
+cloneRepo :: FilePath -> Build -> IO ()
+cloneRepo wdir (Build name _ remote _ _) = do
+    catch (callCommand $ "git clone " ++ remote ++ " " ++ wdir ++ "/" ++ name) handler
+        where
+            handler :: SomeException -> IO ()
+            handler ex = return ()
+cloneRepo _ = return ()
+
 getMeta :: Parser a -> IO Meta
 getMeta p = do
     commit <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) (hash m)
+    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit
     return m'
 
 getParser :: String -> FilePath -> IO (Parser a)
