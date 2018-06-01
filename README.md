@@ -52,11 +52,16 @@ It has format described below:
 ```
  [
     {
-        "buildName" : "tct-test-ta", # Name of the repository, it MUST be name of the directory containing repository to build located in the <repositories location>
-        "buildCmd" : "gbs build -A armv7l -P tizen_vd", # Command to be used for build this repository
-        "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git", # remote address of the repository to build. 
-        "buildResParser" : "GBS", # Name of the parser of the build results. See description below.
-        "branches" : ["master", "arm", "devel"] # List of the branches to be built. Every one from these will be built for the target.
+        # Name of the repository, it MUST be name of the directory containing repository to build located in the <repositories location>
+        "buildName" : "tct-test-ta", 
+        # Command to be used for build this repository
+        "buildCmd" : "gbs build -A armv7l -P tizen_vd", 
+        # remote address of the repository to build. 
+        "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git", 
+        # Name of the parser of the build results. See description below.
+        "buildResParser" : "GBS", 
+        # List of the branches to be built. Every one from these will be built for the target.
+        "branches" : ["master", "arm", "devel"] 
     },
     { ... Some other build targets ... }
  ]
@@ -67,14 +72,14 @@ Parser is some script or binary which generates meta.txt file from output of you
 meta.txt file has format:
 
 ```
- BOARD=name of the board or arch of target
- BUILD_TYPE= debug or somthing else, I don't know for what it is
- COMMIT=name of the built commit
- BUILD_TIME=build time in format YYYYMMDDHHMMSS
- TOOLCHAIN=name of toolchain used for build
- BUILDER=username of builder
- BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there are other ones)
- BUILD_HASH=hash of the build
+ BOARD=#name of the board or arch of target
+ BUILD_TYPE=#debug or somthing else, I don't know for what it is
+ COMMIT=#name of the built commit
+ BUILD_TIME=#build time in format YYYYMMDDHHMMSS
+ TOOLCHAIN=#name of toolchain used for build
+ BUILDER=#username of builder
+ BUILD_STATUS=#result of build (SUCCEED and FAILED are known, but may be there are other ones)
+ BUILD_HASH=#hash of the build
 ```
 
 Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout`.
