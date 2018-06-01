@@ -105,7 +105,7 @@ getMeta p = do
     commit <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit
+    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit (outDir m)
     return m'
 
 getParser :: String -> FilePath -> IO (Parser a)

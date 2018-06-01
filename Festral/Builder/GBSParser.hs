@@ -39,7 +39,8 @@ instance MetaParser GBSParser where
         let arch = dropWhile isSpace $ last $ splitOn "</B>" $ head $ splitOn "</p>" $ last $  splitOn "Arch" content
         -- Use it later for getting hash of build
         let rpmdir = head $ splitOneOf " \n" $ dropWhile isSpace $ last $ splitOn "generated RPM packages can be found from local repo:\n" log
-        return $ Meta arch "unknown" "unknown" time "unknown" "unknown" status (replicate 40 '0')
+        let out = dropWhile isSpace $  head $ splitOn "\n" $ last $ splitOn "mgenerated RPM packages can be found from local repo:\n" log
+        return $ Meta arch "unknown" "unknown" time "unknown" "unknown" status (replicate 40 '0') out
         where
             parseStat x@[_,_] = x
             parseStat _ = [0, -1]

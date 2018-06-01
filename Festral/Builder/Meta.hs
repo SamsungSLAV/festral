@@ -23,6 +23,7 @@ data Meta = Meta {
     ,builder    :: String
     ,status     :: String
     ,hash       :: String
+    ,outDir     :: FilePath
 } deriving Show
 
 -- |Write 'Meta' to the file at given path
