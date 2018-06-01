@@ -31,7 +31,7 @@ instance MetaParser GBSParser where
         let [total, succ] = parseStat $ (map read stat) :: [Int]
         let status = if total > succ
                      then "FAILED"
-                     else "SUSSEED"
+                     else "SUCCEED"
 
         let log = buildLog gbsParser
         let arch = dropWhile isSpace $ last $ splitOn "</B>" $ head $ splitOn "</p>" $ last $  splitOn "Arch" content
