@@ -1,5 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 
+-- |GBSParser module implements 'MetaParser' class and parse output of usual GBS build to the 'Meta'.
 module Festral.Builder.GBSParser (
     GBSParser (..),
     parse,
@@ -13,9 +14,10 @@ import Control.Exception
 import Data.Char
 import Data.Time
 
+-- |This data represents parser and contains files needed for parser.
 data GBSParser = GBSParser {
-    buildHtml    :: String
-    ,buildLog    :: String
+    buildHtml    :: String -- ^Html file with some additional build outputs. Path to the file is automatically extracted from 'buildLog'.
+    ,buildLog    :: String -- ^File with stdout of gbs build command.
 } deriving Show
 
 instance MetaParser GBSParser where

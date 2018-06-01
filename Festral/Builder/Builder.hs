@@ -2,14 +2,21 @@
 
 -- |Module for building process managament. It get information about build targets
 -- from given .json file formatted as follow:
+--
+-- @
 -- [{"buildName": "name of the project to build",
 --   "buildCmd" : "command used to build, e.g. gbs build -A armv7l ...",
 --   "buildRepo": "origin repusitory address of the project",
 --   "buildResParser" : "name of the built-in parsers ("GBS") or path to the own binary parser, see below",
 --   "branch":["master", "other branch", "etc"]
 --   }, another build targets ... ]
+-- @
+--
 -- Parser is some script or binary which generates meta.txt file from output of your 'buildCmd' command.
+--
 -- meta.txt file has format:
+--
+-- @
 --  BOARD=name of the board or arch of target
 --  BUILD_TYPE= debug or somthing else, I don't know for what it is
 --  COMMIT=name of the built commit
@@ -18,6 +25,8 @@
 --  BUILDER=username of builder
 --  BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there are other ones)
 --  BUILD_HASH=hash of the build
+-- @
+--
 -- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes meta file to the 'stdout'
 module Festral.Builder.Builder (
     builderFromFile,

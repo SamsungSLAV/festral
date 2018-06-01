@@ -1,5 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 
+-- |This module is used for running user's scripts as build output parser, so it has some more functions excepting 'MetaParser' interface.
 module Festral.Builder.OwnParser (
     OwnParser (..),
     parse,
@@ -12,9 +13,10 @@ import System.Process
 import Data.List.Split
 import System.IO
 
+-- |This data contains parts needed by 'OwnParser'
 data OwnParser = OwnParser
-    { buildLog      :: String
-    , parserExec    :: FilePath
+    { buildLog      :: String -- ^Log file with standard output of the build command
+    , parserExec    :: FilePath -- ^Path to the user's parser executable.
     } deriving Show
 
 instance MetaParser OwnParser where
@@ -31,5 +33,8 @@ instance MetaParser OwnParser where
         file <- readFile fname
         return $ OwnParser file "exit"
 
+-- |Set own parser executable for the 'OwnParser' object.
+-- Executable or script provided by user MUST get standard output of the build command on its standard input after running
+-- and MUST write to the standard output parsed meta file (see "Festral.Builder.Builder" for file format).
 setExec :: FilePath -> OwnParser -> OwnParser
 setExec binary parser = OwnParser (buildLog parser) binary
