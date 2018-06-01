@@ -29,7 +29,7 @@ instance MetaParser GBSParser where
 
         let stat = map (takeWhile ((/= '<'))) $ map (!!1) $ map (splitOn "<td>") $ take 2 $ filter (isInfixOf "<td>") $ lines content
         let [total, succ] = parseStat $ (map read stat) :: [Int]
-        let status = if total > succ
+        let status = if total > succ || total <= 0
                      then "FAILED"
                      else "SUCCEED"
 
