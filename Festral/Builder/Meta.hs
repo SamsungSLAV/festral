@@ -1,6 +1,6 @@
 -- |This module describes metafile used by web page and database for showing and extracting information
 -- about builds and how this metafile can be acquired.
-module Builder.Meta (
+module Festral.Builder.Meta (
     Meta(..),
     MetaParser(..),
     toFile

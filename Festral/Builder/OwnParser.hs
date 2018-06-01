@@ -1,13 +1,13 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Builder.OwnParser (
+module Festral.Builder.OwnParser (
     OwnParser (..),
     parse,
     fromFile,
     setExec
 ) where
 
-import Builder.Meta
+import Festral.Builder.Meta
 import System.Process
 import Data.List.Split
 import System.IO

@@ -19,14 +19,14 @@
 --  BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there are other ones)
 --  BUILD_HASH=hash of the build
 -- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes meta file to the 'stdout'
-module Builder.Builder (
+module Festral.Builder.Builder (
     builderFromFile,
     build
 ) where
 
-import Builder.Meta
-import Builder.OwnParser
-import Builder.GBSParser
+import Festral.Builder.Meta
+import Festral.Builder.OwnParser
+import Festral.Builder.GBSParser
 import Data.Aeson
 import GHC.Generics
 import qualified Data.ByteString.Lazy as LB

@@ -23,19 +23,16 @@ Library
         directory,
         unix
     Exposed-modules:
-       Festral,
-       Builder.Builder,
-       Builder.Meta,
-       Builder.GBSParser,
-       Builder.OwnParser
-    Hs-Source-Dirs: Festral
+       Festral.Weles.API,
+       Festral.Builder.Builder,
+       Festral.Builder.Meta,
+       Festral.Builder.GBSParser,
+       Festral.Builder.OwnParser
 
-Executable festral
-    Main-Is:        Main.hs
-    Hs-Source-Dirs: Festral
-    Other-Modules:  Festral
+Executable festral-weles
+    Main-Is:        Festral/Weles/Main.hs
+    Other-Modules:  Festral.Weles.API
 
 Executable festral-build
-    Main-Is:        Builder/Main.hs
-    Hs-Source-Dirs: Festral
-    Other-Modules:  Builder.GBSParser, Builder.Meta, Builder.OwnParser
+    Main-Is:        Festral/Builder/Main.hs
+    Other-Modules:  Festral.Builder.GBSParser, Festral.Builder.Meta, Festral.Builder.OwnParser

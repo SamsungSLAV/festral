@@ -1,12 +1,12 @@
 {-# LANGUAGE InstanceSigs #-}
 
-module Builder.GBSParser (
+module Festral.Builder.GBSParser (
     GBSParser (..),
     parse,
     fromFile
 ) where
 
-import Builder.Meta
+import Festral.Builder.Meta
 import Data.List.Split
 import Data.List
 import Control.Exception

@@ -3,7 +3,7 @@ module Main (
 ) where
 
 import System.Environment
-import Builder.Builder
+import Festral.Builder.Builder
 
 main = do
     args <- getArgs

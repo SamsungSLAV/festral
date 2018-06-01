@@ -5,7 +5,7 @@ module Main (
 import System.Process
 import System.IO
 import System.Environment
-import Festral
+import Festral.Weles.API
 import Options.Applicative
 import Data.Semigroup ((<>))
 

@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |Simple library for test management using Weles as testing server.
-module Festral (
+module Festral.Weles.API (
     Job(),
     curlJobs,
     getJob,
@@ -47,6 +47,7 @@ instance Show Job where
                 ++ show s ++ ",\n \"info\" : "
                 ++ show i ++ "\n}\n"
 
+-- |TODO: read IP and ports from config file
 welesAddr = "127.0.0.1"
 welesPort = "5010"
 welesFilePort = "8888"
