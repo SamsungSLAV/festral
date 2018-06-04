@@ -68,6 +68,10 @@ instance MetaParser (Parser a) where
         p <- fromFile f
         return $ GBS p
 
+    fromHandle h = do
+        p <- fromHandle h
+        return $ GBS p
+
 -- |Gets builder object from given configuration json.
 builderFromFile :: FilePath -> IO (Maybe [Build])
 builderFromFile fname = do
@@ -79,19 +83,23 @@ builderFromFile fname = do
 build :: Build -> FilePath -> FilePath -> IO ()
 build build wdir outdir = do
     cloneRepo wdir build
-    (logfile, _) <- openTempFile "/tmp" "build.log"
     let srcDir = wdir ++ "/" ++ buildName build
-    mapM_ (\x -> withCurrentDirectory srcDir (buildOne logfile srcDir x)) (branches build)
+    mapM_ (\x -> withCurrentDirectory srcDir (buildOne srcDir x)) (branches build)
     where
-        buildOne logfile srcDir branch = do
+        buildOne srcDir branch = do
+            (logfile, loghandle) <- openTempFile "/tmp" "build.log"
             prepareRepo srcDir branch
             buildWithLog logfile (buildCmd build) srcDir
-            parser <- getParser (buildResParser build) logfile
+            parser <- getParser (buildResParser build) loghandle
             meta <- getMeta parser
             let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
             createDirectory outDirName
-            renameFile logfile (outDirName ++ "/build.log")
             toFile meta (outDirName ++ "/meta.txt")
+            catch (renameDirectory (outDir meta) (outDirName ++ "/build_res")) handler
+            renameFile logfile (outDirName ++ "/build.log")
+                where
+                    handler :: SomeException -> IO ()
+                    handler ex = putStrLn $ show ex
 
 cloneRepo :: FilePath -> Build -> IO ()
 cloneRepo wdir (Build name _ remote _ _) = do
@@ -108,12 +116,12 @@ getMeta p = do
     let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit (outDir m)
     return m'
 
-getParser :: String -> FilePath -> IO (Parser a)
+getParser :: String -> Handle -> IO (Parser a)
 getParser "GBS" f = do
-    p <- fromFile f
+    p <- fromHandle f
     return $ GBS p
 getParser exec f = do
-    p <- fromFile f
+    p <- fromHandle f
     let p' = setExec exec p
     return $ Own p'
 

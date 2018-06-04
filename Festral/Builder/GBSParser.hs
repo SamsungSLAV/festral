@@ -13,6 +13,7 @@ import Data.List
 import Control.Exception
 import Data.Char
 import Data.Time
+import System.IO
 
 -- |This data represents parser and contains files needed for parser.
 data GBSParser = GBSParser {
@@ -46,10 +47,20 @@ instance MetaParser GBSParser where
             parseStat _ = [0, -1]
 
     fromFile :: FilePath -> IO GBSParser
-    fromFile flog = catch (fromFile' flog) handler
+    fromFile flog = catch (fromFile' flog) (handler flog)
         where
-            handler :: SomeException -> IO GBSParser
-            handler e = return (GBSParser "" "")
+            handler :: FilePath -> SomeException -> IO GBSParser
+            handler f e = putStrLn (show e) >> return (GBSParser "" "")
+
+    fromHandle :: Handle -> IO GBSParser
+    fromHandle flog = do
+        log <- hGetContents flog
+        let fhtml = last $ splitOneOf " " $ head $ lines $ last $ splitOn "generated html format report:\n" log
+        html <- catch (readFile fhtml) handler
+        return $ GBSParser html log
+        where
+            handler :: SomeException -> IO String
+            handler e = return ""
 
 fromFile' :: FilePath -> IO GBSParser
 fromFile' flog = do

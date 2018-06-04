@@ -33,6 +33,11 @@ instance MetaParser OwnParser where
         file <- readFile fname
         return $ OwnParser file "exit"
 
+    fromHandle :: Handle -> IO OwnParser
+    fromHandle fname = do
+        file <- hGetContents fname
+        return $ OwnParser file "exit"
+
 -- |Set own parser executable for the 'OwnParser' object.
 -- Executable or script provided by user MUST get standard output of the build command on its standard input after running
 -- and MUST write to the standard output parsed meta file (see "Festral.Builder.Builder" for file format).

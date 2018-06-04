@@ -6,11 +6,14 @@ module Festral.Builder.Meta (
     toFile
 ) where
 
+import System.IO
+
 -- |Class which describes Parser - something that can be cunstructed from the file
 -- with output of the build by function 'fromFile' and return 'Meta' parsed from this build output.
 class MetaParser a where
     parse :: a -> IO Meta
     fromFile :: FilePath -> IO a
+    fromHandle :: Handle -> IO a
 
 -- |Representation of the meta.txt file which is used by database and wep page for
 -- extracting information about build results.
