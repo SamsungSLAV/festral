@@ -40,6 +40,8 @@ If build finished with success, you will find festral executable in the director
 -----------
 ### festral-build
 
+This command clone and build all targets listed in configuration json file: each target is built for every branch listed for this target.
+
 The `festral-build` utility has simple command format:
 
 ```
@@ -86,7 +88,7 @@ Parser script MUST gets output of the `buildCmd` from its `stdin` after start an
 
 `repository location` is path where directories where cloned from `buildRepo`'s of targets projects will be put.
 
-`output directory` is directory where builds results will be put.
+`output directory` is directory where builds results will be put in format 'commithash_buildtime'
 
 --------------
 ### festral-weles

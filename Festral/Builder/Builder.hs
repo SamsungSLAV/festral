@@ -87,7 +87,7 @@ build build wdir outdir = do
     mapM_ (\x -> withCurrentDirectory srcDir (buildOne srcDir x)) (branches build)
     where
         buildOne srcDir branch = do
-            (logfile, loghandle) <- openTempFile "/tmp" "build.log"
+            (logfile, loghandle) <- openTempFileWithDefaultPermissions "/tmp" "build.log"
             prepareRepo srcDir branch
             buildWithLog logfile (buildCmd build) srcDir
             parser <- getParser (buildResParser build) loghandle
