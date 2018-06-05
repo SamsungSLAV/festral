@@ -1,0 +1,11 @@
+{
+    "projectsDir" : "/home/u.harbuz/projects",
+    "welesIP" : "127.0.0.1",
+    "welesPort" : "5010",
+    "welesFilePort" : "8888",
+    "yamls" : [
+        {"repo" : "tct-test-ta",
+         "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml"
+        }
+    ]
+}

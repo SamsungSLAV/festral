@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.1.3
+Version:    0.1.4
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -27,7 +27,10 @@ Library
        Festral.Builder.Builder,
        Festral.Builder.Meta,
        Festral.Builder.GBSParser,
-       Festral.Builder.OwnParser
+       Festral.Builder.OwnParser,
+       Festral.Tests.TestParser,
+       Festral.Tests.TCTParser,
+       Festral.Tests.Test
 
 Executable festral-weles
     Main-Is:        Festral/Weles/Main.hs

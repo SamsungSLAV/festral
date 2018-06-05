@@ -38,6 +38,13 @@ data Meta = Meta {
 
 -- |Write 'Meta' to the file at given path
 toFile :: Meta -> FilePath -> IO ()
+toFile (MetaTest m t tName tTime) fname = do
+    toFile m fname
+    let content = ("TESTER=" ++ t
+                    ++ "\nTESTER_NAME=" ++ tName
+                    ++ "\nTEST_TIME=" ++ tTime ++ "\n")
+    appendFile fname content
+
 toFile m fname = do
     let content = ("BOARD=" ++ board m
                     ++ "\nBUILD_TYPE=" ++ buildType m

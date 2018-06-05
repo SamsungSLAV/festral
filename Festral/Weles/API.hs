@@ -26,6 +26,7 @@ import qualified Data.ByteString.Char8 as B
 import Data.List.Split
 import Data.List
 import Control.Monad
+import Data.Maybe
 
 -- |Job datatype describes json job object got from weles
 data Job = Job {
@@ -72,7 +73,7 @@ doneStatuses = ["FAILED", "COMPLETED", "CANCELED"]
 getJobWhenDone :: Int -> IO (Maybe Job)
 getJobWhenDone id = do
     job <- getJob id
-    let res = if (status <$> job) `elem` (map Just doneStatuses)
+    let res = if isNothing job || (status <$> job) `elem` (map Just doneStatuses)
                 then return job
                 else threadDelay 1000000 >> getJobWhenDone id
     res
