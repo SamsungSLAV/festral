@@ -1,0 +1,9 @@
+Initializing TEE Context... OK
+Opening session... OK
+Executing command with value param... OK
+Verifying response...
+OK
+Register shared memory... ERROR:
+  TEEC_RegisterSharedMemory failed for input data with result FFFF000C
+  tct_basic_commands: FAILED
+

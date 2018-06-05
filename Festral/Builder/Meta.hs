@@ -27,7 +27,14 @@ data Meta = Meta {
     ,status     :: String
     ,hash       :: String
     ,outDir     :: FilePath
-} deriving Show
+    }  
+    | MetaTest {
+    metaData    :: Meta
+    ,tester     :: String
+    ,testerName :: String
+    ,testTime   :: String
+    }
+    deriving Show
 
 -- |Write 'Meta' to the file at given path
 toFile :: Meta -> FilePath -> IO ()
