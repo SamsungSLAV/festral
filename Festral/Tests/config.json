@@ -1,5 +1,6 @@
 {
-    "projectsDir" : "/home/u.harbuz/projects",
+    "buildLogDir" : "/tmp",
+    "testLogDir" : "/tmp",
     "welesIP" : "127.0.0.1",
     "welesPort" : "5010",
     "welesFilePort" : "8888",

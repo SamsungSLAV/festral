@@ -4,7 +4,8 @@
 module Festral.Tests.Test (
     runTest,
     TestRunnerConfig (..),
-    parseTest
+    parseTest,
+    performTestWithConfig
 ) where
 
 import Data.Aeson
@@ -30,7 +31,8 @@ instance FromJSON TestConfig
 instance ToJSON TestConfig
 
 data TestRunnerConfig = TestRunnerConfig
-    { projectsDir   :: FilePath
+    { buildLogDir   :: FilePath
+    , testLogDir    :: FilePath
     , welesIP       :: String
     , welesPort     :: String
     , welesFilePort :: String
@@ -52,6 +54,18 @@ instance TestParser (TestResParser a) where
     fromFile x = do
         p <- fromFile x
         return $ TCT p
+
+-- |Read configuration file from first parameter and build directory from second and get test log from it
+performTestWithConfig :: FilePath -> String -> IO ()
+performTestWithConfig confPath target = do
+    confStr <- LB.readFile confPath
+    let Just config = decode confStr :: Maybe TestRunnerConfig
+    (testConf, testOut) <- runTest config target
+    parseTest testConf testOut (buildLogDir config ++ "/" ++ target) (testLogDir config)
+    where
+        getConfig [] = TestConfig "" "" ""
+        getConfig (x:_) = x
+
 
 -- |Get configuration of the test, output files from Weles, build directory and out root directory
 -- and creates directory with test logs.
@@ -83,12 +97,12 @@ getParser _ testRes = do
 
 -- |Run test for the given build and return pairs (file name, contents) of files created on Weles
 -- runTest path_to_config_fiile build_name
-runTest :: TestRunnerConfig -> String -> IO [(String, String)]
+runTest :: TestRunnerConfig -> String -> IO (TestConfig, [(String, String)])
 runTest config target = do
-    metaStr <- readFile $ target ++ "/meta.txt"
+    metaStr <- readFile $ (buildLogDir config) ++ "/" ++  target ++ "/meta.txt"
     let meta = readMeta metaStr
-    let yamlPath = getYaml $ filter (\x -> repo x == (repoName meta)) $ yamls config
-    jobId <- withCurrentDirectory (target ++ "/build_res") $ startJob yamlPath
+    let yamlPath = getYaml $ getConf meta
+    jobId <- withCurrentDirectory ((buildLogDir config) ++ "/" ++ target ++ "/build_res") $ startJob yamlPath
     let jobId' = if isNothing jobId
                         then return (-1)
                         else return $ fromJust jobId
@@ -105,7 +119,11 @@ runTest config target = do
                                     else fromJust content
                     return (fname, content')
                     ) jobFiles'
-    ret
+    ret' <- ret
+    return (getTestConf $ getConf meta, ret')
     where
+        getConf meta = filter (\x -> repo x == (repoName meta)) $ yamls config
         getYaml [] = []
         getYaml (x:_) = yaml x
+        getTestConf [] = TestConfig "" "" ""
+        getTestConf (x:_) = x
