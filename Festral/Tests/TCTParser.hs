@@ -1,12 +1,14 @@
 {-# LANGUAGE InstanceSigs #-}
 
 module Festral.Tests.TCTParser (
+    TCTParser (..)
 ) where
 
 import Festral.Tests.TestParser
 import System.IO
 import Data.List.Split
 import Data.Char
+import Data.List
 
 data TCTParser = TCTParser {tctOut :: String} deriving Show
 
@@ -24,3 +26,12 @@ instance TestParser TCTParser where
         tr "OK" = "TEST_PASS"
         tr _ = "TEST_FAIL"
 
+    fromWelesFiles :: [(String, String)] -> IO TCTParser
+    fromWelesFiles [] = return $ TCTParser ""
+    fromWelesFiles files = do
+        let x = filter (\(n,c) -> "tct-test-ta.log" `isInfixOf` n) files
+        return $ getParser x
+
+        where
+            getParser ((fname, content):_) = TCTParser content
+            getParser _ = TCTParser ""

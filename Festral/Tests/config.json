@@ -5,7 +5,8 @@
     "welesFilePort" : "8888",
     "yamls" : [
         {"repo" : "tct-test-ta",
-         "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml"
+         "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml",
+         "parser" : "TCT"
         }
     ]
 }

@@ -3,11 +3,13 @@ module Festral.Tests.TestParser (
     writeReportFile,
     TestParser,
     fromFile,
-    parse
+    parse,
+    fromWelesFiles
 ) where
 
 class TestParser a where
     fromFile :: FilePath -> IO a
+    fromWelesFiles :: [(String, String)] -> IO a
     parse :: a -> [TestData]
 
 data TestData = TestData
