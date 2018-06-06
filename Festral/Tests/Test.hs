@@ -30,7 +30,8 @@ data TestRunnerConfig = TestRunnerConfig
 instance FromJSON TestRunnerConfig
 instance ToJSON TestRunnerConfig
 
--- |runTest path_to_config_file build_name output_dir
+-- |Run test for the given build and put Weles's output files to the output directory
+-- runTest path_to_config_file build_name output_dir
 runTest :: FilePath -> String -> FilePath -> IO ()
 runTest fname target outDir = do
     configStr <- LB.readFile fname
@@ -42,6 +43,7 @@ runTest fname target outDir = do
     where
         continue config = do
             let targetPath = projectsDir config ++ "/" ++ target
+            meta <- readFile $ targetPath ++ "/meta.txt"
             let yamlPath = yaml $ head $ filter (\x -> repo x == target) $ yamls config
             jobId <- startJob yamlPath
             let jobId' = if isNothing jobId

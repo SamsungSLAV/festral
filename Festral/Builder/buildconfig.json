@@ -1,21 +1,21 @@
 [
     {
         "buildName" : "tct-test-ta",
-        "buildCmd" : "gbs build -A armv7l -P tizen_vd",
+        "buildCmd" : "gbs build -A armv7l -P tizen_vd --overwrite",
         "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
         "buildResParser" : "GBS",
         "branches" : ["master", "arm", "devel"]
     },
     {
         "buildName" : "tct-test-ta",
-        "buildCmd" : "gbs build -A i586 -P tizen_simulator",
+        "buildCmd" : "gbs build -A i586 -P tizen_simulator --overwrite",
         "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
         "buildResParser" : "GBS",
         "branches" : ["master", "arm", "devel"]
     },
     {
         "buildName" : "tee-test",
-        "buildCmd" : "gbs build -A armv7l -P tizen_vd",
+        "buildCmd" : "gbs build -A armv7l -P tizen_vd --overwrite",
         "buildRepo" : "",
         "buildResParser" : "GBS",
         "branches" : ["master"]
