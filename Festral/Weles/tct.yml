@@ -9,10 +9,24 @@ actions:
   - test:
       name: tct-test
       test_cases:
-        - case_name: try_test
+        - case_name: tct-install
           test_actions:
-            - run:
-                name: uname -a 
-            - pull:
-                src: /tmp/tct-test-ta.log
-                alias: tct-test-ta.log
+              - push:
+                  ##TEMPLATE_URL tct-test-ta##
+                  dest: /tmp
+                  alias: tct-test-ta.rpm
+              - run:
+                  name: rpm -i /tmp/tct-test-ta.rpm --force | tee /tmp/install.log
+              - pull:
+                  src: /tmp/install.log
+                  alias: install.log
+        - case_name: tct-run
+          test_actions:
+              - boot:
+                  login: owner
+                  password: tizen
+              - run:
+                  name: tct-test-ca | tee /tmp/tct.log
+              - pull:
+                  src: /tmp/tct.log
+                  alias: tct.log

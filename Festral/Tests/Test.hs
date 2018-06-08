@@ -20,6 +20,8 @@ import Festral.Tests.TestParser
 import Data.Time
 import System.Posix.User
 import Data.List.Split
+import Festral.Weles.YamlTemplate
+import Data.List
 
 data TestConfig = TestConfig
     { repo  :: String
@@ -102,13 +104,24 @@ runTest config target = do
     metaStr <- readFile $ (buildLogDir config) ++ "/" ++  target ++ "/meta.txt"
     let meta = readMeta metaStr
     let yamlPath = getYaml $ getConf meta
-    jobId <- withCurrentDirectory ((buildLogDir config) ++ "/" ++ target ++ "/build_res") $ startJob yamlPath
+
+    putStrLn $ "Starting Weles job with " ++ yamlPath ++ " ..."
+
+    let buildOutDir = (buildLogDir config) ++ "/" ++ target ++ "/build_res"
+    rpms <- getDirectoryContents buildOutDir
+    yamlTemplate <- readFile yamlPath
+    writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater (map (\x -> buildOutDir ++ "/" ++ x) rpms))
+    jobId <- withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
+    putStrLn $ "Job id is " ++ show jobId
     let jobId' = if isNothing jobId
                         then return (-1)
                         else return $ fromJust jobId
     jobId'' <- jobId'
+
+    putStr "Waiting for job finished ... "
     job <- getJobWhenDone jobId''
     jobFiles <- getFileList jobId''
+    putStrLn $ "OK\n Recieved files: " ++ show jobFiles
     let jobFiles' = if isNothing jobFiles
                         then []
                         else fromJust jobFiles
@@ -127,3 +140,10 @@ runTest config target = do
         getYaml (x:_) = yaml x
         getTestConf [] = TestConfig "" "" ""
         getTestConf (x:_) = x
+
+        yamlTemplater :: [String] -> TemplateType -> String
+        yamlTemplater out (URL url) = "url: '127.0.0.1/secosci/download.php?file=" ++ resolvedName ++ "'"
+            where
+                resolvedName = if rpmname == [] then "" else head rpmname
+                rpmname = take 1 $ filter(isInfixOf url) $ out
+
