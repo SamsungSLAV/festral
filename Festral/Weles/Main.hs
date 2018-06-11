@@ -33,6 +33,10 @@ configFile =do
     home <- getHomeDirectory 
     return $ home ++ "/.festral.conf"
 
+buildListFile = do
+    home <- getHomeDirectory
+    return $ home ++ "/.fresh_builds"
+
 opts :: Parser Options
 opts = Options
     <$> switch
@@ -71,11 +75,16 @@ opts = Options
     <*> switch
         ( long  "run-test"
         <>short 'r'
-        <>help  "Run test for specified by -f option build directory" )
+        <>help  "Run test for specified by -f option build directory. Run for all targets listed in '~/.fresh_builds' file if no target specified." )
 
 runCmd :: Options -> IO ()
 
-runCmd (Options _ _ _ "" _ _ _ True) = runCmd None
+runCmd (Options _ _ _ "" _ _ _ True) = do
+    config <- configFile
+    listFile <- buildListFile
+    list <- readFile listFile
+    performForallNewBuilds config list
+    writeFile listFile ""
 
 runCmd (Options _ _ _ fname _ _ _ True) = configFile >>= (\x -> performTestWithConfig x fname)
 

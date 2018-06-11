@@ -5,7 +5,8 @@ module Festral.Tests.Test (
     runTest,
     TestRunnerConfig (..),
     parseTest,
-    performTestWithConfig
+    performTestWithConfig,
+    performForallNewBuilds
 ) where
 
 import Data.Aeson
@@ -22,6 +23,8 @@ import System.Posix.User
 import Data.List.Split
 import Festral.Weles.YamlTemplate
 import Data.List
+import Control.Exception
+import System.IO.Error
 
 data TestConfig = TestConfig
     { repo  :: String
@@ -57,6 +60,12 @@ instance TestParser (TestResParser a) where
         p <- fromFile x
         return $ TCT p
 
+-- |Run tests from config for all build directories listed in given string
+performForallNewBuilds :: FilePath -> String -> IO ()
+performForallNewBuilds _ "" = return ()
+performForallNewBuilds conf list = do
+    mapM_ (performTestWithConfig conf) $ lines list
+
 -- |Read configuration file from first parameter and build directory from second and get test log from it
 performTestWithConfig :: FilePath -> String -> IO ()
 performTestWithConfig confPath target = do
@@ -84,12 +93,18 @@ parseTest config outs buildDir outDir = do
     let testMeta = MetaTest meta tester tester time
     
     let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
-    createDirectory outDirName
+    catch (createDirectory outDirName) (recreate_dir outDirName 0)
     toFile testMeta (outDirName ++ "/meta.txt")
     toFile meta (outDirName ++ "/build.log")
 
     writeReportFile (parse parser) (outDirName ++ "/report.txt")
     writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) -> c) outs)
+
+    where
+        recreate_dir :: FilePath -> Int -> IOError -> IO ()
+        recreate_dir path i ex 
+            | isAlreadyExistsError ex = catch (createDirectory $ path ++ "_" ++ show i) (recreate_dir path (i+1))
+            | otherwise = putStrLn $ show ex
         
 
 getParser :: String -> [(String, String)] -> IO (TestResParser a)
@@ -108,10 +123,10 @@ runTest config target = do
     putStrLn $ "Starting Weles job with " ++ yamlPath ++ " ..."
 
     let buildOutDir = (buildLogDir config) ++ "/" ++ target ++ "/build_res"
-    rpms <- getDirectoryContents buildOutDir
-    yamlTemplate <- readFile yamlPath
-    writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater (map (\x -> buildOutDir ++ "/" ++ x) rpms))
-    jobId <- withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
+    rpms <- catch (getDirectoryContents buildOutDir) dirDoesntExists
+    yamlTemplate <- catch (readFile yamlPath) fileNotExists
+    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater (map (\x -> buildOutDir ++ "/" ++ x) rpms))
+    jobId <- handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
     putStrLn $ "Job id is " ++ show jobId
     let jobId' = if isNothing jobId
                         then return (-1)
@@ -140,6 +155,18 @@ runTest config target = do
         getYaml (x:_) = yaml x
         getTestConf [] = TestConfig "" "" ""
         getTestConf (x:_) = x
+
+        dirDoesntExists :: SomeException -> IO [FilePath]
+        dirDoesntExists ex = putStrLn (show ex) >> return []
+
+        fileNotExists :: SomeException -> IO String
+        fileNotExists ex = putStrLn (show ex) >> return ""
+
+        emptyFileNotExists :: SomeException -> IO ()
+        emptyFileNotExists ex = putStrLn $ show ex
+
+        badJob :: SomeException -> IO (Maybe Int)
+        badJob ex = putStrLn (show ex) >> return (Nothing)
 
         yamlTemplater :: [String] -> TemplateType -> String
         yamlTemplater out (URL url) = "url: '127.0.0.1/secosci/download.php?file=" ++ resolvedName ++ "'"

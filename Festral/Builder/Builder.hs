@@ -78,6 +78,10 @@ builderFromFile fname = do
     file <- LB.readFile fname
     return $ decode file
 
+builtListFile = do 
+    x <- getHomeDirectory
+    return $ x ++ "/.fresh_builds"
+
 -- |Build target located in the first path + build name and put meta file to the directory tree with given in seconf path root directory
 -- build buildObject rood_dir_of_project root_dir_of_output_files
 build :: Build -> FilePath -> FilePath -> IO ()
@@ -97,6 +101,8 @@ build build wdir outdir = do
             toFile meta (outDirName ++ "/meta.txt")
             catch (renameDirectory (outDir meta) (outDirName ++ "/build_res")) handler
             catch (renameFile logfile (outDirName ++ "/build.log")) (copyHandler logfile (outDirName ++ "/build.log"))
+            bLogFile <- builtListFile
+            appendFile bLogFile (hash meta ++ "_" ++ buildTime meta ++ "\n")
                 where
                     handler :: SomeException -> IO ()
                     handler ex = putStrLn $ show ex
