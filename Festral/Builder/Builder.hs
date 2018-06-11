@@ -96,10 +96,12 @@ build build wdir outdir = do
             createDirectory outDirName
             toFile meta (outDirName ++ "/meta.txt")
             catch (renameDirectory (outDir meta) (outDirName ++ "/build_res")) handler
-            renameFile logfile (outDirName ++ "/build.log")
+            catch (renameFile logfile (outDirName ++ "/build.log")) (copyHandler logfile (outDirName ++ "/build.log"))
                 where
                     handler :: SomeException -> IO ()
                     handler ex = putStrLn $ show ex
+                    copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
+                    copyHandler a b ex = copyFile a b
 
 cloneRepo :: FilePath -> Build -> IO ()
 cloneRepo wdir (Build name _ remote _ _) = do
