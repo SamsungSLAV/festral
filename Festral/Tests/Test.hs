@@ -22,6 +22,8 @@ import Data.List
 import Control.Exception
 import System.IO.Error
 import Festral.Tests.Config
+import System.Process
+import System.IO
 
 data TestResParser a = TCT TCTParser deriving Show
 
@@ -54,12 +56,27 @@ performTestWithConfig confPath target = do
         getConfig (x:_) = x
 
 
+builtInParsers = ["TCT"]
+
 -- |Get configuration of the test, output files from Weles, build directory and out root directory
 -- and creates directory with test logs.
 parseTest :: TestConfig -> [(String, String)] -> FilePath -> FilePath -> IO ()
-parseTest config outs buildDir outDir = do
-    parser <- getParser (parser config) outs
+parseTest config outs buildDir outDir
+    | (parser config) `elem` builtInParsers = parseTest' writeWithParser config outs buildDir outDir
+    | otherwise = parseTest' writeWithOwn config outs buildDir outDir
 
+writeWithParser config outs buildDir outDir = do
+    parser <- getParser (parser config) outs
+    writeReportFile (parse parser) (outDir ++ "/report.txt")
+    
+writeWithOwn config outs buildDir outDir = do
+    (inp, out, err, handle) <- runInteractiveProcess (parser config) [concat $ map (\(n,c) -> c) outs] Nothing Nothing
+    report <- hGetContents out
+    waitForProcess handle
+    writeFile (outDir ++ "/report.txt") report
+
+
+parseTest' writer config outs buildDir outDir = do
     metaStr <- readFile $ buildDir ++ "/meta.txt"
     let meta = readMeta metaStr
     time <- show <$> getZonedTime
@@ -73,7 +90,7 @@ parseTest config outs buildDir outDir = do
     toFile testMeta (outDirName ++ "/meta.txt")
     toFile meta (outDirName ++ "/build.log")
 
-    writeReportFile (parse parser) (outDirName ++ "/report.txt")
+    writer config outs buildDir outDirName
     writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) -> c) outs)
 
     where

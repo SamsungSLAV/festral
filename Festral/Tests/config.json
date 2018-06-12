@@ -8,6 +8,11 @@
         {"repo" : "tct-test-ta",
          "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml",
          "parser" : "TCT"
+        },
+        {
+            "repo" : "gpapi-tests",
+            "yaml" : "/home/u.harbuz/Documents/scripts/weles/tf.yml",
+            "parser" : "cat"
         }
     ]
 }
