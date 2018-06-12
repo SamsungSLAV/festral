@@ -72,6 +72,7 @@ toFile :: Meta -> FilePath -> IO ()
 toFile m fname = do
     writeFile fname $ show m
 
+-- |Read 'Meta' from file. Now it can read only files created by 'toFile' function.
 fromMetaFile :: FilePath -> IO Meta
 fromMetaFile fname = do
     mdata <- catch (readFile fname) handler

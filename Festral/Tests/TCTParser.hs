@@ -1,5 +1,6 @@
 {-# LANGUAGE InstanceSigs #-}
 
+-- |Parser of tct-test-ta results to the metafile for CI server.
 module Festral.Tests.TCTParser (
     TCTParser (..)
 ) where
@@ -10,6 +11,7 @@ import Data.List.Split
 import Data.Char
 import Data.List
 
+-- |Representation of the output of tests.
 data TCTParser = TCTParser {tctOut :: String} deriving Show
 
 
