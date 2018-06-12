@@ -26,7 +26,7 @@ actions:
                   login: owner
                   password: tizen
               - run:
-                  name: tct-test-ca | tee /tmp/tct.log
+                  name: tct-test-ca | tee /tmp/tct-test-ta.log
               - pull:
-                  src: /tmp/tct.log
-                  alias: tct.log
+                  src: /tmp/tct-test-ta.log
+                  alias: tct-test-ta.log

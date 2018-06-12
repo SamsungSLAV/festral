@@ -1,16 +1,12 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 -- |Module for running tests using config file and "Festral.Weles.API".
 module Festral.Tests.Test (
     runTest,
-    TestRunnerConfig (..),
     parseTest,
     performTestWithConfig,
     performForallNewBuilds
 ) where
 
 import Data.Aeson
-import GHC.Generics
 import qualified Data.ByteString.Lazy as LB
 import Festral.Weles.API
 import Data.Maybe
@@ -25,27 +21,7 @@ import Festral.Weles.YamlTemplate
 import Data.List
 import Control.Exception
 import System.IO.Error
-
-data TestConfig = TestConfig
-    { repo  :: String
-    , yaml  :: FilePath
-    , parser:: String
-    } deriving (Show, Generic)
-
-instance FromJSON TestConfig
-instance ToJSON TestConfig
-
-data TestRunnerConfig = TestRunnerConfig
-    { buildLogDir   :: FilePath
-    , testLogDir    :: FilePath
-    , welesIP       :: String
-    , welesPort     :: String
-    , welesFilePort :: String
-    , yamls         :: [TestConfig]
-    } deriving (Show, Generic)
-
-instance FromJSON TestRunnerConfig
-instance ToJSON TestRunnerConfig
+import Festral.Tests.Config
 
 data TestResParser a = TCT TCTParser deriving Show
 
