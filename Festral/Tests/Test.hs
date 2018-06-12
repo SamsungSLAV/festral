@@ -70,10 +70,15 @@ writeWithParser config outs buildDir outDir = do
     writeReportFile (parse parser) (outDir ++ "/report.txt")
     
 writeWithOwn config outs buildDir outDir = do
-    (inp, out, err, handle) <- runInteractiveProcess (parser config) [concat $ map (\(n,c) -> c) outs] Nothing Nothing
-    report <- hGetContents out
-    waitForProcess handle
-    writeFile (outDir ++ "/report.txt") report
+    handle err $ do
+        (inp, out, err, handle) <- runInteractiveProcess (parser config) [concat $ map (\(n,c) -> c) outs] Nothing Nothing
+        report <- hGetContents out
+        waitForProcess handle
+        writeFile (outDir ++ "/report.txt") report
+
+    where
+        err :: SomeException -> IO ()
+        err ex = putStrLn (show ex) >> return ()
 
 
 parseTest' writer config outs buildDir outDir = do
@@ -119,7 +124,10 @@ runTest config target = do
     rpms <- catch (getDirectoryContents buildOutDir) dirDoesntExists
     yamlTemplate <- catch (readFile yamlPath) fileNotExists
     handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater (map (\x -> buildOutDir ++ "/" ++ x) rpms))
-    jobId <- handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
+    jobId <- if status meta == "SUCCEED" || yamlTemplate /= "" 
+                then handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
+                else return Nothing
+
     putStrLn $ "Job id is " ++ show jobId
     let jobId' = if isNothing jobId
                         then return (-1)
@@ -165,5 +173,5 @@ runTest config target = do
         yamlTemplater out (URL url) = "url: '127.0.0.1/secosci/download.php?file=" ++ resolvedName ++ "'"
             where
                 resolvedName = if rpmname == [] then "" else head rpmname
-                rpmname = take 1 $ filter(isInfixOf url) $ out
+                rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $ filter(isInfixOf url) $ out
 

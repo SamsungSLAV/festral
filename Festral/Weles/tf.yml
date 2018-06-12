@@ -12,7 +12,7 @@ actions:
         - case_name: gpapi-install
           test_actions:
               - push:
-                  ##TEMPLATE_URL gpapi-test##
+                  ##TEMPLATE_URL tf##
                   dest: /tmp
                   alias: gpapi-test.rpm
               - run:
