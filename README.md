@@ -1,5 +1,7 @@
 # Festral 
-Package with tools for tests management using Weles as test server.
+
+This package is developed and adopted for usage with existing extended secos CI system (http://127.0.0.1:81/u.harbuz/secosci) which consists of PHP page, MySQL database and set of scripts for importing
+data to the database from the formatted in some way files. This package uses set of configuration files for management of repositories building and testing.
 
 Festral consists of some small utilities:
 
@@ -129,3 +131,29 @@ Available options:
 
 ```
 
+`festral-weles` uses configuration JSON file located at `~/.festral.conf` formatted as below:
+
+```
+{
+    "buildLogDir" : "directory where application searches builds",
+    "testLogDir" : "directory where application put tests results",
+    "welesIP" : "127.0.0.1 - ip address of the Weles server",
+    "welesPort" : "port of the Weles API",
+    "welesFilePort" : "Port where output files of the Weles are",
+    "yamls" : [
+        {
+            "repo" : "name of the repository",
+            "yaml" : "path to the yaml file to use with this repository",
+            "parser" : "name or path to the binary of the parser of tests output"
+        },
+        {
+            "repo" : "gpapi-tests",
+            "yaml" : "/home/tf.yml - example",
+            "parser" : "cat"
+        }
+    ]
+}
+
+```
+
+Supported built-in test parser is currently only "TCT" - for tct-test-ta
