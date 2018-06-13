@@ -124,7 +124,7 @@ runTest config target = do
     rpms <- catch (getDirectoryContents buildOutDir) dirDoesntExists
     yamlTemplate <- catch (readFile yamlPath) fileNotExists
     handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater (map (\x -> buildOutDir ++ "/" ++ x) rpms))
-    jobId <- if status meta == "SUCCEED" || yamlTemplate /= "" 
+    jobId <- if status meta == "SUCCEED" && yamlTemplate /= "" 
                 then handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
                 else return Nothing
 
