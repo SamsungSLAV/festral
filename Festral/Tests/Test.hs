@@ -123,7 +123,7 @@ runTest config target = do
     let buildOutDir = (buildLogDir config) ++ "/" ++ target ++ "/build_res"
     rpms <- catch (getDirectoryContents buildOutDir) dirDoesntExists
     yamlTemplate <- catch (readFile yamlPath) fileNotExists
-    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater (map (\x -> buildOutDir ++ "/" ++ x) rpms))
+    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater rpms buildOutDir)
     jobId <- if status meta == "SUCCEED" && yamlTemplate /= "" 
                 then handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
                 else return Nothing
@@ -169,9 +169,10 @@ runTest config target = do
         badJob :: SomeException -> IO (Maybe Int)
         badJob ex = putStrLn (show ex) >> return (Nothing)
 
-        yamlTemplater :: [String] -> TemplateType -> String
-        yamlTemplater out (URL url) = "url: '127.0.0.1/secosci/download.php?file=" ++ resolvedName ++ "'"
+        yamlTemplater :: [String] -> String -> TemplateType -> String
+        yamlTemplater out outDir (URL url) = "uri: 'http://127.0.0.1/secosci/download.php?file=" ++ resolvedName ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
             where
                 resolvedName = if rpmname == [] then "" else head rpmname
                 rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $ filter(isInfixOf url) $ out
+                (dir:hash:_) = reverse $ splitOn "/" outDir
 
