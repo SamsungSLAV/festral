@@ -62,6 +62,7 @@ builtInParsers = ["TCT"]
 -- and creates directory with test logs.
 parseTest :: TestConfig -> [(String, String)] -> FilePath -> FilePath -> IO ()
 parseTest config outs buildDir outDir
+    | (parser config) == "" = return ()
     | (parser config) `elem` builtInParsers = parseTest' writeWithParser config outs buildDir outDir
     | otherwise = parseTest' writeWithOwn config outs buildDir outDir
 
