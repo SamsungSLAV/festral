@@ -5,5 +5,12 @@
         "buildRepo" : "git@127.0.0.1:gpapi-tests/gpapi_tests.git",
         "buildResParser" : "GBS",
         "branches" : ["master"]
+    },
+    {
+        "buildName" : "tct-test-ta",
+        "buildCmd" : "gbs build -A armv7l -P tizen_vd --overwrite",
+        "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
+        "buildResParser" : "GBS",
+        "branches" : ["arm"]
     }
 ]

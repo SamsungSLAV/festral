@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.2.10
+Version:    0.2.11
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -21,7 +21,8 @@ Library
         semigroups,
         time,
         directory,
-        unix
+        unix,
+        monad-parallel
     Exposed-modules:
        Festral.Weles.API,
        Festral.Weles.YamlTemplate,
@@ -37,6 +38,7 @@ Library
 Executable festral-weles
     Main-Is:        Festral/Weles/Main.hs
     Other-Modules:  Festral.Weles.API
+    Ghc-Options: -threaded
 
 Executable festral-build
     Main-Is:        Festral/Builder/Main.hs

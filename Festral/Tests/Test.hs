@@ -24,6 +24,7 @@ import System.IO.Error
 import Festral.Tests.Config
 import System.Process
 import System.IO
+import qualified Control.Monad.Parallel as Par
 
 data TestResParser a = TCT TCTParser deriving Show
 
@@ -42,7 +43,7 @@ instance TestParser (TestResParser a) where
 performForallNewBuilds :: FilePath -> String -> IO ()
 performForallNewBuilds _ "" = return ()
 performForallNewBuilds conf list = do
-    mapM_ (performTestWithConfig conf) $ lines list
+    Par.mapM_ (performTestWithConfig conf) $ lines list
 
 -- |Read configuration file from first parameter and build directory from second and get test log from it
 performTestWithConfig :: FilePath -> String -> IO ()
