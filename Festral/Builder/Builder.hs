@@ -46,6 +46,9 @@ import System.Environment
 import System.Exit
 import Control.Exception
 import System.Posix.User
+import Data.List
+import Data.List.Split
+import Control.Monad (when)
 
 -- |Build structure which represents config json format.
 data Build = Build
@@ -78,9 +81,15 @@ builderFromFile fname = do
     file <- LB.readFile fname
     return $ decode file
 
-builtListFile = do 
+builtListFile = do
     x <- getHomeDirectory
-    return $ x ++ "/.fresh_builds"
+    createDirectoryIfMissing False $ x ++ "/.festral"
+    return $ x ++ "/.festral/fresh_builds"
+
+buildCacheFileName = do
+    home <- getHomeDirectory
+    createDirectoryIfMissing False $ home ++ "/.festral"
+    return $ home ++ "/.festral/build.cachce"
 
 -- |Build target located in the first path + build name and put meta file to the directory tree with given in seconf path root directory
 -- build buildObject rood_dir_of_project root_dir_of_output_files
@@ -103,11 +112,32 @@ build build wdir outdir = do
             catch (renameFile logfile (outDirName ++ "/build.log")) (copyHandler logfile (outDirName ++ "/build.log"))
             bLogFile <- builtListFile
             appendFile bLogFile (hash meta ++ "_" ++ buildTime meta ++ "\n")
+
+            resFiles <- handle badDir $ getDirectoryContents (outDirName ++ "/build_res")
+            cachePath <- buildCacheFileName
+            cache <- handle badFile $ readFile cachePath
+            let new = foldl (updateCache (hash meta ++ "_" ++ buildTime meta)) cache resFiles
+            when (length new > 0) $
+                handle handler $ writeFile cachePath new
                 where
                     handler :: SomeException -> IO ()
                     handler ex = putStrLn $ show ex
                     copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
                     copyHandler a b ex = copyFile a b
+                    badDir :: SomeException -> IO [FilePath]
+                    badDir ex = putStrLn (show ex) >> return [""]
+                    badFile :: SomeException -> IO String
+                    badFile ex = putStrLn (show ex) >> return ""
+
+updateCache :: String -> String -> FilePath -> String
+updateCache _ old "." = old
+updateCache _ old ".." = old
+updateCache hash old file = (concat $ replaceHash <$> splitOn "#" <$> splitOn "\n" old) ++ file ++ "#" ++ hash
+    where
+        replaceHash (pkg:oldHash:_)
+            | pkg == file = ""
+            | otherwise = pkg ++ "#" ++ oldHash ++ "\n"
+        replaceHash _ = ""
 
 cloneRepo :: FilePath -> Build -> IO ()
 cloneRepo wdir (Build name _ remote _ _) = do
@@ -138,7 +168,7 @@ getCommitHash = do
     waitForProcess pid
     hGetLine out
 
-prepareRepo srcDir brunch = 
+prepareRepo srcDir brunch =
     catch (callCommand $ "git checkout --force "
         ++ brunch ++ " ; git fetch ; git pull origin " ++ brunch) handler
     where

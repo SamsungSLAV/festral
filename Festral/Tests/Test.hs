@@ -112,6 +112,10 @@ getParser _ testRes = do
     p <- fromWelesFiles testRes
     return $ TCT p
 
+buildCacheFileName = do
+    home <- getHomeDirectory
+    return $ home ++ "/.festral/build.cachce"
+
 -- |Run test for the given build and return pairs (file name, contents) of files created on Weles
 -- runTest path_to_config_fiile build_name
 runTest :: TestRunnerConfig -> String -> IO (TestConfig, [(String, String)])
@@ -125,7 +129,9 @@ runTest config target = do
     let buildOutDir = (buildLogDir config) ++ "/" ++ target ++ "/build_res"
     rpms <- catch (getDirectoryContents buildOutDir) dirDoesntExists
     yamlTemplate <- catch (readFile yamlPath) fileNotExists
-    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater rpms buildOutDir)
+    cachePath <- buildCacheFileName
+    yamlCache <- catch (readFile cachePath) fileNotExists
+    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater rpms buildOutDir yamlCache)
     jobId <- if status meta == "SUCCEED" && yamlTemplate /= "" 
                 then handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
                 else return Nothing
@@ -171,10 +177,14 @@ runTest config target = do
         badJob :: SomeException -> IO (Maybe Int)
         badJob ex = putStrLn (show ex) >> return (Nothing)
 
-        yamlTemplater :: [String] -> String -> TemplateType -> String
-        yamlTemplater out outDir (URL url) = "uri: 'http://127.0.0.1/secosci/download.php?file=" ++ resolvedName ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
+        yamlTemplater :: [String] -> String -> String -> TemplateType -> String
+        yamlTemplater out outDir cache (URI url) = "uri: 'http://127.0.0.1/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
             where
-                resolvedName = if rpmname == [] then "" else head rpmname
                 rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $ filter(isInfixOf url) $ out
                 (dir:hash:_) = reverse $ splitOn "/" outDir
 
+        yamlTemplater out outDir cache (Latest_URI url) = "uri: 'http://127.0.0.1/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
+            where
+                (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
+
+        resolvedName x = if x == [] then "" else head x

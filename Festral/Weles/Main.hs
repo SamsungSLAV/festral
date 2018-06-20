@@ -34,8 +34,9 @@ configFile =do
     return $ home ++ "/.festral.conf"
 
 buildListFile = do
-    home <- getHomeDirectory
-    return $ home ++ "/.fresh_builds"
+    x <- getHomeDirectory
+    createDirectoryIfMissing False $ x ++ "/.festral"
+    return $ x ++ "/.festral/fresh_builds"
 
 opts :: Parser Options
 opts = Options
