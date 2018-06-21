@@ -13,6 +13,7 @@ import Data.Maybe
 import Festral.Builder.Meta hiding (parse, fromFile)
 import System.Directory
 import Festral.Tests.TCTParser
+import Festral.Tests.XTestParser
 import Festral.Tests.TestParser
 import Data.Time
 import System.Posix.User
@@ -26,10 +27,11 @@ import System.Process
 import System.IO
 import qualified Control.Monad.Parallel as Par
 
-data TestResParser a = TCT TCTParser deriving Show
+data TestResParser a = TCT TCTParser | XTest XTestParser deriving Show
 
 instance TestParser (TestResParser a) where
     parse (TCT x) = parse x
+    parse (XTest x) = parse x
 
     fromWelesFiles x = do
         p <- fromWelesFiles x
@@ -57,7 +59,7 @@ performTestWithConfig confPath target = do
         getConfig (x:_) = x
 
 
-builtInParsers = ["TCT"]
+builtInParsers = ["TCT", "XTest"]
 
 -- |Get configuration of the test, output files from Weles, build directory and out root directory
 -- and creates directory with test logs.
@@ -68,12 +70,12 @@ parseTest config outs buildDir outDir
     | otherwise = parseTest' writeWithOwn config outs buildDir outDir
 
 writeWithParser config outs buildDir outDir = do
-    parser <- getParser (parser config) outs
-    writeReportFile (parse parser) (outDir ++ "/report.txt")
+    par <- getParser (parser config) outs
+    writeReportFile (parse par) (outDir ++ "/report.txt")
 
 writeWithOwn config outs buildDir outDir = do
     handle err $ do
-        (inp, out, err, handle) <- runInteractiveProcess (parser config) [concat $ map (\(n,c) -> c) outs] Nothing Nothing
+        (inp, out, err, handle) <- runInteractiveProcess (parser config) ["\"'" ++ (concat $ map (\(n,c) -> c) outs) ++ "'\""] Nothing Nothing
         report <- hGetContents out
         waitForProcess handle
         writeFile (outDir ++ "/report.txt") report
@@ -106,8 +108,14 @@ parseTest' writer config outs buildDir outDir = do
             | isAlreadyExistsError ex = catch (createDirectory $ path ++ "_" ++ show i) (recreate_dir path (i+1))
             | otherwise = putStrLn $ show ex
 
-
+-- |Converts string name of parser from config JSON to the test parser.
 getParser :: String -> [(String, String)] -> IO (TestResParser a)
+getParser "TCT" testRes = do
+    p <- fromWelesFiles testRes
+    return $ TCT p
+getParser "XTest" testRes = do
+    p <- fromWelesFiles testRes
+    return $ XTest p
 getParser _ testRes = do
     p <- fromWelesFiles testRes
     return $ TCT p
@@ -143,6 +151,7 @@ runTest config target = do
     jobId'' <- jobId'
 
     putStr $ "[" ++ repoName meta ++ "]Waiting for job finished ... "
+    hFlush stdout
     job <- getJobWhenDone jobId''
     jobFiles <- (filter (not . (isInfixOf ".rpm")) <$>) <$> getFileList jobId''
     putStrLn $ "OK\n[" ++ repoName meta ++ "]Recieved files: " ++ show jobFiles
