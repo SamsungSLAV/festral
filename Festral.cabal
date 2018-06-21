@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.2.14
+Version:    0.2.15
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -31,7 +31,6 @@ Library
        Festral.Builder.GBSParser,
        Festral.Builder.OwnParser,
        Festral.Tests.TestParser,
-       Festral.Tests.TCTParser,
        Festral.Tests.Test,
        Festral.Tests.Config
 

@@ -12,8 +12,6 @@ import Festral.Weles.API
 import Data.Maybe
 import Festral.Builder.Meta hiding (parse, fromFile)
 import System.Directory
-import Festral.Tests.TCTParser
-import Festral.Tests.XTestParser
 import Festral.Tests.TestParser
 import Data.Time
 import System.Posix.User
@@ -27,19 +25,6 @@ import System.Process
 import System.IO
 import qualified Control.Monad.Parallel as Par
 
-data TestResParser a = TCT TCTParser | XTest XTestParser deriving Show
-
-instance TestParser (TestResParser a) where
-    parse (TCT x) = parse x
-    parse (XTest x) = parse x
-
-    fromWelesFiles x = do
-        p <- fromWelesFiles x
-        return $ TCT p
-
-    fromFile x = do
-        p <- fromFile x
-        return $ TCT p
 
 -- |Run tests from config for all build directories listed in given string
 performForallNewBuilds :: FilePath -> String -> IO ()
@@ -71,7 +56,7 @@ parseTest config outs buildDir outDir
 
 writeWithParser config outs buildDir outDir = do
     par <- getParser (parser config) outs
-    writeReportFile (parse par) (outDir ++ "/report.txt")
+    writeReportFile par (outDir ++ "/report.txt")
 
 writeWithOwn config outs buildDir outDir = do
     handle err $ do
@@ -109,16 +94,16 @@ parseTest' writer config outs buildDir outDir = do
             | otherwise = putStrLn $ show ex
 
 -- |Converts string name of parser from config JSON to the test parser.
-getParser :: String -> [(String, String)] -> IO (TestResParser a)
+getParser :: String -> [(String, String)] -> IO [TestData]
 getParser "TCT" testRes = do
-    p <- fromWelesFiles testRes
-    return $ TCT p
+    p <- fromWelesFiles testRes "tct-test-ta.log"
+    return $ parseTCT p
 getParser "XTest" testRes = do
-    p <- fromWelesFiles testRes
-    return $ XTest p
+    p <- fromWelesFiles testRes "xtest.log"
+    return $ parseXTest p
 getParser _ testRes = do
-    p <- fromWelesFiles testRes
-    return $ TCT p
+    p <- fromWelesFiles testRes ""
+    return $ parseTCT p
 
 buildCacheFileName = do
     home <- getHomeDirectory

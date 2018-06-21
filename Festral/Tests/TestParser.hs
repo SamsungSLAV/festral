@@ -1,21 +1,18 @@
 -- |Module which describes API for parsing and exporting tests results to the special report format.
 module Festral.Tests.TestParser (
     TestData (..),
+    TestParser (..),
     writeReportFile,
-    TestParser,
     fromFile,
-    parse,
+    parseTCT,
+    parseXTest,
     fromWelesFiles
 ) where
 
--- |Represents everything that can parse tests
-class TestParser a where
-    -- |Make parser from file with tests output
-    fromFile :: FilePath -> IO a
-    -- |Make parser from output of the Weles (got by 'runTest' from "Test" module)
-    fromWelesFiles :: [(String, String)] -> IO a
-    -- |Parse tests output to the 'TestData' records
-    parse :: a -> [TestData]
+import System.IO
+import Data.List.Split
+import Data.Char
+import Data.List
 
 -- |This data structure stores information needed by database for importing tests results
 data TestData = TestData
@@ -27,6 +24,38 @@ data TestData = TestData
     , postRes   :: String   -- ^Result of the post-test operations (TEST_PASS on success)
     , testTime  :: String   -- ^Time taken by test execution
     } deriving Show
+
+data TestParser = TestParser 
+    { out   :: String
+    } deriving Show
+
+fromFile :: FilePath -> IO TestParser
+fromFile fname = do
+    log <- readFile fname
+    return $ TestParser log
+
+fromWelesFiles :: [(String, String)] -> String -> IO TestParser
+fromWelesFiles [] _ = return $ TestParser ""
+fromWelesFiles files logname = do
+    let x = filter (\(n,c) -> logname `isInfixOf` n) files
+    return $ getParser x
+    where
+        getParser ((fname, content):_) = TestParser content
+        getParser _ = TestParser ""
+
+parseTCT :: TestParser -> [TestData]
+parseTCT parser = zipWith (\[name,res] i -> TestData "TCT_TA_test" i name (tr res) (tr res) (tr res) "0.5") res [1 ..]
+    where
+        res = map (dropWhile isSpace) <$> (filter ((== 2) . length) $ splitOn "..." <$> splitOn "\n" (out parser))
+        tr "OK" = "TEST_PASS"
+        tr _ = "TEST_FAIL"
+
+parseXTest :: TestParser -> [TestData]
+parseXTest parser = zipWith (\[name,res] i -> TestData "Xtest" i name res res res "0.5") res [1 ..]
+    where
+        res = map (\x-> [head x, if "OK" `elem` x then "TEST_PASS" else "TEST_FAIL"]) $
+            (filter (not . (==) "") <$>) <$> filter (\x-> "OK" `elem` x || "FAILED" `elem` x) $
+            splitOn " " <$> splitOn "\n" (out parser)
 
 -- |Write results of the test to the special-formatted (whitch is understood by database importing scripts) report file with given path
 writeReportFile :: [TestData] -> FilePath -> IO ()
