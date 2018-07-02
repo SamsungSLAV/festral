@@ -172,12 +172,12 @@ runTest config target = do
         badJob ex = putStrLn (show ex) >> return (Nothing)
 
         yamlTemplater :: [String] -> String -> String -> TemplateType -> String
-        yamlTemplater out outDir cache (URI url) = "uri: 'http://127.0.0.1/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
+        yamlTemplater out outDir cache (URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
             where
                 rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $ filter(isInfixOf url) $ out
                 (dir:hash:_) = reverse $ splitOn "/" outDir
 
-        yamlTemplater out outDir cache (Latest_URI url) = "uri: 'http://127.0.0.1/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
+        yamlTemplater out outDir cache (Latest_URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
             where
                 (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
 

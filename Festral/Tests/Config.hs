@@ -27,6 +27,7 @@ data TestRunnerConfig = TestRunnerConfig
     , welesIP       :: String
     , welesPort     :: String
     , welesFilePort :: String
+    , webPageIP     :: String
     , yamls         :: [TestConfig]
     } deriving (Show, Generic)
 
