@@ -82,5 +82,5 @@ fromMetaFile fname = do
 
     where
         handler :: SomeException -> IO String
-        handler e = return ""
+        handler e = putStrLn (show e) >> return ""
 
