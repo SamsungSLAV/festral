@@ -38,6 +38,11 @@ buildListFile = do
     createDirectoryIfMissing False $ x ++ "/.festral"
     return $ x ++ "/.festral/fresh_builds"
 
+testListFile = do
+    x <- getHomeDirectory
+    createDirectoryIfMissing False $ x ++ "/.festral"
+    return $ x ++ "/.festral/fresh_tests"
+
 opts :: Parser Options
 opts = Options
     <$> switch
@@ -85,6 +90,9 @@ runCmd (Options _ _ _ "" _ _ _ True) = do
     listFile <- buildListFile
     list <- readFile listFile
     performForallNewBuilds config list
+
+    lastTestFile <- testListFile
+    writeFile lastTestFile ""
 
 runCmd (Options _ _ _ fname _ _ _ True) = configFile >>= (\x -> performTestWithConfig x fname)
 

@@ -32,7 +32,7 @@ performForallNewBuilds _ "" = return ()
 performForallNewBuilds conf list = do
     Par.mapM_ (performTestWithConfig conf) $ lines list
 
--- |Read configuration file from first parameter and build directory from second and get test log from it
+-- |Read configuration file from first parameter and build directory from second and make test log from it
 performTestWithConfig :: FilePath -> String -> IO ()
 performTestWithConfig confPath target = do
     confStr <- LB.readFile confPath
@@ -79,6 +79,9 @@ parseTest' writer config outs buildDir outDir = do
     tester <- getEffectiveUserName
     let testMeta = MetaTest meta tester tester time
 
+    latestFile <- lastTestedFile
+    appendFile latestFile $ hash meta ++ "_" ++ time ++ "\n"
+
     let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
     catch (createDirectory outDirName) (recreate_dir outDirName 0)
     toFile testMeta (outDirName ++ "/meta.txt")
@@ -108,6 +111,11 @@ getParser _ testRes = do
 buildCacheFileName = do
     home <- getHomeDirectory
     return $ home ++ "/.festral/build.cachce"
+
+lastTestedFile = do
+    x <- getHomeDirectory
+    createDirectoryIfMissing False $ x ++ "/.festral"
+    return $ x ++ "/.festral/fresh_tests"
 
 -- |Run test for the given build and return pairs (file name, contents) of files created on Weles
 -- runTest path_to_config_fiile build_name
