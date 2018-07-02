@@ -49,6 +49,7 @@ import System.Posix.User
 import Data.List
 import Data.List.Split
 import Control.Monad (when)
+import Festral.Files
 
 -- |Build structure which represents config json format.
 data Build = Build
@@ -81,16 +82,6 @@ builderFromFile fname = do
     file <- LB.readFile fname
     return $ decode file
 
-builtListFile = do
-    x <- getHomeDirectory
-    createDirectoryIfMissing False $ x ++ "/.festral"
-    return $ x ++ "/.festral/fresh_builds"
-
-buildCacheFileName = do
-    home <- getHomeDirectory
-    createDirectoryIfMissing False $ home ++ "/.festral"
-    return $ home ++ "/.festral/build.cachce"
-
 -- |Build target located in the first path + build name and put meta file to the directory tree with given in seconf path root directory
 -- build buildObject rood_dir_of_project root_dir_of_output_files
 build :: Build -> FilePath -> FilePath -> IO ()
@@ -110,11 +101,11 @@ build build wdir outdir = do
             toFile meta (outDirName ++ "/meta.txt")
             catch (renameDirectory (outDir meta) (outDirName ++ "/build_res")) handler
             catch (renameFile logfile (outDirName ++ "/build.log")) (copyHandler logfile (outDirName ++ "/build.log"))
-            bLogFile <- builtListFile
+            bLogFile <- freshBuilds
             appendFile bLogFile (hash meta ++ "_" ++ buildTime meta ++ "\n")
 
             resFiles <- handle badDir $ getDirectoryContents (outDirName ++ "/build_res")
-            cachePath <- buildCacheFileName
+            cachePath <- buildCache
             cache <- handle badFile $ readFile cachePath
             let new = foldl (updateCache (hash meta ++ "_" ++ buildTime meta)) cache resFiles
             when (length new > 0) $

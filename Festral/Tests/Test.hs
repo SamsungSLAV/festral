@@ -24,6 +24,7 @@ import Festral.Tests.Config
 import System.Process
 import System.IO
 import qualified Control.Monad.Parallel as Par
+import Festral.Files
 
 
 -- |Run tests from config for all build directories listed in given string
@@ -79,7 +80,7 @@ parseTest' writer config outs buildDir outDir = do
     tester <- getEffectiveUserName
     let testMeta = MetaTest meta tester tester time
 
-    latestFile <- lastTestedFile
+    latestFile <- freshTests
     appendFile latestFile $ hash meta ++ "_" ++ time ++ "\n"
 
     let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
@@ -108,15 +109,6 @@ getParser _ testRes = do
     p <- fromWelesFiles testRes ""
     return $ parseTCT p
 
-buildCacheFileName = do
-    home <- getHomeDirectory
-    return $ home ++ "/.festral/build.cachce"
-
-lastTestedFile = do
-    x <- getHomeDirectory
-    createDirectoryIfMissing False $ x ++ "/.festral"
-    return $ x ++ "/.festral/fresh_tests"
-
 -- |Run test for the given build and return pairs (file name, contents) of files created on Weles
 -- runTest path_to_config_fiile build_name
 runTest :: TestRunnerConfig -> String -> IO (TestConfig, [(String, String)])
@@ -130,7 +122,7 @@ runTest config target = do
     let buildOutDir = (buildLogDir config) ++ "/" ++ target ++ "/build_res"
     rpms <- catch (getDirectoryContents buildOutDir) dirDoesntExists
     yamlTemplate <- catch (readFile yamlPath) fileNotExists
-    cachePath <- buildCacheFileName
+    cachePath <- buildCache
     yamlCache <- catch (readFile cachePath) fileNotExists
     handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater rpms buildOutDir yamlCache)
     jobId <- if status meta == "SUCCEED" && yamlTemplate /= ""

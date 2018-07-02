@@ -7,16 +7,12 @@ import Festral.Builder.Builder
 import Data.Maybe
 import System.Directory
 import System.IO
-
-buildListFile = do
-    x <- getHomeDirectory
-    createDirectoryIfMissing False $ x ++ "/.festral"
-    return $ x ++ "/.festral/fresh_builds"
+import Festral.Files
 
 main = do
     args <- getArgs
 
-    freshBuildsFile <- buildListFile
+    freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
 
     let res = if (length args) /= 3

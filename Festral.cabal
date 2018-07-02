@@ -32,7 +32,8 @@ Library
        Festral.Builder.OwnParser,
        Festral.Tests.TestParser,
        Festral.Tests.Test,
-       Festral.Tests.Config
+       Festral.Tests.Config,
+       Festral.Files
 
 Executable festral-weles
     Main-Is:        Festral/Weles/Main.hs

@@ -29,6 +29,7 @@ import Control.Monad
 import Data.Maybe
 import Festral.Tests.Config
 import System.Directory
+import Festral.Files
 
 -- |Job datatype describes json job object got from weles
 data Job = Job {
@@ -50,10 +51,6 @@ instance Show Job where
                 ++ show s ++ ",\n \"info\" : "
                 ++ show i ++ "\n}\n"
 
-configFile = do
-    home <- getHomeDirectory
-    return $ home ++ "/.festral.conf"
-    
 welesAddr = do
     conf <- configFile
     confStr <- LB.readFile conf

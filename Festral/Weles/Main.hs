@@ -9,7 +9,7 @@ import Festral.Weles.API
 import Options.Applicative
 import Data.Semigroup ((<>))
 import Festral.Tests.Test
-import System.Directory
+import Festral.Files
 
 main = runCmd =<< execParser options
     where
@@ -28,20 +28,6 @@ data Options = Options
     , listFile  :: Bool
     , perfTest  :: Bool
     } | None
-
-configFile =do
-    home <- getHomeDirectory 
-    return $ home ++ "/.festral.conf"
-
-buildListFile = do
-    x <- getHomeDirectory
-    createDirectoryIfMissing False $ x ++ "/.festral"
-    return $ x ++ "/.festral/fresh_builds"
-
-testListFile = do
-    x <- getHomeDirectory
-    createDirectoryIfMissing False $ x ++ "/.festral"
-    return $ x ++ "/.festral/fresh_tests"
 
 opts :: Parser Options
 opts = Options
@@ -87,11 +73,11 @@ runCmd :: Options -> IO ()
 
 runCmd (Options _ _ _ "" _ _ _ True) = do
     config <- configFile
-    listFile <- buildListFile
+    listFile <- freshBuilds
     list <- readFile listFile
     performForallNewBuilds config list
 
-    lastTestFile <- testListFile
+    lastTestFile <- freshTests
     writeFile lastTestFile ""
 
 runCmd (Options _ _ _ fname _ _ _ True) = configFile >>= (\x -> performTestWithConfig x fname)
