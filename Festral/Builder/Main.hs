@@ -5,9 +5,20 @@ module Main (
 import System.Environment
 import Festral.Builder.Builder
 import Data.Maybe
+import System.Directory
+import System.IO
+
+buildListFile = do
+    x <- getHomeDirectory
+    createDirectoryIfMissing False $ x ++ "/.festral"
+    return $ x ++ "/.festral/fresh_builds"
 
 main = do
     args <- getArgs
+
+    freshBuildsFile <- buildListFile
+    writeFile freshBuildsFile ""
+
     let res = if (length args) /= 3
                 then putStrLn "Usage: festral-build <config json> <repositoy location> <output directory>"
                 else do

@@ -85,7 +85,6 @@ runCmd (Options _ _ _ "" _ _ _ True) = do
     listFile <- buildListFile
     list <- readFile listFile
     performForallNewBuilds config list
-    writeFile listFile ""
 
 runCmd (Options _ _ _ fname _ _ _ True) = configFile >>= (\x -> performTestWithConfig x fname)
 
