@@ -40,7 +40,7 @@ instance MetaParser GBSParser where
         let arch = dropWhile isSpace $ last $ splitOn "</B>" $ head $ splitOn "</p>" $ last $  splitOn "Arch" content
         let arch' = if arch == "" then "unknown" else arch
         let out = dropWhile isSpace $  head $ splitOn "\n" $ last $ splitOn "generated RPM packages can be found from local repo:\n" log
-        return $ Meta arch' "unknown" "unknown" time "GBS" "unknown" status (replicate 40 '0') out "unknown"
+        return $ Meta arch' "unknown" "unknown" time "GBS" "unknown" status (replicate 40 '0') out "unknown" "unknown"
         where
             parseStat x@[_,_] = x
             parseStat _ = [0, -1]

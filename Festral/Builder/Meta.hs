@@ -33,6 +33,7 @@ data Meta = Meta {
     ,hash       :: String
     ,outDir     :: FilePath
     ,repoName   :: String
+    ,branch     :: String
     }  
     | MetaTest {
     metaData    :: Meta
@@ -42,7 +43,7 @@ data Meta = Meta {
     }
 
 instance Show Meta where
-    show (Meta board bType commit bTime toolc builder stat hash _ repName) = "BOARD=" ++ board
+    show (Meta board bType commit bTime toolc builder stat hash _ repName branch) = "BOARD=" ++ board
                                                     ++ "\nBUILD_TYPE=" ++ bType
                                                     ++ "\nCOMMIT=" ++ commit
                                                     ++ "\nBUILD_TIME=" ++ bTime
@@ -51,6 +52,7 @@ instance Show Meta where
                                                     ++ "\nBUILD_STATUS=" ++ stat
                                                     ++ "\nBUILD_HASH=" ++ hash
                                                     ++ "\nREPO_NAME=" ++ repName
+                                                    ++ "\nBRANCH=" ++ branch
     show (MetaTest m t tName tTime) = (show m) 
                                         ++ "\nTESTER=" ++ t 
                                         ++ "\nTESTER_NAME=" ++ tName 
@@ -62,8 +64,8 @@ instance Show Meta where
 readMeta :: String -> Meta
 readMeta str = readMeta' (f str) 
     where
-    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:t:tName:tTime:_) = MetaTest (Meta board bType commit bTime toolc builder stat hash "" repName) t tName tTime
-    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:_) = Meta board bType commit bTime toolc builder stat hash "" repName
+    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:t:tName:tTime:_) = MetaTest (Meta board bType commit bTime toolc builder stat hash "" repName branch) t tName tTime
+    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:_) = Meta board bType commit bTime toolc builder stat hash "" repName branch
     f x = map last $ splitOn "=" <$> splitOn "\n" x
 
 

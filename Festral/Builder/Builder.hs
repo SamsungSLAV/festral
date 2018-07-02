@@ -104,7 +104,7 @@ build build wdir outdir = do
             prepareRepo srcDir branch
             buildWithLog logfile (buildCmd build) srcDir
             parser <- getParser (buildResParser build) loghandle
-            meta <- getMeta parser build
+            meta <- getMeta parser build branch
             let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
             createDirectory outDirName
             toFile meta (outDirName ++ "/meta.txt")
@@ -146,12 +146,12 @@ cloneRepo wdir (Build name _ remote _ _) = do
             handler :: SomeException -> IO ()
             handler ex = return ()
 
-getMeta :: Parser a -> Build -> IO Meta
-getMeta p b = do
+getMeta :: Parser a -> Build -> String -> IO Meta
+getMeta p b branch = do
     commit <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit (outDir m) (buildName b)
+    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit (outDir m) (buildName b) branch
     return m'
 
 getParser :: String -> Handle -> IO (Parser a)
