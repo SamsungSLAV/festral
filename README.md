@@ -152,7 +152,7 @@ Available options:
     "buildLogDir" : "directory where application searches builds",
     "testLogDir" : "directory where application put tests results",
     "welesIP" : "127.0.0.1 - ip address of the Weles server",
-    "webPageIP" : "127.0.0.1" - ip of the web page SecosCI located at,
+    "webPageIP" : "127.0.0.1 - ip of the web page SecosCI located at",
     "welesPort" : "port of the Weles API",
     "welesFilePort" : "Port where output files of the Weles are",
     "yamls" : [
@@ -174,7 +174,7 @@ Available options:
 Supported built-in test parsers currently are only "TCT" - for tct-test-ta and "XTest" - for xtest made by OPTEE.
 
 -----------------
-### Test cases describing
+### Test cases description
 
 Tests are described by YAML files used by `Weles` but extended with templates syntax (see examles at `Examples/*.yml`)
 
@@ -182,12 +182,32 @@ You can use templated rows in your yamls according below syntax:
 
 * temlate fragment starts and finishes with `##` symbols.
 * `##TEMPLATE_URL filename##` - replace given filename with `uri` for the file with specified name (or if specified filename is part of the real filename)
-from the current build only. If no such file made by the current build this link can be invalid.
-
-Example: `##TEMPLATE_URL tef-libteec##` can be replaced by row
-`uri: 'http://127.0.0.1/secosci/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
-and `Weles` will can download this package by generated link.
+    from the current build only. If no such file made by the current build this link can be invalid.
+    
+    Example: `##TEMPLATE_URL tef-libteec##` can be replaced by row
+    `uri: 'http://127.0.0.1/secosci/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
+    and `Weles` will can download this package by generated link.
 * `##TEMPLATE_LATEST packagename##` - replace given filename with uri to the latest built version of the specified package if it ever been built by the `Festral`.
+    
+    Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
+    You can push packages from other repositories built by `festral-build` to the `Weles` using this template.
 
-Example: `##TEMPLATE_LATEST tf##` can be replaced with `'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
-You can push packages from other repositories built by `festral-build` to the `Weles` using this template.
+------------------
+
+### How it works
+
+This package is developed for using with [`Weles` API for device farm](https://git.tizen.org/cgit/tools/weles/) and modified [SecosCI system](git@127.0.0.1:u.harbuz/secosci.git).
+It uses API of `SecosCI` for generated output (except HTML reports) and remote device farm for performing tests.
+
+![Graphics scheme of the CI system modules](Docs/general_scheme.png "CI modules").
+
+The typical usage example for automated running tests with `cron`:
+
+```
+
+0 21 * * * ./bin/festral-build -c /home/secosci/bin/festral-build.config.json -r /home/secosci/secos-repo/ -o /home/secosci/build-log/
+0 0 * * * ./bin/festral-weles -r
+0 1 * * * ./bin/festral-build --html-out /home/secosci/www/reports/$(date +%Y%m%d%H%M).html
+0 1 * * * ./secos-repo/secosci/sql/import_build.sh
+0 1 * * * ./secos-repo/secosci/sql/import_test.sh
+```
