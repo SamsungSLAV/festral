@@ -47,11 +47,11 @@ This command clone and build all targets listed in configuration json file: each
 The `festral-build` utility has simple command format:
 
 ```
- $ festral-build <config json> <repositories location> <output directory>
+ $ festral-build (-c <config json>) (-r <repositories location>) (-o <output directory>)
 ```
 
 The main part of these arguments is `config json` which contains description of build targets. 
-It has format described below:
+It has format described below (see example of this file in `Examples/buildconfig.json`):
 
 ```
  [
@@ -71,7 +71,7 @@ It has format described below:
  ]
 ```
 
-Parser is some script or binary which generates meta.txt file from output of your `buildCmd` command.
+Parser is some script or binary which generates meta.txt file from output of your `buildCmd` command. Now only "GBS" parser is stable.
 
 `meta.txt` file has format:
 
@@ -84,13 +84,27 @@ Parser is some script or binary which generates meta.txt file from output of you
  BUILDER=#username of builder
  BUILD_STATUS=#result of build (SUCCEED and FAILED are known, but may be there are other ones)
  BUILD_HASH=#hash of the build
+ REPO_NAME=#name of the built repository
+ BRANCH=#name of the built branch
+
+ #In the tests directories meta.txt has additional fields:
+ TESTER=#login of the tester
+ TESTER_NAME=#name of the tester
+ TEST_TIME=#time where test was performed
 ```
 
-Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout`.
+Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout` IN EXACTLY SUCH ORDER AS fields of metafile
+are presented here.
 
 `repository location` is path where directories where cloned from `buildRepo`'s of targets projects will be put.
 
 `output directory` is directory where builds results will be put in format 'commithash_buildtime'
+
+The command:
+```
+ $ festral-build --html-out FILENAME 
+```
+generates HTML report about the latest builds and performed tests and save it with given filename.
 
 --------------
 ### festral-weles
@@ -131,13 +145,14 @@ Available options:
 
 ```
 
-`festral-weles` uses configuration JSON file located at `~/.festral.conf` formatted as below:
+`festral-weles` uses configuration JSON file located at `~/.festral.conf` formatted as below (see example at `Examples/config.json`):
 
 ```
 {
     "buildLogDir" : "directory where application searches builds",
     "testLogDir" : "directory where application put tests results",
     "welesIP" : "127.0.0.1 - ip address of the Weles server",
+    "webPageIP" : "127.0.0.1" - ip of the web page SecosCI located at
     "welesPort" : "port of the Weles API",
     "welesFilePort" : "Port where output files of the Weles are",
     "yamls" : [
@@ -156,4 +171,20 @@ Available options:
 
 ```
 
-Supported built-in test parser is currently only "TCT" - for tct-test-ta
+Supported built-in test parsers currently are only "TCT" - for tct-test-ta and "XTest" - for xtest made by OPTEE.
+
+-----------------
+### Test cases describing
+
+Tests are described by YAML files used by `Weles` but extended with templates syntax (see examles at `Examples/*.yml`)
+
+You can use templated rows in your yamls according below syntax:
+
+* temlate fragment starts and finishes with `##` symbols.
+* ##TEMPLATE_URL filename## - replace given filename with `uri` for the file with specified name (or if specified filename is part of the real filename)
+from the current build only. If no such file made by the current build this link can be invalid. E.g. ##TEMPLATE_URL tef-libteec## can be replaced by row
+`uri: 'http://127.0.0.1/secosci/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
+and `Weles` will can download this package by generated link.
+* ##TEMPLATE_LATEST packagename## - replace given filename with uri to the latest built version of the specified package if it ever been built by the `Festral`.
+E.g. ##TEMPLATE_LATEST tf## can be replaced with `'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
+You can push packages from other repositories built by `festral-build` to the `Weles` using this template.
