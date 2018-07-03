@@ -96,7 +96,7 @@ Parser is some script or binary which generates meta.txt file from output of you
 Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout` IN EXACTLY SUCH ORDER AS fields of metafile
 are presented here.
 
-`repository location` is path where directories where cloned from `buildRepo`'s of targets projects will be put.
+`repository location` is path where directories cloned from `buildRepo`'s of targets projects will be put.
 
 `output directory` is directory where builds results will be put in format 'commithash_buildtime'
 
@@ -152,7 +152,7 @@ Available options:
     "buildLogDir" : "directory where application searches builds",
     "testLogDir" : "directory where application put tests results",
     "welesIP" : "127.0.0.1 - ip address of the Weles server",
-    "webPageIP" : "127.0.0.1" - ip of the web page SecosCI located at
+    "webPageIP" : "127.0.0.1" - ip of the web page SecosCI located at,
     "welesPort" : "port of the Weles API",
     "welesFilePort" : "Port where output files of the Weles are",
     "yamls" : [
@@ -181,10 +181,13 @@ Tests are described by YAML files used by `Weles` but extended with templates sy
 You can use templated rows in your yamls according below syntax:
 
 * temlate fragment starts and finishes with `##` symbols.
-* ##TEMPLATE_URL filename## - replace given filename with `uri` for the file with specified name (or if specified filename is part of the real filename)
-from the current build only. If no such file made by the current build this link can be invalid. E.g. ##TEMPLATE_URL tef-libteec## can be replaced by row
+* `##TEMPLATE_URL filename##` - replace given filename with `uri` for the file with specified name (or if specified filename is part of the real filename)
+from the current build only. If no such file made by the current build this link can be invalid.
+
+Example: `##TEMPLATE_URL tef-libteec##` can be replaced by row
 `uri: 'http://127.0.0.1/secosci/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
 and `Weles` will can download this package by generated link.
-* ##TEMPLATE_LATEST packagename## - replace given filename with uri to the latest built version of the specified package if it ever been built by the `Festral`.
-E.g. ##TEMPLATE_LATEST tf## can be replaced with `'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
+* `##TEMPLATE_LATEST packagename##` - replace given filename with uri to the latest built version of the specified package if it ever been built by the `Festral`.
+
+Example: `##TEMPLATE_LATEST tf##` can be replaced with `'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
 You can push packages from other repositories built by `festral-build` to the `Weles` using this template.
