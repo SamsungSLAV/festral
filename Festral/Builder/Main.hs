@@ -12,7 +12,6 @@ import Options.Applicative
 import Data.Semigroup ((<>))
 import Control.Monad
 import Festral.Builder.Reporter
-import Data.Time.LocalTime
 
 main = runCmd =<< execParser options
     where
@@ -66,9 +65,4 @@ runCmd (Options config repos out report) = do
 
     when (report /= "") $ do
         html <- reportHTML
-        time <- show <$> getZonedTime
-        writeFile (report ++ "/" ++ gentime time ++ ".html") html
-
-    where
-        gentime x = let (day:tm:_) = words x in day ++ "_" ++ tm
-                                                                                                        
+        writeFile report html

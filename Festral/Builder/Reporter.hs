@@ -60,7 +60,11 @@ reportHTML = do
     return $ html time rows testRows
 
 makeRow :: (String, String, String) -> String
-makeRow (repo, branch, status) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td>" ++ status ++ "</td></tr>"
+makeRow (repo, branch, status) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td "++ color status ++">" ++ status ++ "</td></tr>"
+
+color "SUCCEED" = "style=\"color:green;\""
+color "FAILED" = "style=\"color:red;\""
+color _ = ""
 
 -- |Gets name of the build (sha1_time) and returns its build data as (repository name, branch name, build status)
 buildSummary :: String -> IO (String, String, String)
@@ -83,8 +87,16 @@ testSummary dir = do
     let meta = metaData meta'
     report <- readFile $ testLogDir config ++ "/" ++ dir ++ "/report.txt"
     let tests = parseTestRes $ splitWhen (isInfixOf "###############") $ splitOn "\n" report
-    let (pass,all) = foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
-    return (repoName meta, branch meta, show pass ++ "/" ++ show all)
+    let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
+    return (repoName meta, branch meta, colorPercents pass)
+
+colorPercents (pass, all) = "<font style=\"color:"++ col ++ ";\">" ++ show pass ++ "/" ++ show all ++ "</font>"
+    where
+    col
+        | per == 1.0    = "green"
+        | per >= 0.5    = "orange"
+        | otherwise     = "red"
+    per = (fromIntegral pass) / (fromIntegral all)
 
 processReport :: [String] -> Bool
 processReport (_:_:_:_:"TEST_PASS":_) = True
