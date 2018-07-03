@@ -10,12 +10,11 @@ import System.IO
 import Festral.Files
 import Options.Applicative
 import Data.Semigroup ((<>))
-import Control.Monad
 import Festral.Builder.Reporter
 
 main = runCmd =<< execParser options
     where
-        options = info (opts <**> helper)
+        options = info ((opts <|> report) <**> helper)
             ( fullDesc
             <>progDesc  "Build all repositories for all branches described in configuration file"
             <>header    "Festral - simple client for tests management using Weles as test server")
@@ -24,8 +23,9 @@ data Options = Options
     { config    :: String
     , reposPath :: String
     , outDir    :: String
-    , htmlReport:: String
     }
+    | Report
+    { htmlReport :: String }
 
 opts :: Parser Options
 opts = Options
@@ -44,14 +44,16 @@ opts = Options
         <> metavar  "DIRECTORY"
         <> short    'o'
         <> help     "Output root directory" )
-    <*> strOption
+
+report :: Parser Options
+report = Report
+    <$> strOption
         (  long     "html-out"
         <> metavar  "DIRECTORY"
-        <> value    ""
         <> help     "Output directory for summary report of the build. Generate report only if this option is specified, otherwise no report will be generated" )
 
 runCmd :: Options -> IO ()
-runCmd (Options config repos out report) = do
+runCmd (Options config repos out) = do
     freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
 
@@ -63,6 +65,7 @@ runCmd (Options config repos out report) = do
         else 
             putStrLn "Cant get builder from config file"
 
-    when (report /= "") $ do
-        html <- reportHTML
-        writeFile report html
+runCmd (Report report) = do
+    html <- reportHTML
+    writeFile report html
+
