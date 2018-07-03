@@ -79,12 +79,17 @@ testSummary dir = do
     confStr <- LB.readFile config
     let Just config = decode confStr :: Maybe TestRunnerConfig
 
-    meta <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
+    meta' <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
+    let meta = metaData meta'
     report <- readFile $ testLogDir config ++ "/" ++ dir ++ "/report.txt"
-    let (_:tests:_) = splitWhen (isInfixOf "###############") $ splitOn "\n" report
+    let tests = parseTestRes $ splitWhen (isInfixOf "###############") $ splitOn "\n" report
     let (pass,all) = foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
     return (repoName meta, branch meta, show pass ++ "/" ++ show all)
 
 processReport :: [String] -> Bool
 processReport (_:_:_:_:"TEST_PASS":_) = True
 processReport _ = False
+
+parseTestRes :: [[String]] -> [String]
+parseTestRes (_:x:_) = x
+parseTestRes _ = []

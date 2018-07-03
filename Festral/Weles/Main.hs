@@ -72,13 +72,13 @@ opts = Options
 runCmd :: Options -> IO ()
 
 runCmd (Options _ _ _ "" _ _ _ True) = do
+    lastTestFile <- freshTests
+    writeFile lastTestFile ""
+
     config <- configFile
     listFile <- freshBuilds
     list <- readFile listFile
     performForallNewBuilds config list
-
-    lastTestFile <- freshTests
-    writeFile lastTestFile ""
 
 runCmd (Options _ _ _ fname _ _ _ True) = configFile >>= (\x -> performTestWithConfig x fname)
 
