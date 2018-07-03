@@ -196,10 +196,12 @@ You can use templated rows in your yamls according below syntax:
 
 ### How it works
 
-This package is developed for using with [`Weles` API for device farm](https://git.tizen.org/cgit/tools/weles/) and modified [SecosCI system](git@127.0.0.1:u.harbuz/secosci.git).
+This package is developed for using with [Weles API for device farm](https://git.tizen.org/cgit/tools/weles/) and modified [SecosCI system](git@127.0.0.1:u.harbuz/secosci.git).
 It uses API of `SecosCI` for generated output (except HTML reports) and remote device farm for performing tests.
 
+
 ![Graphics scheme of the CI system modules](Docs/general_scheme.png "CI modules").
+
 
 The typical usage example for automated running tests with `cron`:
 
