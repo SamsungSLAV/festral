@@ -196,7 +196,7 @@ You can use templated rows in your yamls according below syntax:
 
 ### How it works
 
-This package is developed for using with [Weles API for device farm](https://git.tizen.org/cgit/tools/weles/) and modified [SecosCI system](git@127.0.0.1:u.harbuz/secosci.git).
+This package is developed for using with [Weles API for device farm](https://git.tizen.org/cgit/tools/weles/) and modified [SecosCI system](http://127.0.0.1:81/u.harbuz/festral/tree/master).
 It uses API of `SecosCI` for generated output (except HTML reports) and remote device farm for performing tests.
 
 
@@ -213,3 +213,14 @@ The typical usage example for automated running tests with `cron`:
 0 1 * * * ./secos-repo/secosci/sql/import_build.sh
 0 1 * * * ./secos-repo/secosci/sql/import_test.sh
 ```
+
+Steps which are executed:
+
+1. building repositories listed in `buildconfig.json` by `festral-build`
+2. running tests for new builds on `Weles` by `festral-weles`
+3. generate summary HTML report
+4. import new builds to `secosci` database by `import_build.sh` script
+5. import new tests results to the `secosci` database by `import_test.sh` script
+6. now new builds and results are visible on the [secosci](http://127.0.0.1/secosci/) and new daily report is avaible [at this page](http://127.0.0.1/secosci/reports.php)
+
+
