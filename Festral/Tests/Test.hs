@@ -137,7 +137,7 @@ runTest config target = do
 
     putStr $ "[" ++ repoName meta ++ "]Waiting for job finished ... "
     hFlush stdout
-    job <- getJobWhenDone jobId''
+    job <- getJobWhenDone jobId'' 60
     jobFiles <- (filter (not . (isInfixOf ".rpm")) <$>) <$> getFileList jobId''
     putStrLn $ "OK\n[" ++ repoName meta ++ "]Recieved files: " ++ show jobFiles
     let jobFiles' = if isNothing jobFiles

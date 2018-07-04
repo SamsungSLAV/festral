@@ -75,13 +75,14 @@ getJob id = do
 
 doneStatuses = ["FAILED", "COMPLETED", "CANCELED"]
 
--- |Wait until job with given id got status one of 'doneStatuses' and then return this job
-getJobWhenDone :: Int -> IO (Maybe Job)
-getJobWhenDone id = do
+-- |Wait until job with given id got status one of 'doneStatuses' or until time given limit not expared and then return this job
+-- `getJobWhenDone` `job id` `seconds for waiting`
+getJobWhenDone :: Int -> Int -> IO (Maybe Job)
+getJobWhenDone id timeLimit = do
     job <- getJob id
-    let res = if isNothing job || (status <$> job) `elem` (map Just doneStatuses)
+    let res = if isNothing job || (status <$> job) `elem` (map Just doneStatuses) || timeLimit <= 0
                 then return job
-                else threadDelay 1000000 >> getJobWhenDone id
+                else threadDelay 1000000 >> getJobWhenDone id (timeLimit - 1)
     res
 
 data SimpleJob = SimpleJob {s_jobid :: Int}

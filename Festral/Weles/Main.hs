@@ -21,7 +21,7 @@ main = runCmd =<< execParser options
 data Options = Options
     { all       :: Bool
     , jobId     :: Int
-    , done      :: Bool
+    , done      :: Int
     , filename  :: String
     , start     :: Bool
     , stdout    :: Bool
@@ -42,10 +42,12 @@ opts = Options
         <>showDefault
         <>help  "Id of the job to be selected. With no other options list information about this job."
         <>metavar "JOB_ID" )
-    <*> switch
+    <*> option auto
         ( long  "when-done"
         <>short 'd'
-        <>help  "Wait until queried job done before doing rest." )
+        <>metavar "TIME_LIMIT"
+        <>value 0
+        <>help  "Wait until queried job done before doing rest and until TIME_LIMIT is not is now wasted." )
     <*> strOption
         ( long  "filename"
         <>short 'f'
@@ -96,9 +98,10 @@ runCmd (Options _ id _ fname _ _ True _) = getJobOutFile id fname >>= justPutStr
 
 runCmd (Options _ id _ _ _ True _ _) = getJobOut id >>= putStrLn
 
-runCmd (Options _ id True _ _ _ _ _) = show <$> getJobWhenDone id >>= putStrLn
+runCmd (Options _ id 0 _ _ _ _ _) = show <$> getJob id >>= putStrLn
 
-runCmd (Options _ id False _ _ _ _ _) = show <$> getJob id >>= putStrLn
+runCmd (Options _ id limit _ _ _ _ _) = show <$> getJobWhenDone id limit >>= putStrLn
+
 
 runCmd _ = putStrLn "Some parameter missed. Run program with --help option to see usage."
 
