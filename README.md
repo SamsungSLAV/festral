@@ -209,7 +209,7 @@ The typical usage example for automated running tests with `cron`:
 
 0 21 * * * ./bin/festral-build -c /home/secosci/bin/festral-build.config.json -r /home/secosci/secos-repo/ -o /home/secosci/build-log/
 0 0 * * * ./bin/festral-weles -r
-0 1 * * * ./bin/festral-build --html-out /home/secosci/www/reports/$(date +%Y%m%d%H%M).html
+0 1 * * * ./bin/festral-build --html-out /home/secosci/www/reports/$(date +\%Y\%m\%d\%H\%M).html
 0 1 * * * ./secos-repo/secosci/sql/import_build.sh
 0 1 * * * ./secos-repo/secosci/sql/import_test.sh
 ```

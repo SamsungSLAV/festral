@@ -8,7 +8,7 @@ import Data.List.Split
 import Data.List
 
 -- |Type represents types of templated fields of the yaml
-data TemplateType = 
+data TemplateType =
     URI String -- ^Url of the file extracted from its parameter string
     | Latest_URI String -- ^URI for the latest built package with given name
 

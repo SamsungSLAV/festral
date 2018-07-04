@@ -25,7 +25,7 @@ data TestData = TestData
     , testTime  :: String   -- ^Time taken by test execution
     } deriving Show
 
-data TestParser = TestParser 
+data TestParser = TestParser
     { out   :: String
     } deriving Show
 
@@ -64,7 +64,7 @@ writeReportFile resLst fname = do
     let body = foldl (\y str -> str ++ "\n" ++ y) "" rows
     let all = "##################################################\n" ++ body ++ "#################################################################"
     writeFile fname all
-    
+
     where
     processRow x = init $ foldl (\y str -> str ++ "," ++ y) "" $ reverse [a, show b, c,d,e,f,g]
         where

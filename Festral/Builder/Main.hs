@@ -62,7 +62,7 @@ runCmd (Options config repos out) = do
         then do
             let Just builder = builder'
             mapM_ (\x -> build x repos out) builder
-        else 
+        else
             putStrLn "Cant get builder from config file"
 
 runCmd (Report report) = do

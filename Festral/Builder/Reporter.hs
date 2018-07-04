@@ -13,7 +13,7 @@ import Data.Aeson
 import Data.List
 import Data.Time.LocalTime
 
-html time buildTable testTable =    
+html time buildTable testTable =
               "<!DOCTYPE html>\n"
            ++ "<html>\n"
            ++ "<head>\n"
@@ -60,8 +60,8 @@ reportHTML = do
     return $ html time rows testRows
 
 makeRow :: (String, String, String, String) -> String
-makeRow (repo, branch, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td "++ color status ++">" 
-    ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>" 
+makeRow (repo, branch, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td "++ color status ++">"
+    ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
 
 color "SUCCEED" = "style=\"color:green;\""
 color "FAILED" = "style=\"color:red;\""
