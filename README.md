@@ -191,6 +191,18 @@ You can use templated rows in your yamls according below syntax:
     
     Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
     You can push packages from other repositories built by `festral-build` to the `Weles` using this template.
+* `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` - install package specified by name on target using `rpm`. It is more generic replacement for 
+
+```
+- push:
+    ##TEMPLATE_URL packagename##
+    dest: '/tmp/packagename.rpm'
+    alias: 'packagename.rpm'
+- run:
+    name: "'rpm -i /tmp/packagename.rpm --force 2>&1 >> /tmp/install.log'"
+```
+
+* `##TEMPLATE_RPM_INSTALL_LATEST packagename##` - same as `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` but use `##TEMPLATE_LATEST name##` instead of `##TEMPLATE_URL name##`.
 
 ------------------
 
