@@ -174,6 +174,19 @@ runTest config target yamlPath = do
             where
                 (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
 
+        yamlTemplater out outDir cache (RPMInstallCurrent pkg) = yamlTemplaterRpm (yamlTemplater out outDir cache (URI pkg)) pkg
+        yamlTemplater out outDir cache (RPMInstallLatest pkg) = yamlTemplaterRpm (yamlTemplater out outDir cache (Latest_URI pkg)) pkg
+
+        yamlTemplaterRpm  uri package = 
+               "- push:\n"
+            ++ "                  " ++ uri ++ "\n"
+            ++ "                  dest: '/tmp/" ++ rpmName ++ "'\n"
+            ++ "                  alias: '" ++ rpmName ++ "'\n"
+            ++ "              - run:\n"
+            ++ "                  name: \"'rpm -i /tmp/" ++ rpmName ++ " --force 2>&1 >> /tmp/install.log'\""
+            where
+                rpmName = package ++ ".rpm"
+
 getConf config meta = filter (\x -> repo x == (repoName meta)) $ yamls config
 
 getTestConf [] = TestConfig "" "" ""

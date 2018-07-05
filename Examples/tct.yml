@@ -11,12 +11,8 @@ actions:
       test_cases:
         - case_name: tct-install
           test_actions:
-              - push:
-                  ##TEMPLATE_URL tct-test-ta##
-                  dest: /tmp
-                  alias: tct-test-ta.rpm
-              - run:
-                  name: rpm -i /tmp/tct-test-ta.rpm --force | tee /tmp/install.log
+              ##TEMPLATE_RPM_INSTALL_CURRENT tct-test-ta##
+              ##TEMPLATE_RPM_INSTALL_LATEST tf##
               - pull:
                   src: /tmp/install.log
                   alias: install.log
