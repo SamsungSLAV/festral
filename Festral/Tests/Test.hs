@@ -1,6 +1,7 @@
 -- |Module for running tests using config file and "Festral.Weles.API".
 module Festral.Tests.Test (
     runTest,
+    runTests,
     parseTest,
     performTestWithConfig,
     performForallNewBuilds
@@ -38,8 +39,8 @@ performTestWithConfig :: FilePath -> String -> IO ()
 performTestWithConfig confPath target = do
     confStr <- LB.readFile confPath
     let Just config = decode confStr :: Maybe TestRunnerConfig
-    (testConf, testOut) <- runTest config target
-    parseTest testConf testOut (buildLogDir config ++ "/" ++ target) (testLogDir config)
+    tests <- runTests config target
+    mapM_ (\ (testConf,testOut) -> parseTest testConf testOut (buildLogDir config ++ "/" ++ target) (testLogDir config)) tests
     where
         getConfig [] = TestConfig "" "" ""
         getConfig (x:_) = x
@@ -109,13 +110,22 @@ getParser _ testRes = do
     p <- fromWelesFiles testRes ""
     return $ parseTCT p
 
--- |Run test for the given build and return pairs (file name, contents) of files created on Weles
--- runTest path_to_config_fiile build_name
-runTest :: TestRunnerConfig -> String -> IO (TestConfig, [(String, String)])
-runTest config target = do
+runTests :: TestRunnerConfig -> String -> IO [(TestConfig, [(String, String)])]
+runTests config target = do
     metaStr <- readFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let meta = readMeta metaStr
-    let yamlPath = getYaml $ getConf meta
+    let yamlPaths = yaml <$> getConf config meta
+
+    sequence $ map (runTest config target) yamlPaths
+
+
+-- |Run test for the given build and return pairs (file name, contents) of files created on Weles
+-- runTest path_to_config_fiile build_name
+runTest :: TestRunnerConfig -> String -> FilePath -> IO (TestConfig, [(String, String)])
+runTest config target yamlPath = do
+    metaStr <- readFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
+    let meta = readMeta metaStr
+    let yamlPaths = yaml <$> getConf config meta
 
     putStrLn $ "[" ++ repoName meta ++ "]Starting Weles job with " ++ yamlPath ++ " ..."
 
@@ -135,11 +145,11 @@ runTest config target = do
                         else return $ fromJust jobId
     jobId'' <- jobId'
 
-    putStr $ "[" ++ repoName meta ++ "]Waiting for job finished ... "
+    putStrLn $ "[" ++ repoName meta ++ "]Waiting for job finished ... "
     hFlush stdout
     job <- getJobWhenDone jobId'' 3600
     jobFiles <- (filter (not . (isInfixOf ".rpm")) <$>) <$> getFileList jobId''
-    putStrLn $ "OK\n[" ++ repoName meta ++ "]Recieved files: " ++ show jobFiles
+    putStrLn $ "[" ++ repoName meta ++ "]OK. Recieved files: " ++ show jobFiles
     let jobFiles' = if isNothing jobFiles
                         then []
                         else fromJust jobFiles
@@ -151,26 +161,9 @@ runTest config target = do
                     return (fname, content')
                     ) jobFiles'
     ret' <- ret
-    return (getTestConf $ getConf meta, ret')
+    return (getTestConf $ getConf config meta, ret')
+
     where
-        getConf meta = filter (\x -> repo x == (repoName meta)) $ yamls config
-        getYaml [] = []
-        getYaml (x:_) = yaml x
-        getTestConf [] = TestConfig "" "" ""
-        getTestConf (x:_) = x
-
-        dirDoesntExists :: SomeException -> IO [FilePath]
-        dirDoesntExists ex = putStrLn (show ex) >> return []
-
-        fileNotExists :: SomeException -> IO String
-        fileNotExists ex = putStrLn (show ex) >> return ""
-
-        emptyFileNotExists :: SomeException -> IO ()
-        emptyFileNotExists ex = putStrLn $ show ex
-
-        badJob :: SomeException -> IO (Maybe Int)
-        badJob ex = putStrLn (show ex) >> return (Nothing)
-
         yamlTemplater :: [String] -> String -> String -> TemplateType -> String
         yamlTemplater out outDir cache (URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
             where
@@ -181,4 +174,21 @@ runTest config target = do
             where
                 (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
 
-        resolvedName x = if x == [] then "" else head x
+getConf config meta = filter (\x -> repo x == (repoName meta)) $ yamls config
+
+getTestConf [] = TestConfig "" "" ""
+getTestConf (x:_) = x
+
+dirDoesntExists :: SomeException -> IO [FilePath]
+dirDoesntExists ex = putStrLn (show ex) >> return []
+
+fileNotExists :: SomeException -> IO String
+fileNotExists ex = putStrLn (show ex) >> return ""
+
+emptyFileNotExists :: SomeException -> IO ()
+emptyFileNotExists ex = putStrLn $ show ex
+
+badJob :: SomeException -> IO (Maybe Int)
+badJob ex = putStrLn (show ex) >> return (Nothing)
+
+resolvedName x = if x == [] then "" else head x
