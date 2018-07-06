@@ -90,7 +90,10 @@ parseTest' writer config outs buildDir outDir = do
     toFile meta (outDirName ++ "/build.log")
 
     writer config outs buildDir outDirName
-    writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) -> c) outs)
+    writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) -> 
+                                             "\n------------------ Begin of " ++ n ++ " ------------------\n" 
+                                            ++ c ++ "\n"
+                                            ++ "------------------ End of " ++ n ++ "   ------------------\n") outs)
 
     where
         recreate_dir :: FilePath -> Int -> IOError -> IO ()
