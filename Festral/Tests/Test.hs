@@ -26,7 +26,7 @@ import System.Process
 import System.IO
 import qualified Control.Monad.Parallel as Par
 import Festral.Files
-
+import Control.Concurrent
 
 -- |Run tests from config for all build directories listed in given string
 performForallNewBuilds :: FilePath -> String -> IO ()
@@ -75,17 +75,20 @@ writeWithOwn config outs buildDir outDir = do
 parseTest' writer config outs buildDir outDir = do
     metaStr <- readFile $ buildDir ++ "/meta.txt"
     let meta = readMeta metaStr
-    time <- show <$> getZonedTime
-    let (year:mounth:day:hour:min:secs:_) = splitOneOf " :-." time
-    let time = year ++ mounth ++ day ++ hour ++ min ++ secs
     tester <- getEffectiveUserName
+
+    tm <- timeStamp
+
+    let pathPrefix = outDir ++ "/" ++ hash meta
+    time <- catch ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
+
     let testMeta = MetaTest meta tester tester time
+
+    let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
 
     latestFile <- freshTests
     appendFile latestFile $ hash meta ++ "_" ++ time ++ "\n"
 
-    let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
-    catch (createDirectory outDirName) (recreate_dir outDirName 0)
     toFile testMeta (outDirName ++ "/meta.txt")
     toFile meta (outDirName ++ "/build.log")
 
@@ -96,10 +99,18 @@ parseTest' writer config outs buildDir outDir = do
                                             ++ "------------------ End of " ++ n ++ "   ------------------\n") outs)
 
     where
-        recreate_dir :: FilePath -> Int -> IOError -> IO ()
-        recreate_dir path i ex
-            | isAlreadyExistsError ex = catch (createDirectory $ path ++ "_" ++ show i) (recreate_dir path (i+1))
-            | otherwise = putStrLn $ show ex
+        recreate_dir :: FilePath -> IOError -> IO String
+        recreate_dir path ex
+            | isAlreadyExistsError ex = do
+                threadDelay 1000000 -- wait for 1 second
+                time <- timeStamp
+                catch ((createDirectory $ path ++ "_" ++ time) >> return time) (recreate_dir path)
+            | otherwise = (putStrLn $ show ex) >> timeStamp
+
+timeStamp = do
+    time <- show <$> getZonedTime
+    let (year:mounth:day:hour:min:secs:_) = splitOneOf " :-." time
+    return $ year ++ mounth ++ day ++ hour ++ min ++ secs
 
 -- |Converts string name of parser from config JSON to the test parser.
 getParser :: String -> [(String, String)] -> IO [TestData]
