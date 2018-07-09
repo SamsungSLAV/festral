@@ -96,7 +96,7 @@ testSummary dir = do
 colorPercents (pass, all) = "<font style=\"color:"++ col ++ ";\">" ++ show pass ++ "/" ++ show all ++ "</font>"
     where
     col
-        | per >= 8.5    = "green"
+        | per >= 0.85   = "green"
         | per >= 0.5    = "orange"
         | otherwise     = "red"
     per = (fromIntegral pass) / (fromIntegral all)
