@@ -93,13 +93,14 @@ testSummary dir = do
     let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=test&hash=" ++ hash meta ++ "&time=" ++ testTime meta'
     return (repoName meta, branch meta, colorPercents pass, link)
 
+colorPercents :: (Int, Int) -> String
+colorPercents (0,0) = "<font style=\"color:red;\">" ++ "NOT PERFORMED" ++ "</font>"
 colorPercents (pass, all) = "<font style=\"color:"++ col ++ ";\">" ++ show pass ++ "/" ++ show all ++ "</font>"
     where
-    col
-        | per >= 0.85   = "green"
-        | per >= 0.5    = "orange"
-        | otherwise     = "red"
-    per = (fromIntegral pass) / (fromIntegral all)
+    col = "rgb(" ++ show (round (maxCol - passCol)) ++ "," ++ show (round (passCol)) ++ ",0)"
+    passCol = (maxCol/fromIntegral(all)) * fromIntegral(pass)
+
+maxCol = 150
 
 processReport :: [String] -> Bool
 processReport (_:_:_:_:"TEST_PASS":_) = True
