@@ -9,7 +9,7 @@ do
         STATUS="FAILED"
     fi
 done < <($BUILD_LOG)
-TIMESTAMP=$(date +%Y%H%M%S)
+TIMESTAMP=$(date +%Y%m%d%H%M%S)
 
 echo BOARD=x86_64
 echo BUILD_TYPE=debug
