@@ -26,5 +26,13 @@
         "buildRepo" : "127.0.0.1/repo",
         "buildResParser" : "GBS",
         "branches" : ["master"]
+    },
+    {
+        "buildName" : "festral",
+        "buildCmd" : "runhaskell Setup.hs configure --user; runhaskell Setup.hs build",
+        "buildRepo" : "git@127.0.0.1:u.harbuz/festral.git",
+        "buildResParser" : "Examples/hs_build_parser.sh",
+        "branches" : ["master"]
+
     }
 ]
