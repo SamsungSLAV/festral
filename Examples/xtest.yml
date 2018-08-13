@@ -1,0 +1,38 @@
+device_type: rpi3
+job_name: rpi3-mini
+priority: medium
+
+actions:
+  - deploy:
+      images:
+        - uri: 'http://127.0.0.1/secosci/latest_images/rpi3/latest.tar.gz'
+          compression: 'gz'
+      partition_layout:
+        - id: 2
+          image_name: rootfs.img
+        - id: 3
+          image_name: system-data.img
+        - id: 5
+          image_name: user.img
+        - id: 7
+          image_name: ramdisk.img
+  - boot:
+      login: root
+      password: tizen
+  - test:
+      name: xtest
+      test_cases:
+        - case_name: optee-test
+          test_actions:
+              - run:
+                  name: "'mount -o remount,rw / 2>&1 > /tmp/install.log'"
+              ##TEMPLATE_RPM_INSTALL_CURRENT optee-test##
+              - pull:
+                  src: '/tmp/install.log'
+                  alias: 'install.log'
+              - run:
+                  name: "'xtest 2>&1 > tee /tmp/xtest.log'"
+              - pull:
+                  src: '/tmp/xtest.log'
+                  alias: 'xtest.log'
+
