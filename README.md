@@ -173,6 +173,42 @@ Available options:
 
 Supported built-in test parsers currently are only "TCT" - for tct-test-ta and "XTest" - for xtest made by OPTEE.
 
+You can create own parser scripts for festral-weles. Such script **MUST get log with test result as its FIRST ARGUMENT and put parsed statistics to the stdout**.
+
+Parsed data has format:
+
+```
+######################################
+
+Test name,test id, testcase name,result of preparing for test,result of test,result of cleaning after test,spent time
+
+...
+
+######################################
+```
+
+Result of test can be TEST_PASS or TEST_FAIL.
+
+Example of such output:
+
+```
+###########################################################
+Xtest,0,regression_1001,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+Xtest,1,regression_1002,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+Xtest,2,regression_1003,TEST_FAIL,TEST_FAIL,TEST_FAIL,0.0
+Xtest,3,regression_1004.1,TEST_FAIL,TEST_FAIL,TEST_FAIL,0.0
+Xtest,4,regression_1004.2,TEST_FAIL,TEST_FAIL,TEST_FAIL,0.0
+Xtest,5,regression_1004.3,TEST_FAIL,TEST_FAIL,TEST_FAIL,0.0
+Xtest,21,regression_1010.1,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+Xtest,22,regression_1010.2,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+Xtest,23,regression_1010.3,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+Xtest,24,regression_1010.4,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+Xtest,25,regression_1010.5,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+###########################################################
+```
+
+Example of the bash script for parsing XTest is at Examples/own_xtest_parser.sh
+
 -----------------
 ### Test cases description
 
