@@ -20,7 +20,7 @@ Library
         optparse-applicative,
         semigroups,
         time,
-        directory,
+        directory >= 1.2.3.0,
         unix,
         monad-parallel
     Exposed-modules:
