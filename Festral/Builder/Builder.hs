@@ -97,7 +97,7 @@ build build wdir outdir = do
             parser <- getParser (buildResParser build) loghandle
             meta <- getMeta parser build branch
             let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
-            createDirectory outDirName
+            createDirectoryIfMissing True outDirName
             toFile meta (outDirName ++ "/meta.txt")
             catch (renameDirectory (outDir meta) (outDirName ++ "/build_res")) handler
             catch (renameFile logfile (outDirName ++ "/build.log")) (copyHandler logfile (outDirName ++ "/build.log"))

@@ -63,7 +63,7 @@ runCmd (Options config repos out) = do
             let Just builder = builder'
             mapM_ (\x -> build x repos out) builder
         else
-            putStrLn "Cant get builder from config file"
+            putStrLn "ERROR: Check your configuration JSON: it has bad format."
 
 runCmd (Report report) = do
     html <- reportHTML
