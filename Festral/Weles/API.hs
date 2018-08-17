@@ -10,7 +10,8 @@ module Festral.Weles.API (
     startJob,
     getFileList,
     getJobOutFile,
-    getJobOut
+    getJobOut,
+    cancelJob
 ) where
 
 import Network.Curl.Aeson
@@ -149,3 +150,9 @@ getJobOut id = do
             else resFnames
     let contents = map (getJobOutFile id) resName
     concat <$> (liftM concat) <$> (sequence contents)
+
+-- |Cancel job defined by ID
+cancelJob :: Int -> IO ()
+cancelJob id = do
+    (ip, port, _) <- welesAddr
+    curlPost (ip ++ ":" ++ port ++ "/api/v1/jobs/" ++ show id ++ "/cancel") []

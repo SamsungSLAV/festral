@@ -27,6 +27,7 @@ data Options = Options
     , stdout    :: Bool
     , listFile  :: Bool
     , perfTest  :: Bool
+    , cancel    :: Bool
     } | None
 
 opts :: Parser Options
@@ -70,10 +71,16 @@ opts = Options
         ( long  "run-test"
         <>short 'r'
         <>help  "Run test for specified by -f option build directory. Run for all targets listed in '~/.fresh_builds' file if no target specified." )
+    <*> switch
+        ( long  "cancel"
+        <>short 'c'
+        <>help  "Cancel job specified by -i option." )
 
 runCmd :: Options -> IO ()
 
-runCmd (Options _ _ _ "" _ _ _ True) = do
+runCmd (Options _ id _ _ _ _ _ _ True) = cancelJob id
+
+runCmd (Options _ _ _ "" _ _ _ True _) = do
     lastTestFile <- freshTests
     writeFile lastTestFile ""
 
@@ -82,25 +89,25 @@ runCmd (Options _ _ _ "" _ _ _ True) = do
     list <- readFile listFile
     performForallNewBuilds config list
 
-runCmd (Options _ _ _ fname _ _ _ True) = configFile >>= (\x -> performTestWithConfig x fname)
+runCmd (Options _ _ _ fname _ _ _ True _) = configFile >>= (\x -> performTestWithConfig x fname)
 
-runCmd (Options True _ _ _ _ _ _ _) = show <$> curlJobs >>= putStrLn
+runCmd (Options True _ _ _ _ _ _ _ _) = show <$> curlJobs >>= putStrLn
 
-runCmd (Options _ (-1) _ ("") True _ _ _) = runCmd None
+runCmd (Options _ (-1) _ ("") True _ _ _ _) = runCmd None
 
-runCmd (Options _ (-1) _ f True _ _ _) = show <$> startJob f >>= putStrLn
+runCmd (Options _ (-1) _ f True _ _ _ _) = show <$> startJob f >>= putStrLn
 
-runCmd (Options _ (-1) _ _ _ _ _ _) = putStrLn "Missing id of the quered job. Use -i option for set it."
+runCmd (Options _ (-1) _ _ _ _ _ _ _) = putStrLn "Missing id of the quered job. Use -i option for set it."
 
-runCmd (Options _ id _ ("") _ _ True _) = show <$> getFileList id >>= putStrLn
+runCmd (Options _ id _ ("") _ _ True _ _) = show <$> getFileList id >>= putStrLn
 
-runCmd (Options _ id _ fname _ _ True _) = getJobOutFile id fname >>= justPutStrLn "No such job."
+runCmd (Options _ id _ fname _ _ True _ _) = getJobOutFile id fname >>= justPutStrLn "No such job."
 
-runCmd (Options _ id _ _ _ True _ _) = getJobOut id >>= putStrLn
+runCmd (Options _ id _ _ _ True _ _ _) = getJobOut id >>= putStrLn
 
-runCmd (Options _ id 0 _ _ _ _ _) = show <$> getJob id >>= putStrLn
+runCmd (Options _ id 0 _ _ _ _ _ _) = show <$> getJob id >>= putStrLn
 
-runCmd (Options _ id limit _ _ _ _ _) = show <$> getJobWhenDone id limit >>= putStrLn
+runCmd (Options _ id limit _ _ _ _ _ _) = show <$> getJobWhenDone id limit >>= putStrLn
 
 
 runCmd _ = putStrLn "Some parameter missed. Run program with --help option to see usage."
