@@ -82,7 +82,7 @@ getJobWhenDone :: Int -> Int -> IO (Maybe Job)
 getJobWhenDone id timeLimit = do
     job <- getJob id
     let res = if isNothing job || (status <$> job) `elem` (map Just doneStatuses) || timeLimit <= 0
-                then return job
+                then cancelJob id >> return job
                 else threadDelay 1000000 >> getJobWhenDone id (timeLimit - 1)
     res
 
