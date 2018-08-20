@@ -71,7 +71,7 @@ It has format described below (see example of this file in `Examples/buildconfig
  ]
 ```
 
-Parser is some script or binary which generates meta.txt file from output of your `buildCmd` command. Now only "GBS" parser is stable.
+Parser is some script or binary which generates meta.txt file from output of your `buildCmd` command.
 
 `meta.txt` file has format:
 
@@ -91,6 +91,7 @@ Parser is some script or binary which generates meta.txt file from output of you
  TESTER=#login of the tester
  TESTER_NAME=#name of the tester
  TEST_TIME=#time where test was performed
+ TEST_NAME=#name of the test read from name of the parser script
 ```
 
 Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout` IN EXACTLY SUCH ORDER AS fields of metafile
