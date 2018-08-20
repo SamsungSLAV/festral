@@ -2,10 +2,13 @@ module Festral.Files (
     freshBuilds,
     freshTests,
     buildCache,
-    configFile
+    configFile,
+    progVersion
 ) where
 
 import System.Directory
+
+progVersion = "0.4.14"
 
 freshBuilds = do
     x <- getHomeDirectory

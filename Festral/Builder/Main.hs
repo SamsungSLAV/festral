@@ -14,7 +14,7 @@ import Festral.Builder.Reporter
 
 main = runCmd =<< execParser options
     where
-        options = info ((opts <|> report) <**> helper)
+        options = info ((opts <|> report <|> prgVersion) <**> helper)
             ( fullDesc
             <>progDesc  "Build all repositories for all branches described in configuration file"
             <>header    "Festral - simple client for tests management using Weles as test server")
@@ -26,6 +26,8 @@ data Options = Options
     }
     | Report
     { htmlReport :: String }
+    | Version
+    { version   :: Bool}
 
 opts :: Parser Options
 opts = Options
@@ -52,6 +54,13 @@ report = Report
         <> metavar  "DIRECTORY"
         <> help     "Output directory for summary report of the build. Generate report only if this option is specified, otherwise no report will be generated" )
 
+prgVersion :: Parser Options
+prgVersion = Version
+    <$> switch
+        (  long     "version"
+        <> short    'v'
+        <> help     "Show this program version." )
+
 runCmd :: Options -> IO ()
 runCmd (Options config repos out) = do
     freshBuildsFile <- freshBuilds
@@ -69,3 +78,4 @@ runCmd (Report report) = do
     html <- reportHTML
     writeFile report html
 
+runCmd (Version True) = putStrLn $ "festral-build v." ++ progVersion
