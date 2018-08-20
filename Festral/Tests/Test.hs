@@ -27,6 +27,7 @@ import System.IO
 import qualified Control.Monad.Parallel as Par
 import Festral.Files
 import Control.Concurrent
+import System.FilePath.Posix
 
 -- |Run tests from config for all build directories listed in given string
 performForallNewBuilds :: FilePath -> String -> IO ()
@@ -82,7 +83,7 @@ parseTest' writer config outs buildDir outDir = do
     let pathPrefix = outDir ++ "/" ++ hash meta
     time <- catch ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
 
-    let testMeta = MetaTest meta tester tester time
+    let testMeta = MetaTest meta tester tester time (dropFileName $ dropExtension $ parser config)
 
     let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
 
@@ -120,9 +121,6 @@ getParser "TCT" testRes = do
 getParser "XTest" testRes = do
     p <- fromWelesFiles testRes "xtest.log"
     return $ parseXTest p
-getParser _ testRes = do
-    p <- fromWelesFiles testRes ""
-    return $ parseTCT p
 
 runTests :: TestRunnerConfig -> String -> IO [(TestConfig, [(String, String)])]
 runTests config target = do

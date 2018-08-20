@@ -36,7 +36,7 @@ html time buildTable testTable =
            ++ "    <h2>Test summary:</h2>\n"
            ++ "    <table>\n"
            ++ "        <tr>\n"
-           ++ "             <th>Repository</th><th>Branch</th><th>Test result</th><th>Log file</th>\n"
+           ++ "             <th>Repository</th><th>Branch</th><th>Test name</th><th>Test result</th><th>Log file</th>\n"
            ++ "        </tr>\n"
            ++ "        " ++ testTable ++ "\n"
            ++ "    </table>\n"
@@ -49,18 +49,22 @@ reportHTML = do
     buildsFile <- freshBuilds
     builds <- readFile buildsFile
     buildSummaries <- sequence $ map buildSummary $ filter (not . (== "")) $ splitOn "\n" builds
-    let rows = concat $ map makeRow buildSummaries
+    let rows = concat $ map makeBuildRow buildSummaries
 
     testsFile <- freshTests
     tests <- readFile testsFile
     testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $ splitOn "\n" tests
-    let testRows = concat $ map makeRow testSummaries
+    let testRows = concat $ map makeTestRow testSummaries
 
     time <- show <$> getZonedTime
     return $ html time rows testRows
 
-makeRow :: (String, String, String, String) -> String
-makeRow (repo, branch, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td "++ color status ++">"
+makeBuildRow :: (String, String, String, String) -> String
+makeBuildRow (repo, branch, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td "++ color status ++">"
+    ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
+
+makeTestRow :: (String, String, String, String, String) -> String
+makeTestRow (repo, branch, name, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td>" ++ name ++ "</td><td "++ color status ++">"
     ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
 
 color "SUCCEED" = "style=\"color:green;\""
@@ -78,8 +82,8 @@ buildSummary dir = do
     let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=build&hash=" ++ hash meta ++ "&time=" ++ buildTime meta
     return (repoName meta, branch meta, status meta, link)
 
--- |Gets name of the test result (sha1_time) and returns its build data as (repository name, branch name, passed tests/ all tests)
-testSummary :: String -> IO (String, String, String, String)
+-- |Gets name of the test result (sha1_time) and returns its build data as (repository name, branch name, test name, passed tests/ all tests)
+testSummary :: String -> IO (String, String, String, String, String)
 testSummary dir = do
     config <- configFile
     confStr <- LB.readFile config
@@ -91,7 +95,7 @@ testSummary dir = do
     let tests = parseTestRes $ splitWhen (isInfixOf "###############") $ splitOn "\n" report
     let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
     let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=test&hash=" ++ hash meta ++ "&time=" ++ testTime meta'
-    return (repoName meta, branch meta, colorPercents pass, link)
+    return (repoName meta, branch meta, testName meta, colorPercents pass, link)
 
 colorPercents :: (Int, Int) -> String
 colorPercents (0,0) = "<font style=\"color:red;\">" ++ "NOT PERFORMED" ++ "</font>"
