@@ -95,7 +95,7 @@ testSummary dir = do
     let tests = parseTestRes $ splitWhen (isInfixOf "###############") $ splitOn "\n" report
     let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
     let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=test&hash=" ++ hash meta ++ "&time=" ++ testTime meta'
-    return (repoName meta, branch meta, testName meta, colorPercents pass, link)
+    return (repoName meta, branch meta, testName meta', colorPercents pass, link)
 
 colorPercents :: (Int, Int) -> String
 colorPercents (0,0) = "<font style=\"color:red;\">" ++ "NOT PERFORMED" ++ "</font>"
