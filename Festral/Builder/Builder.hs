@@ -88,7 +88,7 @@ build :: Build -> FilePath -> FilePath -> IO ()
 build build wdir outdir = do
     cloneRepo wdir build
     let srcDir = wdir ++ "/" ++ buildName build
-    mapM_ (\x -> withCurrentDirectory srcDir (buildOne srcDir x)) (branches build)
+    mapM_ (\x -> handle handler $ withCurrentDirectory srcDir (buildOne srcDir x)) (branches build)
     where
         buildOne srcDir branch = do
             (logfile, loghandle) <- openTempFileWithDefaultPermissions "/tmp" "build.log"
@@ -111,14 +111,15 @@ build build wdir outdir = do
             when (length new > 0) $
                 handle handler $ writeFile cachePath new
                 where
-                    handler :: SomeException -> IO ()
-                    handler ex = putStrLn $ show ex
                     copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
                     copyHandler a b ex = copyFile a b
                     badDir :: SomeException -> IO [FilePath]
                     badDir ex = putStrLn (show ex) >> return [""]
                     badFile :: SomeException -> IO String
                     badFile ex = putStrLn (show ex) >> return ""
+
+        handler :: SomeException -> IO ()
+        handler ex = putStrLn $ show ex
 
 updateCache :: String -> String -> FilePath -> String
 updateCache _ old "." = old
