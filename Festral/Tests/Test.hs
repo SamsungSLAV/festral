@@ -28,6 +28,7 @@ import qualified Control.Monad.Parallel as Par
 import Festral.Files
 import Control.Concurrent
 import System.FilePath.Posix
+import Control.Monad
 
 -- |Run tests from config for all build directories listed in given string
 performForallNewBuilds :: FilePath -> String -> IO ()
@@ -63,10 +64,12 @@ writeWithParser config outs buildDir outDir = do
 
 writeWithOwn config outs buildDir outDir = do
     handle err $ do
-        (inp, out, err, handle) <- runInteractiveProcess (parser config) ["\"'" ++ (concat $ map (\(n,c) -> c) outs) ++ "'\""] Nothing Nothing
-        report <- hGetContents out
-        waitForProcess handle
-        writeFile (outDir ++ "/report.txt") report
+        fileExists <- doesFileExist $ parser config
+        when fileExists $ do
+            (inp, out, err, handle) <- runInteractiveProcess (parser config) ["\"'" ++ (concat $ map (\(n,c) -> c) outs) ++ "'\""] Nothing Nothing
+            report <- hGetContents out
+            waitForProcess handle
+            writeFile (outDir ++ "/report.txt") report
 
     where
         err :: SomeException -> IO ()
