@@ -6,9 +6,11 @@
     "welesFilePort" : "8888",
     "webPageIP" : "127.0.0.1",
     "yamls" : [
-        {"repo" : "tct-test-ta",
-         "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml",
-         "parser" : "TCT"
+        {
+            "repo" : "tct-test-ta",
+            "name" : "TCT TA test",
+            "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml",
+            "parser" : "TCT"
         },
         {
             "repo" : "gpapi-tests",

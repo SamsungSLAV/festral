@@ -83,7 +83,7 @@ parseTest' writer config outs buildDir outDir = do
     let pathPrefix = outDir ++ "/" ++ hash meta
     time <- catch ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
 
-    let testMeta = MetaTest meta tester tester time (takeFileName $ dropExtension $ parser config)
+    let testMeta = MetaTest meta tester tester time (name config)
 
     let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
 
