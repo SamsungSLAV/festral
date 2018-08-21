@@ -8,7 +8,7 @@ module Festral.Files (
 
 import System.Directory
 
-progVersion = "0.5.1"
+progVersion = "0.5.2"
 
 freshBuilds = do
     x <- getHomeDirectory

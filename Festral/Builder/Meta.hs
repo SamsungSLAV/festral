@@ -12,6 +12,7 @@ module Festral.Builder.Meta (
 import System.IO
 import Control.Exception
 import Data.List.Split
+import Data.List
 
 -- |Class which describes Parser - something that can be cunstructed from the file
 -- with output of the build by function 'fromFile' and return 'Meta' parsed from this build output.
@@ -71,7 +72,7 @@ readMeta str = readMeta' (f str)
     readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:t:tName:tTime:_) = 
         MetaTest (Meta board bType commit bTime toolc builder stat hash "" repName branch) t tName tTime "unknown"
     readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:_) = Meta board bType commit bTime toolc builder stat hash "" repName branch
-    f x = map last $ splitOn "=" <$> splitOn "\n" x
+    f x = map last $ map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 
 
 -- |Write 'Meta' to the file at given path
