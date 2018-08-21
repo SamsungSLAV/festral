@@ -126,18 +126,23 @@ runTests :: TestRunnerConfig -> String -> IO [(TestConfig, [(String, String)])]
 runTests config target = do
     metaStr <- readFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let meta = readMeta metaStr
-    let yamlPaths = yaml <$> getConf config meta
+    let configs = filterConf config meta
 
-    sequence $ map (runTest config target) yamlPaths
+    sequence $ map (runTest target) configs
 
 
 -- |Run test for the given build and return pairs (file name, contents) of files created on Weles
--- runTest path_to_config_fiile build_name
-runTest :: TestRunnerConfig -> String -> FilePath -> IO (TestConfig, [(String, String)])
-runTest config target yamlPath = do
+-- runTest build_name path_to_config_fiile
+runTest :: String -> TestConfig -> IO (TestConfig, [(String, String)])
+runTest target testConf = do
+    
+    config <- configFile
+    confStr <- LB.readFile config
+    let Just config = decode confStr :: Maybe TestRunnerConfig
+
     metaStr <- readFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let meta = readMeta metaStr
-    let yamlPaths = yaml <$> getConf config meta
+    let yamlPath = yaml testConf
 
     putStrLn $ "[" ++ repoName meta ++ "]Starting Weles job with " ++ yamlPath ++ " ..."
 
@@ -146,7 +151,7 @@ runTest config target yamlPath = do
     yamlTemplate <- catch (readFile yamlPath) fileNotExists
     cachePath <- buildCache
     yamlCache <- catch (readFile cachePath) fileNotExists
-    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater rpms buildOutDir yamlCache)
+    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater config rpms buildOutDir yamlCache)
     jobId <- if status meta == "SUCCEED" && yamlTemplate /= ""
                 then handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
                 else return Nothing
@@ -173,21 +178,21 @@ runTest config target yamlPath = do
                     return (fname, content')
                     ) jobFiles'
     ret' <- ret
-    return (getTestConf $ getConf config meta, ret')
+    return (testConf, ret')
 
     where
-        yamlTemplater :: [String] -> String -> String -> TemplateType -> String
-        yamlTemplater out outDir cache (URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
+        yamlTemplater :: TestRunnerConfig -> [String] -> String -> String -> TemplateType -> String
+        yamlTemplater config out outDir cache (URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
             where
                 rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $ filter(isInfixOf url) $ out
                 (dir:hash:_) = reverse $ splitOn "/" outDir
 
-        yamlTemplater out outDir cache (Latest_URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
+        yamlTemplater config out outDir cache (Latest_URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
             where
                 (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
 
-        yamlTemplater out outDir cache (RPMInstallCurrent pkg) = yamlTemplaterRpm (yamlTemplater out outDir cache (URI pkg)) pkg
-        yamlTemplater out outDir cache (RPMInstallLatest pkg) = yamlTemplaterRpm (yamlTemplater out outDir cache (Latest_URI pkg)) pkg
+        yamlTemplater config out outDir cache (RPMInstallCurrent pkg) = yamlTemplaterRpm (yamlTemplater config out outDir cache (URI pkg)) pkg
+        yamlTemplater config out outDir cache (RPMInstallLatest pkg) = yamlTemplaterRpm (yamlTemplater config out outDir cache (Latest_URI pkg)) pkg
 
         yamlTemplaterRpm  uri package = 
                "- push:\n"
@@ -199,10 +204,7 @@ runTest config target yamlPath = do
             where
                 rpmName = package ++ ".rpm"
 
-getConf config meta = filter (\x -> repo x == (repoName meta)) $ yamls config
-
-getTestConf [] = TestConfig "" "" ""
-getTestConf (x:_) = x
+filterConf config meta = filter (\x -> repo x == (repoName meta)) $ yamls config
 
 dirDoesntExists :: SomeException -> IO [FilePath]
 dirDoesntExists ex = putStrLn (show ex) >> return []
