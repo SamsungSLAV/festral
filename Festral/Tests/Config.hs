@@ -39,7 +39,6 @@ data TestRunnerConfig = TestRunnerConfig
     , welesPort     :: String
     , welesFilePort :: String
     , webPageIP     :: String
-    , yamls         :: [TestConfig]
     } deriving (Show, Generic)
 
 instance FromJSON TestRunnerConfig
