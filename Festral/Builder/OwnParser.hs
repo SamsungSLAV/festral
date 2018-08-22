@@ -25,7 +25,7 @@ instance MetaParser OwnParser where
         (inp, out, err, _) <- runInteractiveProcess (parserExec parser) [buildLog parser] Nothing Nothing
         log <- hGetContents out
         let meta = lines log
-        let [board, buildType, commit, buildTime, toolchain, builder, status,  hash, outDir, repoName, branch] = map last $ map (splitOn "=") meta
+        let [board, buildType, commit, buildTime, toolchain, builder, status,  hash, repoName, branch, outDir] = map last $ map (splitOn "=") meta
         return (Meta board buildType commit buildTime toolchain builder status hash outDir repoName branch)
 
     fromFile :: FilePath -> IO OwnParser
