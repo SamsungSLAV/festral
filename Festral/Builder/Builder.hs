@@ -121,7 +121,9 @@ build build wdir outdir = do
         handler :: SomeException -> IO ()
         handler ex = putStrLn $ show ex
 
+-- |Replace old hash with new if file already is in the string, otherwise just add it
 updateCache :: String -> String -> FilePath -> String
+updateCache _ old "" = old
 updateCache _ old "." = old
 updateCache _ old ".." = old
 updateCache hash old file = (concat $ replaceHash <$> splitOn "#" <$> splitOn "\n" old) ++ file ++ "#" ++ hash
@@ -138,14 +140,15 @@ cloneRepo wdir (Build name _ remote _ _) = do
             handler :: SomeException -> IO ()
             handler ex = return ()
 
+-- |Run given parser and create Meta from it, but replace user and commit data with actual
 getMeta :: Parser a -> Build -> String -> IO Meta
 getMeta p b branch = do
     commit <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    let m' = Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit (outDir m) (buildName b) branch
-    return m'
+    return $ Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit (outDir m) (buildName b) branch
 
+-- |Resolve parser type from its name
 getParser :: String -> Handle -> IO (Parser a)
 getParser "GBS" f = do
     p <- fromHandle f

@@ -45,7 +45,7 @@ data Meta = Meta {
     }
 
 instance Show Meta where
-    show (Meta board bType commit bTime toolc builder stat hash _ repName branch) = "BOARD=" ++ board
+    show (Meta board bType commit bTime toolc builder stat hash outDir repName branch) = "BOARD=" ++ board
                                                     ++ "\nBUILD_TYPE=" ++ bType
                                                     ++ "\nCOMMIT=" ++ commit
                                                     ++ "\nBUILD_TIME=" ++ bTime
@@ -55,6 +55,7 @@ instance Show Meta where
                                                     ++ "\nBUILD_HASH=" ++ hash
                                                     ++ "\nREPO_NAME=" ++ repName
                                                     ++ "\nBRANCH=" ++ branch
+                                                    ++ "\nOUT_DIR=" ++ outDir
     show (MetaTest m t tName tTime name) = (show m)
                                         ++ "\nTESTER=" ++ t
                                         ++ "\nTESTER_NAME=" ++ tName
@@ -67,11 +68,11 @@ instance Show Meta where
 readMeta :: String -> Meta
 readMeta str = readMeta' (f str)
     where
-    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:t:tName:tTime:name:_) = 
-        MetaTest (Meta board bType commit bTime toolc builder stat hash "" repName branch) t tName tTime name
-    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:t:tName:tTime:_) = 
-        MetaTest (Meta board bType commit bTime toolc builder stat hash "" repName branch) t tName tTime "unknown"
-    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:_) = Meta board bType commit bTime toolc builder stat hash "" repName branch
+    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:outDir:t:tName:tTime:name:_) =
+        MetaTest (Meta board bType commit bTime toolc builder stat hash outDir repName branch) t tName tTime name
+    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:outDir:t:tName:tTime:_) =
+        MetaTest (Meta board bType commit bTime toolc builder stat hash outDir repName branch) t tName tTime "unknown"
+    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:outDir:_) = Meta board bType commit bTime toolc builder stat hash outDir repName branch
     f x = map last $ map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 
 

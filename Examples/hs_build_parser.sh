@@ -19,6 +19,6 @@ echo TOOLCHAIN=ghc
 echo BUILDER=unknown
 echo BUILD_STATUS=$STATUS
 echo BUILD_HASH=unknown
-echo OUT_DIR=$(pwd)/dist/build/
 echo REPO_NAME=unknown
 echo BRANCH=unknown
+echo OUT_DIR=$(pwd)/dist/build/festral/

@@ -125,6 +125,16 @@ are presented here.
 
 `output directory` is directory where builds results will be put in format 'commithash_buildtime'
 
+After running this command program will do:
+
+  1. clone all repository listed in `config json` to the subdirectory of `repositories location`
+  2. checkout for each branch listed in `config json` for current repository and run specified in config build command
+  3. pass standard output of build command to the parser specified in the config for this repository
+  4. create `meta.txt` file from parsed build output
+  5. create directory named as `commitSha1Hash_buildtime` in the `output directory` and put here `meta.txt`, raw build log as `build.log` file
+  6. create subdirectory `build_res` and move here all files from parsed `OUT_DIR` meta field
+  7. add name of build directory to the `~/.festral/fresh_builds` file and update `~/.festral/build.cache` file by new out files.
+
 --------------
 ### festral weles
 
@@ -146,7 +156,8 @@ Available options:
                            list information about this job. (default: -1)
   -d,--when-done TIME_LIMIT
                            Wait until queried job done before doing rest and
-                           until TIME_LIMIT is not is now wasted.
+                           until TIME_LIMIT is not is now wasted. Job is
+                           cancelled after time is out.
   -f,--filename FILENAME   Give filename to the program. What to to with it
                            depends on other selected options.
   -s,--start-job           Start new job passing to the Weles yaml file set by
@@ -163,7 +174,25 @@ Available options:
 ------------------
 ### festral test
 
-`festral weles` is used for runnig tests on Weles from existing builds and and put it to the directory defined in ~/.festral.conf configuration file.
+`festral test` is used for runnig tests on Weles from existing builds and and put it to the directory defined in `~/.festral.conf` configuration file.
+
+It has syntax:
+
+```
+Usage: festral test (-r|--run-test TEST_CONFIG_FILE) [-b|--with-build BUILD_DIR]
+  Create jobs on remote Weles server with tests defined in .yaml files and
+  process responces with results of its execution.
+
+Available options:
+  -r,--run-test TEST_CONFIG_FILE
+                           Run tests listed in TEST_CONFIG_FILE for specified by
+                           -f option build directory. Run for all targets listed
+                           in '~/.fresh_builds' file if no target specified.
+  -b,--with-build BUILD_DIR
+                           Run test only for this build if defined
+  -h,--help                Show this help text
+
+```
 
 It is configured by  file passed with -r parameter which is in JSON format with fields as follow:
 
@@ -219,7 +248,31 @@ Xtest,25,regression_1010.5,TEST_PASS,TEST_PASS,TEST_PASS,0.0
 ###########################################################
 ```
 
-Example of the bash script for parsing XTest is at Examples/own_xtest_parser.sh
+Example of the bash script for parsing XTest is at `Examples/own_xtest_parser.sh`
+
+When you run `festral test` command, it will do actions:
+
+  1. read every record in `TEST_CONFIG_FILE` and go to the properly build directory
+  2. read YAML template specified in config for this test and make really YAML file from it: find existing packages listed in `~/.festral/build.cache`
+  and replace templated names with it, get field `webPageIP` form `~/.festral.conf` file and create uri for downloading packages from this IP using format:
+  
+  http://`webPageIP`/secosci/download.php?file=`resolved_package_name`&build=`resolved_build_dir_name`/build_res
+  
+  so there is `download.php` script must exists under `webPageIP` adress and it must accept parameters `file` and `build`.
+  
+  3. send this yaml for the Weles server and wait for an 1 hour for test finishes, if not, cancel this mjob and run next test
+  4. if test finished, pass output of test to the specified in config parser. 
+  
+  **If it is built-in parser,** only `tct-test-ta.log` is passed for **TCT** parser
+  and only `xtest.log` is passed for **XTest** parser, So **YOU MUST REDIRECT THESE TEST OUTPUTS TO THE RIGHT FILES IN YOUR YAML FILE**.
+  
+  If you yse your own parser, all output files from server will be passed to the test results parser
+  
+  5. create directory named as `buildCommitSha1Hash_testTime` in the directory specified in `testLogDir` field of the `~/.festral.conf` file
+  and put here files: `build.log` - meta file from tested build; `meta.txt` - extended meta file with additional informations about testing
+  `report.txt` - parsed test results; `tf.log` - whole output of the test process
+  
+  6. put names of new test logs to the `~/.festral/fresh_tests`
 
 -----------------
 ### Test cases description
