@@ -140,11 +140,7 @@ runTests config target = do
 -- runTest build_name path_to_config_fiile
 runTest :: String -> TestConfig -> IO (TestConfig, [(String, String)])
 runTest target testConf = do
-
-    config <- configFile
-    confStr <- LB.readFile config
-    let Just config = decode confStr :: Maybe TestRunnerConfig
-
+    config <- getAppConfig
     metaStr <- readFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let meta = readMeta metaStr
     let yamlPath = yaml testConf

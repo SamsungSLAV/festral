@@ -53,9 +53,7 @@ instance Show Job where
                 ++ show i ++ "\n}\n"
 
 welesAddr = do
-    conf <- configFile
-    confStr <- LB.readFile conf
-    let Just config = decode confStr :: Maybe TestRunnerConfig
+    config <- getAppConfig
     return (welesIP config, welesPort config, welesFilePort config)
 
 -- |Get list of all jobs on server

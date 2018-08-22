@@ -3,7 +3,6 @@ module Festral.Files (
     freshTests,
     buildCache,
     configFile,
-    progVersion,
     getAppConfig
 ) where
 
@@ -11,8 +10,6 @@ import System.Directory
 import qualified Data.ByteString.Lazy as LB
 import Data.Aeson
 import Festral.Tests.Config
-
-progVersion = "0.6.0 Alpha"
 
 freshBuilds = do
     x <- getHomeDirectory
