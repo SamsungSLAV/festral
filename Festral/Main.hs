@@ -55,7 +55,7 @@ parseOptsCmd = Cmd <$> opts
 opts :: Parser Command
 opts = hsubparser
     ( command "build" (info buildopts (progDesc "Build all repositories for all branches described in configuration file"))
-    <>command "weles" (info welesopts (progDesc "Allow to ude Weles API for accessing and managing Weles's jobs by hands."))
+    <>command "weles" (info welesopts (progDesc "Allow to use Weles API for accessing and managing Weles's jobs by hands."))
     <>command "test" (info testCtl (progDesc "Create jobs on remote Weles server with tests defined in .yaml files and process responces with results of its execution."))
     )
 
@@ -110,7 +110,7 @@ welesopts = Weles
         <>short 'd'
         <>metavar "TIME_LIMIT"
         <>value 0
-        <>help  "Wait until queried job done before doing rest and until TIME_LIMIT is not is now wasted." )
+        <>help  "Wait until queried job done before doing rest and until TIME_LIMIT is not is now wasted. Job is cancelled after time is out." )
     <*> strOption
         ( long  "filename"
         <>short 'f'
