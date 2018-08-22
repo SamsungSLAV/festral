@@ -74,10 +74,7 @@ color _ = ""
 -- |Gets name of the build (sha1_time) and returns its build data as (repository name, branch name, build status)
 buildSummary :: String -> IO (String, String, String, String)
 buildSummary dir = do
-    config <- configFile
-    confStr <- LB.readFile config
-    let Just config = decode confStr :: Maybe TestRunnerConfig
-
+    config <- getAppConfig
     meta <- fromMetaFile $ buildLogDir config ++ "/" ++ dir ++ "/meta.txt"
     let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=build&hash=" ++ hash meta ++ "&time=" ++ buildTime meta
     return (repoName meta, branch meta, status meta, link)
@@ -85,13 +82,16 @@ buildSummary dir = do
 -- |Gets name of the test result (sha1_time) and returns its build data as (repository name, branch name, test name, passed tests/ all tests)
 testSummary :: String -> IO (String, String, String, String, String)
 testSummary dir = do
-    config <- configFile
-    confStr <- LB.readFile config
-    let Just config = decode confStr :: Maybe TestRunnerConfig
-
+    config <- getAppConfig
     meta' <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
     let meta = metaData meta'
-    report <- readFile $ testLogDir config ++ "/" ++ dir ++ "/report.txt"
+
+    let reportPath = testLogDir config ++ "/" ++ dir ++ "/report.txt"
+    reportExists <- doesFileExist reportPath
+
+    report <- if reportExists
+                then readFile reportPath
+                else return ""
     let tests = parseTestRes $ splitWhen (isInfixOf "###############") $ splitOn "\n" report
     let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
     let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=test&hash=" ++ hash meta ++ "&time=" ++ testTime meta'

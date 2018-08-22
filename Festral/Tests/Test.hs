@@ -40,9 +40,10 @@ performForallNewBuilds conf list = do
 performTestWithConfig :: FilePath -> String -> IO ()
 performTestWithConfig confPath target = do
     confStr <- LB.readFile confPath
-    let Just config = decode confStr :: Maybe TestRunnerConfig
+    let Just config = decode confStr :: Maybe [TestConfig]
+    appConfig <- getAppConfig
     tests <- runTests config target
-    mapM_ (\ (testConf,testOut) -> parseTest testConf testOut (buildLogDir config ++ "/" ++ target) (testLogDir config)) tests
+    mapM_ (\ (testConf,testOut) -> parseTest testConf testOut (buildLogDir appConfig ++ "/" ++ target) (testLogDir appConfig)) tests
     where
         getConfig [] = TestConfig "" "" ""
         getConfig (x:_) = x
@@ -97,8 +98,8 @@ parseTest' writer config outs buildDir outDir = do
     toFile meta (outDirName ++ "/build.log")
 
     writer config outs buildDir outDirName
-    writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) -> 
-                                             "\n------------------ Begin of " ++ n ++ " ------------------\n" 
+    writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) ->
+                                             "\n------------------ Begin of " ++ n ++ " ------------------\n"
                                             ++ c ++ "\n"
                                             ++ "------------------ End of " ++ n ++ "   ------------------\n") outs)
 
@@ -125,9 +126,10 @@ getParser "XTest" testRes = do
     p <- fromWelesFiles testRes "xtest.log"
     return $ parseXTest p
 
-runTests :: TestRunnerConfig -> String -> IO [(TestConfig, [(String, String)])]
+runTests :: [TestConfig] -> String -> IO [(TestConfig, [(String, String)])]
 runTests config target = do
-    metaStr <- readFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
+    appConfig <- getAppConfig
+    metaStr <- readFile $ (buildLogDir appConfig) ++ "/" ++ target ++ "/meta.txt"
     let meta = readMeta metaStr
     let configs = filterConf config meta
 
@@ -138,7 +140,7 @@ runTests config target = do
 -- runTest build_name path_to_config_fiile
 runTest :: String -> TestConfig -> IO (TestConfig, [(String, String)])
 runTest target testConf = do
-    
+
     config <- configFile
     confStr <- LB.readFile config
     let Just config = decode confStr :: Maybe TestRunnerConfig
@@ -197,7 +199,7 @@ runTest target testConf = do
         yamlTemplater config out outDir cache (RPMInstallCurrent pkg) = yamlTemplaterRpm (yamlTemplater config out outDir cache (URI pkg)) pkg
         yamlTemplater config out outDir cache (RPMInstallLatest pkg) = yamlTemplaterRpm (yamlTemplater config out outDir cache (Latest_URI pkg)) pkg
 
-        yamlTemplaterRpm  uri package = 
+        yamlTemplaterRpm  uri package =
                "- push:\n"
             ++ "                  " ++ uri ++ "\n"
             ++ "                  dest: '/tmp/" ++ rpmName ++ "'\n"
@@ -207,7 +209,7 @@ runTest target testConf = do
             where
                 rpmName = package ++ ".rpm"
 
-filterConf config meta = filter (\x -> repo x == (repoName meta)) $ yamls config
+filterConf config meta = filter (\x -> repo x == (repoName meta)) config
 
 dirDoesntExists :: SomeException -> IO [FilePath]
 dirDoesntExists ex = putStrLn (show ex) >> return []

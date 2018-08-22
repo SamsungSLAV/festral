@@ -4,18 +4,5 @@
     "welesIP" : "127.0.0.1",
     "welesPort" : "5010",
     "welesFilePort" : "8888",
-    "webPageIP" : "127.0.0.1",
-    "yamls" : [
-        {
-            "repo" : "tct-test-ta",
-            "name" : "TCT TA test",
-            "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml",
-            "parser" : "TCT"
-        },
-        {
-            "repo" : "gpapi-tests",
-            "yaml" : "/home/u.harbuz/Documents/scripts/weles/tf.yml",
-            "parser" : "cat"
-        }
-    ]
+    "webPageIP" : "127.0.0.1"
 }

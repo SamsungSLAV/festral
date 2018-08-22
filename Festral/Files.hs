@@ -3,12 +3,16 @@ module Festral.Files (
     freshTests,
     buildCache,
     configFile,
-    progVersion
+    progVersion,
+    getAppConfig
 ) where
 
 import System.Directory
+import qualified Data.ByteString.Lazy as LB
+import Data.Aeson
+import Festral.Tests.Config
 
-progVersion = "0.5.5"
+progVersion = "0.6.0 Alpha"
 
 freshBuilds = do
     x <- getHomeDirectory
@@ -28,3 +32,9 @@ freshTests = do
 configFile = do
     home <- getHomeDirectory
     return $ home ++ "/.festral.conf"
+
+getAppConfig = do
+    confPath <- configFile
+    confStr <- LB.readFile confPath
+    let Just config = decode confStr :: Maybe TestRunnerConfig
+    return config

@@ -28,7 +28,7 @@ instance FromJSON TestConfig where
         parser <- o .: "parser"
         name <- o .:? "name" .!= "unknown"
         return TestConfig{..}
-        
+
 instance ToJSON TestConfig
 
 -- |Describes basic festral-weles application configuration.
