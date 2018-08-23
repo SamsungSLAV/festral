@@ -37,7 +37,7 @@ import Festral.Builder.Meta
 import Festral.Builder.OwnParser
 import Festral.Builder.GBSParser
 import Data.Aeson
-import GHC.Generics
+import qualified GHC.Generics as G
 import qualified Data.ByteString.Lazy as LB
 import System.Process
 import System.IO
@@ -58,7 +58,7 @@ data Build = Build
     , buildRepo         :: String -- ^ Remote adress of the repository, used for first cloning project
     , buildResParser    :: String -- ^ Parser of the 'buildCmd' output, it can be "GBS" for using standard GBS parser or name of uour own binary
     , branches          :: [String] -- ^ List of branch names to be built
-    } deriving (Show, Generic)
+    } deriving (Show, G.Generic)
 
 instance FromJSON Build
 instance ToJSON Build
