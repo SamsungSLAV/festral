@@ -14,7 +14,7 @@ import Festral.Builder.Reporter
 import Festral.Builder.Builder
 import Data.Maybe
 
-progVersion = "0.6.0"
+progVersion = "0.6.1"
 
 main = runCmd =<< execParser 
     (info (helper <*> parseOptsCmd <|> prgVersion <|> report) 

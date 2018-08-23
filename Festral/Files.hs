@@ -10,6 +10,7 @@ import System.Directory
 import qualified Data.ByteString.Lazy as LB
 import Data.Aeson
 import Festral.Tests.Config
+import Control.Monad
 
 freshBuilds = do
     x <- getHomeDirectory
@@ -32,6 +33,8 @@ configFile = do
 
 getAppConfig = do
     confPath <- configFile
+    exists <- doesFileExist confPath
+    when (not exists) $ LB.writeFile confPath $ encode (TestRunnerConfig "/tmp/build" "/tmp/test" "127.0.0.1" "6666" "6666" "127.0.0.1")
     confStr <- LB.readFile confPath
     let Just config = decode confStr :: Maybe TestRunnerConfig
     return config
