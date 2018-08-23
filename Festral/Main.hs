@@ -13,8 +13,8 @@ import Festral.Files
 import Festral.Builder.Reporter
 import Festral.Builder.Builder
 import Data.Maybe
-
-progVersion = "0.6.1"
+import Paths_Festral (version)
+import Data.Version (showVersion)
 
 main = runCmd =<< execParser 
     (info (helper <*> parseOptsCmd <|> prgVersion <|> report) 
@@ -150,7 +150,7 @@ testCtl = TestControl
 
 runCmd :: Options -> IO ()
 
-runCmd (Version True) = putStrLn $ "festral-weles v." ++ progVersion
+runCmd (Version True) = putStrLn $ "festral-weles v." ++ showVersion version
 runCmd (Report report) = do
     html <- reportHTML
     writeFile report html
