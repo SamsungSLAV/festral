@@ -16,6 +16,7 @@ import Data.Maybe
 import Paths_Festral (version)
 import Data.Version (showVersion)
 import Festral.WWW.Server
+import Festral.Config
 
 main = runCmd =<< execParser 
     (info (helper <*> parseOptsCmd <|> prgVersion <|> report) 
@@ -79,6 +80,7 @@ buildopts = Build
         (  long     "out"
         <> metavar  "DIRECTORY"
         <> short    'o'
+        <> value    ""
         <> help     "Output root directory" )
 
 report :: Parser Options
@@ -194,6 +196,7 @@ subCmd (TestControl conf "") = do
 
 subCmd (TestControl config fname) = performTestWithConfig config fname
 
+subCmd (Build config repos "") = getAppConfig >>= (\x -> subCmd (Build config repos (buildLogDir x)))
 subCmd (Build config repos out) = do
     freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
