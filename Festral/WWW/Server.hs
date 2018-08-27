@@ -25,17 +25,20 @@ runServerOnPort port = do
 fileServer req respond = do
     config <- getAppConfig
     let opts = parseQuery $ show $ rawQueryString req
-    reports <- listDirectory $ reportsDir config
+    sendRespond opts config respond $ pathInfo req
+
+sendRespond opts config r ["secosci", "download"] = r $ download opts config
+sendRespond opts config r ["secosci", "download.php"] = r $ download opts config
+sendRespond opts config r ["secosci", "getlog.php"] = sendRespond opts config r ["secosci", "getlog"]
+sendRespond opts config r ["secosci", "getlog"] = do
     log <- readLog opts config
-    respond $ case pathInfo req of
-        ["secosci", "download"]     -> download opts config
-        ["secosci", "download.php"] -> download opts config
-        ["secosci", "getlog"]       -> getlog log
-        ["secosci", "getlog.php"]   -> getlog log
-        ["secosci", "reports"]      -> listReports reports config opts
-        ["secosci", "reports.php"]  -> listReports reports config opts
-        x -> index x
- 
+    r $ getlog log
+sendRespond opts config r ["secosci", "reports.php"] = sendRespond opts config r ["secosci", "reports"]
+sendRespond opts config r ["secosci", "reports"] = do
+    reports <- listDirectory $ reportsDir config
+    r $ listReports reports config opts
+sendRespond _ _ r x = r $ index x
+
 download opts config = do
     let dir = buildLogDir config
     let build_hash = findField "build" opts
