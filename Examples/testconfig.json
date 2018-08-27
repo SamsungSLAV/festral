@@ -2,12 +2,12 @@
         {
             "repo" : "tct-test-ta",
             "name" : "TCT TA test",
-            "yaml" : "/home/u.harbuz/Documents/scripts/weles/tct.yml",
+            "yaml" : "~/haskell/festral/Examples/tct.yml",
             "parser" : "TCT"
         },
         {
             "repo" : "gpapi-tests",
-            "yaml" : "/home/u.harbuz/Documents/scripts/weles/tf.yml",
+            "yaml" : "~/haskell/festral/Examples/tf.yml",
             "parser" : "cat"
         }
 ]

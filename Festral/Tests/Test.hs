@@ -85,7 +85,7 @@ parseTest' writer config outs buildDir outDir = do
     tm <- timeStamp
 
     let pathPrefix = outDir ++ "/" ++ hash meta
-    time <- catch ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
+    time <- catch ((createDirectoryIfMissing True $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
 
     let testMeta = MetaTest meta tester tester time (name config)
 
