@@ -9,7 +9,7 @@ module Festral.Files (
 import System.Directory
 import qualified Data.ByteString.Lazy as LB
 import Data.Aeson
-import Festral.Tests.Config
+import Festral.Config
 import Control.Monad
 
 freshBuilds = do

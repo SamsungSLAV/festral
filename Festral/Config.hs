@@ -4,7 +4,7 @@
 
 -- |This module describes Festral's configuration file structure and serialization methods.
 -- Configuration file is just JSON file with fields as in 'TestRunnerConfig'.
-module Festral.Tests.Config (
+module Festral.Config (
     TestConfig (..),
     TestRunnerConfig (..)
 ) where

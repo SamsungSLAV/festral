@@ -7,7 +7,7 @@ import System.Directory
 import Data.List.Split
 import Festral.Files
 import Festral.Builder.Meta
-import Festral.Tests.Config
+import Festral.Config
 import qualified Data.ByteString.Lazy as LB
 import Data.Aeson
 import Data.List

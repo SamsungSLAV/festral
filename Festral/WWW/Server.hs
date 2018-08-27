@@ -12,7 +12,7 @@ import Blaze.ByteString.Builder (copyByteString)
 import Data.Monoid
 import Festral.Builder.Meta
 import Festral.Files
-import Festral.Tests.Config
+import Festral.Config
 import Data.List.Split
 import qualified Data.ByteString.UTF8 as BSU
 import System.Directory

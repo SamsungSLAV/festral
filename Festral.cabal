@@ -34,7 +34,7 @@ Library
        Festral.Builder.OwnParser,
        Festral.Tests.TestParser,
        Festral.Tests.Test,
-       Festral.Tests.Config,
+       Festral.Config,
        Festral.Files,
        Festral.Builder.Reporter
 

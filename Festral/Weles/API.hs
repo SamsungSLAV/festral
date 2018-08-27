@@ -28,7 +28,7 @@ import Data.List.Split
 import Data.List
 import Control.Monad
 import Data.Maybe
-import Festral.Tests.Config
+import Festral.Config
 import System.Directory
 import Festral.Files
 

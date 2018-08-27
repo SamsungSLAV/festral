@@ -21,7 +21,7 @@ import Festral.Weles.YamlTemplate
 import Data.List
 import Control.Exception
 import System.IO.Error
-import Festral.Tests.Config
+import Festral.Config
 import System.Process
 import System.IO
 import qualified Control.Monad.Parallel as Par
