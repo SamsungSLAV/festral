@@ -8,7 +8,8 @@ module Festral.Builder.Meta (
     toFile,
     show,
     readMeta,
-    fromMetaFile
+    fromMetaFile,
+    findField
 ) where
 
 import System.IO

@@ -15,6 +15,7 @@ import Festral.Builder.Builder
 import Data.Maybe
 import Paths_Festral (version)
 import Data.Version (showVersion)
+import Festral.WWW.Server
 
 main = runCmd =<< execParser 
     (info (helper <*> parseOptsCmd <|> prgVersion <|> report) 
@@ -41,6 +42,8 @@ data Command
         { perfTest  :: FilePath
         , buildPath :: FilePath
         }
+    | Server
+        { serverPort :: Int }
 
 data Options
     = Cmd Command
@@ -57,6 +60,7 @@ opts = hsubparser
     ( command "build" (info buildopts (progDesc "Build all repositories for all branches described in configuration file"))
     <>command "weles" (info welesopts (progDesc "Allow to use Weles API for accessing and managing Weles's jobs by hands."))
     <>command "test" (info testCtl (progDesc "Create jobs on remote Weles server with tests defined in .yaml files and process responces with results of its execution."))
+    <>command "server" (info runServer (progDesc "Run local file server for external parts of test process (like remote Weles server) could access needed files such built rpms."))
     )
 
 buildopts :: Parser Command
@@ -79,7 +83,7 @@ buildopts = Build
 
 report :: Parser Options
 report = Report
-    <$> strOption
+    <$> option auto
         (  long     "html-out"
         <> metavar  "DIRECTORY"
         <> help     "Output directory for summary report of the build. Generate report only if this option is specified, otherwise no report will be generated" )
@@ -148,6 +152,15 @@ testCtl = TestControl
         <>value ""
         <>help  "Run test only for this build if defined" )
 
+runServer :: Parser Command
+runServer = Server
+    <$> option auto
+        ( long  "port"
+        <>short 'p'
+        <>metavar "PORT_NUMPER"
+        <>value 8080
+        <>help  "Port of the file server to start on" )
+
 runCmd :: Options -> IO ()
 
 runCmd (Version True) = putStrLn $ "festral-weles v." ++ showVersion version
@@ -192,6 +205,8 @@ subCmd (Build config repos out) = do
             mapM_ (\x -> build x repos out) builder
         else
             putStrLn "ERROR: Check your configuration JSON: it has bad format."
+
+subCmd (Server port) = runServerOnPort port
 
 justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
 justPutStrLn errMsg x

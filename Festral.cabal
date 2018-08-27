@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.6.3
+Version:    0.7.0
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -23,7 +23,8 @@ Library
         directory >= 1.2.3.0,
         unix,
         monad-parallel,
-        filepath
+        filepath,
+        wai, warp, http-types, blaze-builder, utf8-string
     Exposed-modules:
        Festral.Weles.API,
        Festral.Weles.YamlTemplate,
