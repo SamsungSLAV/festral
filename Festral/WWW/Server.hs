@@ -14,6 +14,7 @@ import Festral.Builder.Meta
 import Festral.Files
 import Festral.Config
 import Data.List.Split
+import Data.List
 import qualified Data.ByteString.UTF8 as BSU
 import System.Directory
  
@@ -51,7 +52,7 @@ listReports reports config opts = do
 
     where
         report "" = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
-            $ map (\x -> BSU.fromString $ "<p><a href=\"reports?file="++ reportsDir config ++ "/" ++ x ++"\">"++ x ++"</a><!p>") reports
+            $ map (\x -> BSU.fromString $ "<a href=\"reports?file="++ reportsDir config ++ "/" ++ x ++"\">"++ x ++"</a><br>") (sort reports)
         report x = responseFile status200 [("Content-Type", "text/html")] x Nothing
 
 getlog opts config = do
