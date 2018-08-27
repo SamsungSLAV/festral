@@ -85,7 +85,7 @@ buildopts = Build
 
 report :: Parser Options
 report = Report
-    <$> option auto
+    <$> strOption
         (  long     "html-out"
         <> metavar  "DIRECTORY"
         <> help     "Output directory for summary report of the build. Generate report only if this option is specified, otherwise no report will be generated" )
