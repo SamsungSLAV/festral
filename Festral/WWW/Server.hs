@@ -26,11 +26,12 @@ fileServer req respond = do
     config <- getAppConfig
     let opts = parseQuery $ show $ rawQueryString req
     reports <- listDirectory $ reportsDir config
+    log <- readLog opts config
     respond $ case pathInfo req of
         ["secosci", "download"]     -> download opts config
         ["secosci", "download.php"] -> download opts config
-        ["secosci", "getlog"]       -> getlog opts config
-        ["secosci", "getlog.php"]   -> getlog opts config
+        ["secosci", "getlog"]       -> getlog log
+        ["secosci", "getlog.php"]   -> getlog log
         ["secosci", "reports"]      -> listReports reports config opts
         ["secosci", "reports.php"]  -> listReports reports config opts
         x -> index x
@@ -55,21 +56,21 @@ listReports reports config opts = do
             $ map (\x -> BSU.fromString $ "<a href=\"reports?file="++ reportsDir config ++ "/" ++ x ++"\">"++ x ++"</a><br>") (sort reports)
         report x = responseFile status200 [("Content-Type", "text/html")] x Nothing
 
-getlog opts config = do
+readLog opts config = do
     let logtype = findField "type" opts
     let (dir, fname) = resolveDir logtype
     let hash = findField "hash" opts
     let time = findField "time" opts
-    responseFile status200
-        [("Content-Type", "text/html")]
-        (dir ++ "/" ++ hash ++ "_" ++ time ++ "/" ++ fname)
-        Nothing
-
+    readFile (dir ++ "/" ++ hash ++ "_" ++ time ++ "/" ++ fname)
     where
         -- return pair (directory to the log/build from config, logfile name dependent on type of log)
         resolveDir "build" = (buildLogDir config, "build.log")
         resolveDir "test" = (testLogDir config, "tf.log")
         resolveDir "" = ("","")
+    
+getlog log = responseBuilder status200
+        [("Content-Type", "text/html")] $
+        mconcat $ map copyByteString ["<pre>", BSU.fromString log, "</pre>"]
  
 index x = responseBuilder status404 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
     [ "<p>This page does not exists ", BSU.fromString $ show x, "!</p>"]
