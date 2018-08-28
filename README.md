@@ -8,6 +8,7 @@ Festral consists of some small utilities:
 * `festral build` - utility for building repositories. It takes simple json file with information about what to build, how to build and what branches to build and just do it.
 * `festral weles` - utility for communication with Weles tests server.
 * `festral test` - utility for performing tests described by yaml files on remote Weles server and recieving results of the tests.
+* `festral server` - simple built-in web server for sharing built files and logs.
 
 ----------
 ### How to build
@@ -57,7 +58,8 @@ Also since **v0.6.0** version whole program is configured by file `~/.festral.co
     "welesIP" : "127.0.0.1 - ip address of the Weles server",
     "webPageIP" : "127.0.0.1 - ip of the web page SecosCI located at",
     "welesPort" : "port of the Weles API",
-    "welesFilePort" : "Port where output files of the Weles are"
+    "welesFilePort" : "Port where output files of the Weles are",
+    "reportsDir" : "Directory where reports for web page are located."
 }
 ```
 This configuration file was separated from tests descriptions (see `festral test` section).
@@ -273,6 +275,23 @@ When you run `festral test` command, it will do actions:
   `report.txt` - parsed test results; `tf.log` - whole output of the test process
   
   6. put names of new test logs to the `~/.festral/fresh_tests`
+
+----------------
+### festral server
+This commant is used for setting up simple web server which can be used for sharing built files with remote Weles server of just show logs and reports in the web browser.
+
+The syntax of this command is simple:
+```
+festral server -p PORT_NUMBER
+```
+where PORT_NUMBER is just number of port where server will listen to.
+
+Web pages of this server have API as follow:
+
+  * `/secosci/reports[.php]` - page with listed reports files
+  * `/secosci/reports[.php]?file=filename` - show specified by filename report
+  * `/secosci/getlog[.php]?type=type&hash=hash&time=time` - show log specified by type: it can be `build` for build log and `test` for test log.Log also must be specified by hash and time of the build/test.
+  * `/secosci/download[.php]?file=filename&build=build_dir` - link for downloading of the file with `filename` from the build directory specified by `build_dir` parameter
 
 -----------------
 ### Test cases description
