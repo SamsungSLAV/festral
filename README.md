@@ -332,7 +332,7 @@ This package is developed for using with [Weles API for device farm](https://git
 It uses API of `SecosCI` for generated output (except HTML reports) and remote device farm for performing tests.
 
 
-![Graphics scheme of the CI system modules](Docs/general_scheme.png =250x "CI modules").
+![Graphics scheme of the CI system modules](Docs/general_scheme.png "CI modules").
 
 
 The typical usage example for automated running tests with `cron`:
