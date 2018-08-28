@@ -31,6 +31,7 @@ import Data.Maybe
 import Festral.Config
 import System.Directory
 import Festral.Files
+import Control.Exception
 
 -- |Job datatype describes json job object got from weles
 data Job = Job {
@@ -60,7 +61,10 @@ welesAddr = do
 curlJobs :: IO [Job]
 curlJobs = do
     (ip, port, _) <- welesAddr
-    curlAesonGet (ip ++ ":" ++ port ++ "/api/v1/jobs/")
+    handle badCurl $ curlAesonGet (ip ++ ":" ++ port ++ "/api/v1/jobs/")
+    where
+        badCurl :: CurlAesonException -> IO [Job]
+        badCurl ex = putStrLn (show ex) >> return []
 
 -- |Get job by its ID
 getJob :: Int -> IO (Maybe Job)
