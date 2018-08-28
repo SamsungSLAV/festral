@@ -328,22 +328,19 @@ You can use templated rows in your yamls according below syntax:
 
 ### How it works
 
-This package is developed for using with [Weles API for device farm](https://git.tizen.org/cgit/tools/weles/) and modified [SecosCI system](http://127.0.0.1:81/u.harbuz/festral/tree/master).
+This package is developed for using with [Weles API for device farm](https://git.tizen.org/cgit/tools/weles/) and modified [SecosCI system](http://127.0.0.1:81/u.harbuz/festral/tree/master) (optional).
 It uses API of `SecosCI` for generated output (except HTML reports) and remote device farm for performing tests.
 
 
-![Graphics scheme of the CI system modules](Docs/general_scheme.png "CI modules").
+![Graphics scheme of the CI system modules](Docs/general_scheme.png "CI modules" =250x).
 
 
 The typical usage example for automated running tests with `cron`:
 
 ```
-
-0 21 * * * ./bin/festral-build -c /home/secosci/bin/festral-build.config.json -r /home/secosci/secos-repo/ -o /home/secosci/build-log/
-0 0 * * * ./bin/festral-weles -r
-0 1 * * * ./bin/festral-build --html-out /home/secosci/www/reports/$(date +\%Y\%m\%d\%H\%M).html
-0 1 * * * ./secos-repo/secosci/sql/import_build.sh
-0 1 * * * ./secos-repo/secosci/sql/import_test.sh
+0 21 * * * ./bin/festral build -c /home/secosci/bin/festral-build.config.json -r /home/secosci/secos-repo/
+0 0 * * * ./bin/festral test -r /home/secosci/bin/festral-test.config.json
+0 2 * * * ./bin/festral --html-out /home/secosci/www/reports/$(date +\%Y\%m\%d\%H\%M).html
 ```
 
 Steps which are executed:
@@ -351,8 +348,4 @@ Steps which are executed:
 1. building repositories listed in `buildconfig.json` by `festral-build`
 2. running tests for new builds on `Weles` by `festral-weles`
 3. generate summary HTML report
-4. import new builds to `secosci` database by `import_build.sh` script
-5. import new tests results to the `secosci` database by `import_test.sh` script
-6. now new builds and results are visible on the [secosci](http://127.0.0.1/secosci/) and new daily report is avaible [at this page](http://127.0.0.1/secosci/reports.php)
-
 
