@@ -85,7 +85,7 @@ parseTest' writer config outs buildDir outDir = do
     tm <- timeStamp
 
     let pathPrefix = outDir ++ "/" ++ hash meta
-    time <- catch ((createDirectoryIfMissing True $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
+    time <- catch ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
 
     let testMeta = MetaTest meta tester tester time (name config)
 
@@ -110,6 +110,9 @@ parseTest' writer config outs buildDir outDir = do
                 threadDelay 1000000 -- wait for 1 second
                 time <- timeStamp
                 catch ((createDirectory $ path ++ "_" ++ time) >> return time) (recreate_dir path)
+            | isDoesNotExistError ex = do
+                time <- timeStamp
+                catch ((createDirectoryIfMissing True $ path ++ "_" ++ time) >> return time) (recreate_dir path)
             | otherwise = (putStrLn $ show ex) >> timeStamp
 
 timeStamp = do
