@@ -44,9 +44,6 @@ performTestWithConfig confPath target = do
     appConfig <- getAppConfig
     tests <- runTests config target
     mapM_ (\ (testConf,testOut) -> parseTest testConf testOut (buildLogDir appConfig ++ "/" ++ target) (testLogDir appConfig)) tests
-    where
-        getConfig [] = TestConfig "" "" ""
-        getConfig (x:_) = x
 
 
 builtInParsers = ["TCT", "XTest"]
@@ -77,6 +74,7 @@ writeWithOwn config outs buildDir outDir = do
         err ex = putStrLn (show ex) >> return ()
 
 
+parseTest' _ _ [] _ _ = return ()
 parseTest' writer config outs buildDir outDir = do
     metaStr <- readFile $ buildDir ++ "/meta.txt"
     let meta = readMeta metaStr

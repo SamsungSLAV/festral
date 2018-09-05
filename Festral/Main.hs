@@ -165,7 +165,7 @@ runServer = Server
 
 runCmd :: Options -> IO ()
 
-runCmd (Version True) = putStrLn $ "festral-weles v." ++ showVersion version
+runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
 runCmd (Report report) = do
     html <- reportHTML
     writeFile report html
