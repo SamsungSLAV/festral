@@ -31,6 +31,10 @@ Now you can build the package. Go to the root directory of the `Festral` sources
 
 ```
  $ sudo apt install libghc-curl-dev
+```
+After installing curl library you can jast run `make` command of maki by hands:
+
+```
  $ cabal install --only-dependencies
  $ runhaskell Setup.hs configure --user
  $ runhaskell Setup.hs build
