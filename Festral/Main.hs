@@ -18,8 +18,8 @@ import Data.Version (showVersion)
 import Festral.WWW.Server
 import Festral.Config
 
-main = runCmd =<< execParser 
-    (info (helper <*> parseOptsCmd <|> prgVersion <|> report) 
+main = runCmd =<< execParser
+    (info (helper <*> parseOptsCmd <|> prgVersion <|> report)
      (progDesc "Festral - unified application for automating of building and testing process")
     )
 
@@ -38,7 +38,7 @@ data Command
         , stdout    :: Bool
         , listFile  :: Bool
         , cancel    :: Bool
-        } 
+        }
     | TestControl
         { perfTest  :: FilePath
         , buildPath :: FilePath
@@ -49,7 +49,10 @@ data Command
 data Options
     = Cmd Command
     | Version Bool
-    | Report FilePath
+    | Report
+        { out   :: FilePath
+        , rep   :: Bool
+        }
     | None
 
 
@@ -86,9 +89,14 @@ buildopts = Build
 report :: Parser Options
 report = Report
     <$> strOption
-        (  long     "html-out"
-        <> metavar  "DIRECTORY"
+        (  long     "out"
+        <> metavar  "FILENAME"
+        <> short    'o'
+        <> value    ""
         <> help     "Output directory for summary report of the build. Generate report only if this option is specified, otherwise no report will be generated" )
+    <*> switch
+        (  long     "html-report"
+        <> help     "Generate html report to the stdout or to the file if out option is specified" )
 
 prgVersion :: Parser Options
 prgVersion = Version
@@ -166,7 +174,8 @@ runServer = Server
 runCmd :: Options -> IO ()
 
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
-runCmd (Report report) = do
+runCmd (Report "" True) = putStrLn =<< reportHTML
+runCmd (Report report True) = do
     html <- reportHTML
     writeFile report html
 runCmd (Cmd x) = subCmd x
