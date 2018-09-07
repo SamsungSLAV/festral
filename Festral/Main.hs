@@ -10,7 +10,7 @@ import Options.Applicative
 import Data.Semigroup ((<>))
 import Festral.Tests.Test
 import Festral.Files
-import Festral.Builder.Reporter
+import Festral.Reporter
 import Festral.Builder.Builder
 import Data.Maybe
 import Paths_Festral (version)
@@ -28,6 +28,7 @@ data Command
         { config    :: String
         , reposPath :: String
         , outDir    :: String
+        , noClean   :: Bool
         }
     | Weles
         { all       :: Bool
@@ -85,6 +86,9 @@ buildopts = Build
         <> short    'o'
         <> value    ""
         <> help     "Output root directory" )
+    <*> switch
+        ( long      "no-clean-builds"
+        <>help      "Do not clean output of built repositories. This option is needed if some repositories requires packages from other repositories were built before." )
 
 report :: Parser Options
 report = Report
@@ -205,8 +209,8 @@ subCmd (TestControl conf "") = do
 
 subCmd (TestControl config fname) = performTestWithConfig config fname
 
-subCmd (Build config repos "") = getAppConfig >>= (\x -> subCmd (Build config repos (buildLogDir x)))
-subCmd (Build config repos out) = do
+subCmd (Build config repos "" noClean) = getAppConfig >>= (\x -> subCmd (Build config repos (buildLogDir x) noClean))
+subCmd (Build config repos out noClean) = do
     freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
 
@@ -214,7 +218,7 @@ subCmd (Build config repos out) = do
     if isJust builder'
         then do
             let Just builder = builder'
-            mapM_ (\x -> build x repos out) builder
+            mapM_ (\x -> build x (BuildOptions noClean) repos out) builder
         else
             putStrLn "ERROR: Check your configuration JSON: it has bad format."
 

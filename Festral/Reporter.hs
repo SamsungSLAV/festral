@@ -1,4 +1,4 @@
-module Festral.Builder.Reporter (
+module Festral.Reporter (
     reportHTML
 ) where
 

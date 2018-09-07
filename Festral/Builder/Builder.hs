@@ -30,7 +30,8 @@
 -- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes meta file to the 'stdout'
 module Festral.Builder.Builder (
     builderFromFile,
-    build
+    build,
+    BuildOptions (..)
 ) where
 
 import Festral.Builder.Meta
@@ -50,6 +51,7 @@ import Data.List
 import Data.List.Split
 import Control.Monad (when)
 import Festral.Files
+import System.File.Tree (getDirectory', copyTo_)
 
 -- |Build structure which represents config json format.
 data Build = Build
@@ -62,6 +64,9 @@ data Build = Build
 
 instance FromJSON Build
 instance ToJSON Build
+
+-- |Options for build process
+data BuildOptions = BuildOptions { noCleanRes :: Bool}
 
 data Parser a = GBS GBSParser | Own OwnParser deriving Show
 instance MetaParser (Parser a) where
@@ -84,8 +89,8 @@ builderFromFile fname = do
 
 -- |Build target located in the first path + build name and put meta file to the directory tree with given in seconf path root directory
 -- build buildObject rood_dir_of_project root_dir_of_output_files
-build :: Build -> FilePath -> FilePath -> IO ()
-build build wdir outdir = do
+build :: Build -> BuildOptions -> FilePath -> FilePath -> IO ()
+build build opts wdir outdir = do
     cloneRepo wdir build
     let srcDir = wdir ++ "/" ++ buildName build
     mapM_ (\x -> handle handler $ withCurrentDirectory srcDir (buildOne srcDir x)) (branches build)
@@ -99,7 +104,10 @@ build build wdir outdir = do
             let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
             createDirectoryIfMissing True outDirName
             toFile meta (outDirName ++ "/meta.txt")
-            catch (renameDirectory (outDir meta) (outDirName ++ "/build_res")) handler
+
+            let getBuildOut = if noCleanRes opts then copyDirectory else renameDirectory
+
+            catch (getBuildOut (outDir meta) (outDirName ++ "/build_res")) handler
             catch (renameFile logfile (outDirName ++ "/build.log")) (copyHandler logfile (outDirName ++ "/build.log"))
             bLogFile <- freshBuilds
             appendFile bLogFile (hash meta ++ "_" ++ buildTime meta ++ "\n")
@@ -175,3 +183,5 @@ buildWithLog fname cmd wdir = do
     where
         handler :: SomeException -> IO ()
         handler ex = putStrLn "Build failed"
+
+copyDirectory from to = getDirectory' from >>= copyTo_ to

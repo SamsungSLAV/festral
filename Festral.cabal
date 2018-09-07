@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.7.10
+Version:    0.7.11
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -24,7 +24,8 @@ Library
         unix,
         monad-parallel,
         filepath,
-        wai, warp, http-types, blaze-builder, utf8-string
+        wai, warp, http-types, blaze-builder, utf8-string,
+        filesystem-trees
     Exposed-modules:
        Festral.Weles.API,
        Festral.Weles.YamlTemplate,
@@ -36,7 +37,7 @@ Library
        Festral.Tests.Test,
        Festral.Config,
        Festral.Files,
-       Festral.Builder.Reporter
+       Festral.Reporter
 
 Executable festral
     Main-Is:        Festral/Main.hs
