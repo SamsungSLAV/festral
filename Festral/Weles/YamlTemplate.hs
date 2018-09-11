@@ -9,18 +9,21 @@ import Data.List
 
 -- |Type represents types of templated fields of the yaml
 data TemplateType
-    = URI String -- ^Url of the file extracted from its parameter string
-    | Latest_URI String -- ^URI for the latest built package with given name
-    | RPMInstallCurrent String -- ^Install package with given name by rpm from current build
-    | RPMInstallLatest String -- ^Install package with given name by rpm from all builds
+    = URI String                -- ^Url of the file extracted from its parameter string
+    | Latest_URI String         -- ^URI for the latest built package with given name
+    | RPMInstallCurrent String  -- ^Install package with given name by rpm from current build
+    | RPMInstallLatest String   -- ^Install package with given name by rpm from all builds
+    | FileContent FilePath      -- ^Put in this place content of the specified file
 
 -- |Generate yaml file from template using function given as second parameter for resolve templated fields
-generateFromTemplate :: String -> (TemplateType -> String) -> String
-generateFromTemplate yaml extractor = concat $ map (\str -> if isInfixOf "TEMPLATE" str then extract extractor (words str) else str) $ splitOn "##" yaml
+generateFromTemplate :: String -> (TemplateType -> IO String) -> IO String
+generateFromTemplate yaml extractor = do
+    fmap concat $ sequence $ map (\str -> if isInfixOf "TEMPLATE" str then extract extractor (words str) else return str) $ splitOn "##" yaml
 
-extract :: (TemplateType -> String) -> [String] -> String
+extract :: (TemplateType -> IO String) -> [String] -> IO String
 extract extractor ("TEMPLATE_URL":url:_) = extractor (URI url)
 extract extractor ("TEMPLATE_LATEST":url:_) = extractor (Latest_URI url)
 extract extractor ("TEMPLATE_RPM_INSTALL_CURRENT":packagename:_) = extractor (RPMInstallCurrent packagename)
 extract extractor ("TEMPLATE_RPM_INSTALL_LATEST":packagename:_) = extractor (RPMInstallLatest packagename)
-extract _ _ = ""
+extract extractor ("TEMPLATE_FILE":filename:_) = extractor (FileContent filename)
+extract _ _ = return ""

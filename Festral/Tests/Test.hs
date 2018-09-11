@@ -153,7 +153,8 @@ runTest target testConf = do
     yamlTemplate <- catch (readFile yamlPath) fileNotExists
     cachePath <- buildCache
     yamlCache <- catch (readFile cachePath) fileNotExists
-    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") (generateFromTemplate yamlTemplate $ yamlTemplater config rpms buildOutDir yamlCache)
+    generatedYaml <- generateFromTemplate yamlTemplate $ yamlTemplater config rpms buildOutDir yamlCache
+    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") generatedYaml
     jobId <- if status meta == "SUCCEED" && yamlTemplate /= ""
                 then handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
                 else return Nothing
@@ -183,18 +184,25 @@ runTest target testConf = do
     return (testConf, ret')
 
     where
-        yamlTemplater :: TestRunnerConfig -> [String] -> String -> String -> TemplateType -> String
-        yamlTemplater config out outDir cache (URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
+        yamlTemplater :: TestRunnerConfig -> [String] -> String -> String -> TemplateType -> IO String
+        yamlTemplater config out outDir cache (URI url) = return $ "uri: 'http://" ++ webPageIP config ++ "/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
             where
                 rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $ filter(isInfixOf url) $ out
                 (dir:hash:_) = reverse $ splitOn "/" outDir
 
-        yamlTemplater config out outDir cache (Latest_URI url) = "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
+        yamlTemplater config out outDir cache (Latest_URI url) = return $ "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
             where
                 (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
 
-        yamlTemplater config out outDir cache (RPMInstallCurrent pkg) = yamlTemplaterRpm (yamlTemplater config out outDir cache (URI pkg)) pkg
-        yamlTemplater config out outDir cache (RPMInstallLatest pkg) = yamlTemplaterRpm (yamlTemplater config out outDir cache (Latest_URI pkg)) pkg
+        yamlTemplater config out outDir cache (RPMInstallCurrent pkg) = do 
+            uri <- yamlTemplater config out outDir cache (URI pkg)
+            return $ yamlTemplaterRpm uri pkg
+        yamlTemplater config out outDir cache (RPMInstallLatest pkg) = do
+            uri <- yamlTemplater config out outDir cache (Latest_URI pkg)
+            return $ yamlTemplaterRpm uri pkg
+        yamlTemplater _ _ _ _ (FileContent fname) = do
+            content <- handle fileNotExists $ readFile fname
+            return content
 
         yamlTemplaterRpm  uri package =
                "- push:\n"

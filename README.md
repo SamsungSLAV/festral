@@ -327,6 +327,7 @@ You can use templated rows in your yamls according below syntax:
 ```
 
 * `##TEMPLATE_RPM_INSTALL_LATEST packagename##` - same as `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` but use `##TEMPLATE_LATEST name##` instead of `##TEMPLATE_URL name##`.
+* `##TEMPLATE_FILE filename##` - insert into this place content of the file specified by `filename`. It allows separate similar parts of the yamls by files for ommiting repeating of code.
 
 ------------------
 
