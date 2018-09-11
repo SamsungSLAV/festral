@@ -60,12 +60,19 @@ data Options
 parseOptsCmd :: Parser Options
 parseOptsCmd = Cmd <$> opts
 
+testDesc    = "Create jobs on remote Weles server with tests defined in .yaml files and process responces with results of its execution. "
+            ++"Put results of tests to the directory specified in testLogDir of the ~/.festral.conf configuration file"
+buildDesc   = "Build all repositories for all branches described in configuration file. "
+            ++"Put results into the directory specified in the buildLogDir field of the ~/.festral.conf configuration file."
+welesDesc   = "Allow to use Weles API for accessing and managing Weles's jobs by hands."
+serverDesc  = "Run local file server for external parts of test process (like remote Weles server) could access needed files such built rpms."
+
 opts :: Parser Command
 opts = hsubparser
-    ( command "build" (info buildopts (progDesc "Build all repositories for all branches described in configuration file"))
-    <>command "weles" (info welesopts (progDesc "Allow to use Weles API for accessing and managing Weles's jobs by hands."))
-    <>command "test" (info testCtl (progDesc "Create jobs on remote Weles server with tests defined in .yaml files and process responces with results of its execution."))
-    <>command "server" (info runServer (progDesc "Run local file server for external parts of test process (like remote Weles server) could access needed files such built rpms."))
+    ( command "build" (info buildopts (progDesc buildDesc))
+    <>command "weles" (info welesopts (progDesc welesDesc))
+    <>command "test" (info testCtl (progDesc testDesc))
+    <>command "server" (info runServer (progDesc serverDesc))
     )
 
 buildopts :: Parser Command
@@ -128,7 +135,7 @@ welesopts = Weles
         <>short 'd'
         <>metavar "TIME_LIMIT"
         <>value 0
-        <>help  "Wait until queried job done before doing rest and until TIME_LIMIT is not is now wasted. Job is cancelled after time is out." )
+        <>help  "Wait until queried job done before doing rest and until TIME_LIMIT is not left. Job is cancelled after time is out. TIME_LIMIT is in seconds." )
     <*> strOption
         ( long  "filename"
         <>short 'f'
@@ -158,7 +165,7 @@ testCtl = TestControl
         ( long  "run-test"
         <>short 'r'
         <>metavar "TEST_CONFIG_FILE"
-        <>help  "Run tests listed in TEST_CONFIG_FILE for specified by -f option build directory. Run for all targets listed in '~/.fresh_builds' file if no target specified." )
+        <>help  "Run tests listed in TEST_CONFIG_FILE for specified by -f option build directory. Run for all targets listed in '~/.festral/fresh_builds' file if no target specified." )
     <*> strOption
         ( long  "with-build"
         <>short 'b'
