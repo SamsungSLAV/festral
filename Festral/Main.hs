@@ -97,7 +97,7 @@ report = Report
         <> metavar  "FILENAME"
         <> short    'o'
         <> value    ""
-        <> help     "Output directory for summary report of the build. Generate report only if this option is specified, otherwise no report will be generated" )
+        <> help     "Output directory for summary report." )
     <*> switch
         (  long     "html-report"
         <> help     "Generate html report to the stdout or to the file if out option is specified" )
