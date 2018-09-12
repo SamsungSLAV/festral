@@ -20,5 +20,5 @@ do
             echo "tee_test,$cnt,$name,$res,$res,$res,0.0"
             cnt=$[cnt + 1]
         fi
-done <<< "$TEST_LOG"
+done
 echo "###########################################################"

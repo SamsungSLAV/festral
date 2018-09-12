@@ -97,6 +97,7 @@ build build opts wdir outdir = do
     where
         buildOne srcDir branch = do
             (logfile, loghandle) <- openTempFileWithDefaultPermissions "/tmp" "build.log"
+            hSetEncoding loghandle latin1
             prepareRepo srcDir branch
             buildWithLog logfile (buildCmd build) srcDir
             parser <- getParser (buildResParser build) loghandle

@@ -64,7 +64,9 @@ writeWithOwn config outs buildDir outDir = do
     handle err $ do
         fileExists <- doesFileExist $ parser config
         when fileExists $ do
-            (inp, out, err, handle) <- runInteractiveProcess (parser config) ["\"'" ++ (concat $ map (\(n,c) -> c) outs) ++ "'\""] Nothing Nothing
+            (inp, out, err, handle) <- runInteractiveCommand $ parser config
+            forkIO $ hPutStr inp $ concat $ map (\(n,c) -> c) outs
+            log <- hGetContents out
             report <- hGetContents out
             waitForProcess handle
             writeFile (outDir ++ "/report.txt") report

@@ -12,6 +12,7 @@ import Festral.Builder.Meta
 import System.Process
 import Data.List.Split
 import System.IO
+import Control.Concurrent
 
 -- |This data contains parts needed by 'OwnParser'
 data OwnParser = OwnParser
@@ -22,7 +23,9 @@ data OwnParser = OwnParser
 instance MetaParser OwnParser where
     parse :: OwnParser -> IO Meta
     parse parser = do
-        (inp, out, err, _) <- runInteractiveProcess (parserExec parser) [buildLog parser] Nothing Nothing
+        (inp, out, err, parserProc) <- runInteractiveCommand $ parserExec parser
+        forkIO $ hPutStr inp $ buildLog parser
+        waitForProcess parserProc
         log <- hGetContents out
         let meta = lines log
         let [board, buildType, commit, buildTime, toolchain, builder, status,  hash, repoName, branch, outDir] = map last $ map (splitOn "=") meta

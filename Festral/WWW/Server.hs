@@ -16,7 +16,11 @@ import Festral.Config
 import Data.List.Split
 import Data.List
 import qualified Data.ByteString.UTF8 as BSU
+import qualified Data.ByteString.Char8 as BS
+import System.IO
 import System.Directory
+import Festral.WWW.TestGUI
+import Control.Exception
  
 runServerOnPort port = do
     putStrLn $ "Listening on port " ++ show port
@@ -37,7 +41,7 @@ sendRespond opts config r ["secosci", "reports.php"] = sendRespond opts config r
 sendRespond opts config r ["secosci", "reports"] = do
     reports <- listDirectory $ reportsDir config
     r $ listReports reports config opts
-sendRespond _ _ r x = r $ index x
+sendRespond a b c d = indexRespond a b c d
 
 download opts config = do
     let dir = buildLogDir config
@@ -64,7 +68,8 @@ readLog opts config = do
     let (dir, fname) = resolveDir logtype
     let hash = findField "hash" opts
     let time = findField "time" opts
-    readFile (dir ++ "/" ++ hash ++ "_" ++ time ++ "/" ++ fname)
+    let fpath = dir ++ "/" ++ hash ++ "_" ++ time ++ "/" ++ fname
+    BS.unpack <$> BS.readFile fpath
     where
         -- return pair (directory to the log/build from config, logfile name dependent on type of log)
         resolveDir "build" = (buildLogDir config, "build.log")
@@ -75,8 +80,5 @@ getlog log = responseBuilder status200
         [("Content-Type", "text/html")] $
         mconcat $ map copyByteString ["<pre>", BSU.fromString log, "</pre>"]
  
-index x = responseBuilder status404 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
-    [ "<p>This page does not exists ", BSU.fromString $ show x, "!</p>"]
-
 parseQuery :: String -> [[String]]
 parseQuery x = map (splitOn "=") $ filter (not . null) $ splitOneOf "?&\"" x
