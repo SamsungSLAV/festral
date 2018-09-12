@@ -194,7 +194,7 @@ runTest target testConf = do
             where
                 (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
 
-        yamlTemplater config out outDir cache (RPMInstallCurrent pkg) = do 
+        yamlTemplater config out outDir cache (RPMInstallCurrent pkg) = do
             uri <- yamlTemplater config out outDir cache (URI pkg)
             return $ yamlTemplaterRpm uri pkg
         yamlTemplater config out outDir cache (RPMInstallLatest pkg) = do

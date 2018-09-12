@@ -345,7 +345,7 @@ The typical usage example for automated running tests with `cron`:
 ```
 0 21 * * * ./bin/festral build -c /home/secosci/bin/festral-build.config.json -r /home/secosci/secos-repo/
 0 0 * * * ./bin/festral test -r /home/secosci/bin/festral-test.config.json
-0 2 * * * ./bin/festral --html-out /home/secosci/www/reports/$(date +\%Y\%m\%d\%H\%M).html
+0 2 * * * ./bin/festral --html-report -o /home/secosci/www/reports/$(date +\%Y\%m\%d\%H\%M).html
 ```
 
 Steps which are executed:
