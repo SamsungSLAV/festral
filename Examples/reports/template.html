@@ -3,10 +3,14 @@
 <head>
     <title>New test report</title>
     <link type="text/css" rel="stylesheet" href="/secosci/reports?file=main.css"/>
+    <script type="text/javascript" src="/secosci/reports?file=summary.js"></script>
 </head>
 <body>
     <h2>Secos CI summary report for 2018-07-03 14:15:59.651947 CEST</h2>
     <h2>Build summary:</h2>
+    <form>  
+        <input type="button" value="click" onclick="msg()"/>  
+    </form>  
     ##TEMPLATE_BUILD_TABLE##
     <h2>Test summary:</h2>
     ##TEMPLATE_TEST_TABLE##
