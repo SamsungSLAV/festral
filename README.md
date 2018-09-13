@@ -51,7 +51,9 @@ If build finished with success, you will find festral executable in the director
 Since **v.0.6.0** version all subutilities was unified in subcommands in one `festral` command. You can get information about it by typing `festral --help`.
 Avaible commands are: `build`, `weles`, `test`.
 
-There is also option `--html-out FILENAME` available without any command which generates HTML summary report about latest builds and tests and put it into file specified by FILENAME.
+There is also option `--html-report FILENAME` available without any command which generates HTML summary report about latest builds and tests and put it into file specified by FILENAME.
+The simple templating mechanism for HTML is available: you can put in your own HTML file `##TEMPLATE_BUILD_TABLE##` row and it will be replaced by HTML table of build results, and
+`##TEMPLATE_TEST_TABLE##` for inserting table with test results.
 
 Also since **v0.6.0** version whole program is configured by file `~/.festral.conf` formatted as below (see example at `Examples/config.json`):
 
