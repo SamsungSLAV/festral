@@ -1,4 +1,4 @@
-# Festral 
+# Festral
 
 This package is developed and adopted for usage with existing extended secos CI system (http://127.0.0.1:81/u.harbuz/secosci) which consists of PHP page, MySQL database and set of scripts for importing
 data to the database from the formatted in some way files. This package uses set of configuration files for management of repositories building and testing.
@@ -22,7 +22,7 @@ Installation scripts presented below are made on Ubuntu 16.04.
 
 The next step is to install `cabal` package manager which will configure `Festral's` sources, resolve its dependencies, build and install package for you:
 
-``` 
+```
  $ sudo apt install cabal-install
  $ cabal update
  ```
@@ -80,22 +80,22 @@ The `festral build` utility has simple command format:
  $ festral build (-c <config json>) (-r <repositories location>) (-o <output directory>)
 ```
 
-The main part of these arguments is `config json` which contains description of build targets. 
+The main part of these arguments is `config json` which contains description of build targets.
 It has format described below (see example of this file in `Examples/buildconfig.json`):
 
 ```
  [
     {
         # Name of the repository, remote repository will be cloned to the directory with this name under <repositories location>
-        "buildName" : "tct-test-ta", 
+        "buildName" : "tct-test-ta",
         # Command to be used for build this repository
-        "buildCmd" : "gbs build -A armv7l -P tizen_vd", 
-        # remote address of the repository to build. 
-        "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git", 
+        "buildCmd" : "gbs build -A armv7l -P tizen_vd",
+        # remote address of the repository to build.
+        "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
         # Name of the parser of the build results. See description below.
-        "buildResParser" : "GBS", 
+        "buildResParser" : "GBS",
         # List of the branches to be built. Every one from these will be built for the target.
-        "branches" : ["master", "arm", "devel"] 
+        "branches" : ["master", "arm", "devel"]
     },
     { ... Some other build targets ... }
  ]
@@ -124,8 +124,7 @@ Parser is some script or binary which generates meta.txt file from output of you
  TEST_NAME=#name of the test read from name of the parser script
 ```
 
-Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout` IN EXACTLY SUCH ORDER AS fields of metafile
-are presented here.
+Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout`.
 
 `repository location` is path where directories cloned from `buildRepo`'s of targets projects will be put.
 
@@ -220,7 +219,7 @@ It is configured by  file passed with -r parameter which is in JSON format with 
 
 Supported built-in test parsers currently are only "TCT" - for tct-test-ta and "XTest" - for xtest made by OPTEE.
 
-You can create own parser scripts for festral-weles. Such script **MUST get log with test result as its FIRST ARGUMENT and put parsed statistics to the stdout**.
+You can create own parser scripts for festral-weles. Such script **MUST get log with test result as its** `stdin` **and put parsed statistics to the stdout**.
 
 Parsed data has format:
 
@@ -261,23 +260,23 @@ When you run `festral test` command, it will do actions:
   1. read every record in `TEST_CONFIG_FILE` and go to the properly build directory
   2. read YAML template specified in config for this test and make really YAML file from it: find existing packages listed in `~/.festral/build.cache`
   and replace templated names with it, get field `webPageIP` form `~/.festral.conf` file and create uri for downloading packages from this IP using format:
-  
+
   http://`webPageIP`/secosci/download.php?file=`resolved_package_name`&build=`resolved_build_dir_name`/build_res
-  
+
   so there is `download.php` script must exists under `webPageIP` adress and it must accept parameters `file` and `build`.
-  
+
   3. send this yaml for the Weles server and wait for an 1 hour for test finishes, if not, cancel this mjob and run next test
-  4. if test finished, pass output of test to the specified in config parser. 
-  
+  4. if test finished, pass output of test to the specified in config parser.
+
   **If it is built-in parser,** only `tct-test-ta.log` is passed for **TCT** parser
   and only `xtest.log` is passed for **XTest** parser, So **YOU MUST REDIRECT THESE TEST OUTPUTS TO THE RIGHT FILES IN YOUR YAML FILE**.
-  
+
   If you yse your own parser, all output files from server will be passed to the test results parser
-  
+
   5. create directory named as `buildCommitSha1Hash_testTime` in the directory specified in `testLogDir` field of the `~/.festral.conf` file
   and put here files: `build.log` - meta file from tested build; `meta.txt` - extended meta file with additional informations about testing
   `report.txt` - parsed test results; `tf.log` - whole output of the test process
-  
+
   6. put names of new test logs to the `~/.festral/fresh_tests`
 
 ----------------
@@ -307,15 +306,15 @@ You can use templated rows in your yamls according below syntax:
 * temlate fragment starts and finishes with `##` symbols.
 * `##TEMPLATE_URL filename##` - replace given filename with `uri` for the file with specified name (or if specified filename is part of the real filename)
     from the current build only. If no such file made by the current build this link can be invalid.
-    
+
     Example: `##TEMPLATE_URL tef-libteec##` can be replaced by row
     `uri: 'http://127.0.0.1/secosci/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
     and `Weles` will can download this package by generated link.
 * `##TEMPLATE_LATEST packagename##` - replace given filename with uri to the latest built version of the specified package if it ever been built by the `Festral`.
-    
+
     Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
     You can push packages from other repositories built by `festral-build` to the `Weles` using this template.
-* `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` - install package specified by name on target using `rpm`. It is more generic replacement for 
+* `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` - install package specified by name on target using `rpm`. It is more generic replacement for
 
 ```
 - push:
