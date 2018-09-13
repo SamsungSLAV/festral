@@ -100,7 +100,7 @@ templateHTML BuildTable = do
     builds <- readFile buildsFile
     buildSummaries <- sequence $ map buildSummary $ filter (not . (== "")) $ splitOn "\n" builds
     let rows = concat $ map makeBuildRow buildSummaries
-    return $  "    <table>\n"
+    return $  "    <table id=\"buildTable\">\n"
            ++ "        <tr>\n"
            ++ "             <th>Repository</th><th>Branch</th><th>Build result</th><th>Log file</th>\n"
            ++ "        </tr>\n"
@@ -112,7 +112,7 @@ templateHTML TestTable = do
     tests <- readFile testsFile
     testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $ splitOn "\n" tests
     let rows = concat $ map makeTestRow testSummaries
-    return $  "    <table>\n"
+    return $  "    <table id=\"testTable\">\n"
            ++ "        <tr>\n"
            ++ "             <th>Repository</th><th>Branch</th><th>Test name</th><th>Test result</th><th>Log file</th>\n"
            ++ "        </tr>\n"
