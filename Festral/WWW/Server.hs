@@ -60,8 +60,8 @@ listReports reports config opts = do
 
     where
         report "" = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
-            $ map (\x -> BSU.fromString $ "<a href=\"reports?file="++ reportsDir config ++ "/" ++ x ++"\">"++ x ++"</a><br>") (sort reports)
-        report x = responseFile status200 [("Content-Type", "text/html")] x Nothing
+            $ map (\x -> BSU.fromString $ "<a href=\"reports?file="++ x ++"\">"++ x ++"</a><br>") (sort reports)
+        report x = responseFile status200 [("Content-Type", "text/html")] (reportsDir config ++ "/" ++ x) Nothing
 
 readLog opts config = do
     let logtype = findField "type" opts
