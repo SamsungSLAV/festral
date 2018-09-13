@@ -17,7 +17,7 @@ import Festral.Tests.TestParser
 import Data.Time
 import System.Posix.User
 import Data.List.Split
-import Festral.Weles.YamlTemplate
+import Festral.Template
 import Data.List
 import Control.Exception
 import System.IO.Error

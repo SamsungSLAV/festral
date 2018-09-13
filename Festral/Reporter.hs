@@ -12,8 +12,9 @@ import qualified Data.ByteString.Lazy as LB
 import Data.Aeson
 import Data.List
 import Data.Time.LocalTime
+import Festral.Template
 
-html time buildTable testTable =
+defaultHTML time =
               "<!DOCTYPE html>\n"
            ++ "<html>\n"
            ++ "<head>\n"
@@ -27,37 +28,16 @@ html time buildTable testTable =
            ++ "<body>\n"
            ++ "    <h2>Secos CI summary report for "++ time ++ "</h2>\n"
            ++ "    <h2>Build summary:</h2>\n"
-           ++ "    <table>\n"
-           ++ "        <tr>\n"
-           ++ "             <th>Repository</th><th>Branch</th><th>Build result</th><th>Log file</th>\n"
-           ++ "        </tr>\n"
-           ++ "        " ++ buildTable ++ "\n"
-           ++ "    </table>\n"
+           ++ "    ##TEMPLATE_BUILD_TABLE##\n"
            ++ "    <h2>Test summary:</h2>\n"
-           ++ "    <table>\n"
-           ++ "        <tr>\n"
-           ++ "             <th>Repository</th><th>Branch</th><th>Test name</th><th>Test result</th><th>Log file</th>\n"
-           ++ "        </tr>\n"
-           ++ "        " ++ testTable ++ "\n"
-           ++ "    </table>\n"
+           ++ "    ##TEMPLATE_TEST_TABLE##\n"
            ++ "</body>\n"
            ++ "</html>\n"
 
 -- |Generate HTML report file with results of the latest builds and tests
-reportHTML :: IO String
-reportHTML = do
-    buildsFile <- freshBuilds
-    builds <- readFile buildsFile
-    buildSummaries <- sequence $ map buildSummary $ filter (not . (== "")) $ splitOn "\n" builds
-    let rows = concat $ map makeBuildRow buildSummaries
-
-    testsFile <- freshTests
-    tests <- readFile testsFile
-    testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $ splitOn "\n" tests
-    let testRows = concat $ map makeTestRow testSummaries
-
-    time <- show <$> getZonedTime
-    return $ html time rows testRows
+reportHTML :: String -> IO String
+reportHTML ""  = show <$> getZonedTime >>= (\time -> generateFromTemplate (defaultHTML time) templateHTML)
+reportHTML src = generateFromTemplate src templateHTML 
 
 makeBuildRow :: (String, String, String, String) -> String
 makeBuildRow (repo, branch, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td "++ color status ++">"
@@ -113,3 +93,30 @@ processReport _ = False
 parseTestRes :: [[String]] -> [String]
 parseTestRes (_:x:_) = x
 parseTestRes _ = []
+
+templateHTML :: TemplateType -> IO String
+templateHTML BuildTable = do
+    buildsFile <- freshBuilds
+    builds <- readFile buildsFile
+    buildSummaries <- sequence $ map buildSummary $ filter (not . (== "")) $ splitOn "\n" builds
+    let rows = concat $ map makeBuildRow buildSummaries
+    return $  "    <table>\n"
+           ++ "        <tr>\n"
+           ++ "             <th>Repository</th><th>Branch</th><th>Build result</th><th>Log file</th>\n"
+           ++ "        </tr>\n"
+           ++ "        " ++ rows ++ "\n"
+           ++ "    </table>\n"
+
+templateHTML TestTable = do
+    testsFile <- freshTests
+    tests <- readFile testsFile
+    testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $ splitOn "\n" tests
+    let rows = concat $ map makeTestRow testSummaries
+    return $  "    <table>\n"
+           ++ "        <tr>\n"
+           ++ "             <th>Repository</th><th>Branch</th><th>Test name</th><th>Test result</th><th>Log file</th>\n"
+           ++ "        </tr>\n"
+           ++ "        " ++ rows ++ "\n"
+           ++ "    </table>\n"
+
+templateHTML _ = return ""

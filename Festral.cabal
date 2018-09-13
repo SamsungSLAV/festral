@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.7.15
+Version:    0.7.16
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -28,7 +28,7 @@ Library
         filesystem-trees
     Exposed-modules:
        Festral.Weles.API,
-       Festral.Weles.YamlTemplate,
+       Festral.Template,
        Festral.Builder.Builder,
        Festral.Builder.Meta,
        Festral.Builder.GBSParser,

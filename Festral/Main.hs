@@ -53,6 +53,7 @@ data Options
     | Report
         { out   :: FilePath
         , rep   :: Bool
+        , file  :: FilePath
         }
     | None
 
@@ -108,6 +109,12 @@ report = Report
     <*> switch
         (  long     "html-report"
         <> help     "Generate html report to the stdout or to the file if out option is specified" )
+    <*> strOption
+        (  long     "file"
+        <> metavar  "FILENAME"
+        <> short    'f'
+        <> value    ""
+        <> help     "Use given HTML file for insert report tables into templated places." )
 
 prgVersion :: Parser Options
 prgVersion = Version
@@ -185,9 +192,9 @@ runServer = Server
 runCmd :: Options -> IO ()
 
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
-runCmd (Report "" True) = putStrLn =<< reportHTML
-runCmd (Report report True) = do
-    html <- reportHTML
+runCmd (Report "" True src) = putStrLn =<< reportHTML =<< readFile src
+runCmd (Report report True src) = do
+    html <- reportHTML =<< readFile src
     writeFile report html
 runCmd (Cmd x) = subCmd x
 
