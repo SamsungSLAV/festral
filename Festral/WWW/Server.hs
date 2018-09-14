@@ -21,6 +21,8 @@ import System.IO
 import System.Directory
 import Festral.WWW.TestGUI
 import Control.Exception
+import Network.HTTP.Types.Header
+import System.FilePath
  
 runServerOnPort port = do
     putStrLn $ "Listening on port " ++ show port
@@ -61,7 +63,12 @@ listReports reports config opts = do
     where
         report "" = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
             $ map (\x -> BSU.fromString $ "<a href=\"reports?file="++ x ++"\">"++ x ++"</a><br>") (sort reports)
-        report x = responseFile status200 [("Content-Type", "text/html")] (reportsDir config ++ "/" ++ x) Nothing
+        report x = responseFile status200 [(hContentType, contentTypeFromExt $ takeExtension x)] (reportsDir config ++ "/" ++ x) Nothing
+
+contentTypeFromExt ".html"  = "text/html"
+contentTypeFromExt ".htm"   = "text/html"
+contentTypeFromExt ".css"   = "text/css"
+contentTypeFromExt _        = "text/plain"
 
 readLog opts config = do
     let logtype = findField "type" opts

@@ -95,28 +95,28 @@ parseTestRes (_:x:_) = x
 parseTestRes _ = []
 
 templateHTML :: TemplateType -> IO String
-templateHTML BuildTable = do
+templateHTML (BuildTable id) = do
     buildsFile <- freshBuilds
     builds <- readFile buildsFile
     buildSummaries <- sequence $ map buildSummary $ filter (not . (== "")) $ splitOn "\n" builds
     let rows = concat $ map makeBuildRow buildSummaries
-    return $  "    <table id=\"buildTable\">\n"
-           ++ "        <tr>\n"
+    return $  "    <table id=\"" ++ id ++ "\">\n"
+           ++ "        <thead><tr>\n"
            ++ "             <th>Repository</th><th>Branch</th><th>Build result</th><th>Log file</th>\n"
-           ++ "        </tr>\n"
-           ++ "        " ++ rows ++ "\n"
+           ++ "        </tr></thead>\n"
+           ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
 
-templateHTML TestTable = do
+templateHTML (TestTable id) = do
     testsFile <- freshTests
     tests <- readFile testsFile
     testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $ splitOn "\n" tests
     let rows = concat $ map makeTestRow testSummaries
-    return $  "    <table id=\"testTable\">\n"
-           ++ "        <tr>\n"
+    return $  "    <table id=\"" ++ id ++ "\">\n"
+           ++ "        <thead><tr>\n"
            ++ "             <th>Repository</th><th>Branch</th><th>Test name</th><th>Test result</th><th>Log file</th>\n"
-           ++ "        </tr>\n"
-           ++ "        " ++ rows ++ "\n"
+           ++ "        </tr></thead>\n"
+           ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
 
 templateHTML _ = return ""

@@ -67,9 +67,8 @@ writeWithOwn config outs buildDir outDir = do
             (inp, out, err, handle) <- runInteractiveCommand $ parser config
             forkIO $ hPutStr inp $ concat $ map (\(n,c) -> c) outs
             log <- hGetContents out
-            report <- hGetContents out
             waitForProcess handle
-            writeFile (outDir ++ "/report.txt") report
+            writeFile (outDir ++ "/report.txt") log
 
     where
         err :: SomeException -> IO ()
