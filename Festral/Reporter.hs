@@ -28,9 +28,9 @@ defaultHTML time =
            ++ "<body>\n"
            ++ "    <h2>Secos CI summary report for "++ time ++ "</h2>\n"
            ++ "    <h2>Build summary:</h2>\n"
-           ++ "    ##TEMPLATE_BUILD_TABLE##\n"
+           ++ "    ##TEMPLATE_BUILD_TABLE buildTable##\n"
            ++ "    <h2>Test summary:</h2>\n"
-           ++ "    ##TEMPLATE_TEST_TABLE##\n"
+           ++ "    ##TEMPLATE_TEST_TABLE buildTable##\n"
            ++ "</body>\n"
            ++ "</html>\n"
 

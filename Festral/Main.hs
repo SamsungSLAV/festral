@@ -192,9 +192,9 @@ runServer = Server
 runCmd :: Options -> IO ()
 
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
-runCmd (Report "" True src) = putStrLn =<< reportHTML =<< readFile src
+runCmd (Report "" True src) = putStrLn =<< reportHTML =<< readNotEmpty src
 runCmd (Report report True src) = do
-    html <- reportHTML =<< readFile src
+    html <- reportHTML =<< readNotEmpty src
     writeFile report html
 runCmd (Cmd x) = subCmd x
 
@@ -242,3 +242,6 @@ justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
 justPutStrLn errMsg x
     | x == Nothing = putStrLn errMsg
     | otherwise = let Just y = x in putStrLn $ (read $ show y :: String)
+
+readNotEmpty "" = return ""
+readNotEmpty x = readFile x
