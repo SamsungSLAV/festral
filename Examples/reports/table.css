@@ -1,20 +1,47 @@
+#buildDiv {
+    width: 40%;
+    display: inline-block;
+}
+
+#testDiv {
+    width: 55%;
+    display: inline-block;
+}
+
+body {
+    text-align: center;
+}
+
 table {
-    border-collapse: collapse; /* Collapse borders */
-    width: 50%; /* Full-width */
-    border: 1px solid #ddd; /* Add a grey border */
+    border-collapse: collapse;
+    width: 100%;
+    border: 1px solid #ddd;
 }
 
 th, td {
-    text-align: left; /* Left-align text */
-    padding: 12px; /* Add padding */
+    text-align: left;
+    padding: 12px;
 }
 
 tr {
-    /* Add a bottom border to all table rows */
     border-bottom: 1px solid #ddd;
 }
 
-tr.header, tr:hover {
-    /* Add a grey background color to the table header and on hover */
+th, tr:hover {
     background-color: #f1f1f1;
+}
+
+h2 {
+    text-align: center;
+}
+
+form {
+    text-align: left;
+    background-color: #f1f1f1;
+    padding-left: 1%;
+    padding-top: 1px;
+}
+
+form h2 {
+    text-align: left;
 }
