@@ -23,9 +23,8 @@ data OwnParser = OwnParser
 instance MetaParser OwnParser where
     parse :: OwnParser -> IO Meta
     parse parser = do
-        (inp, out, err, parserProc) <- runInteractiveCommand $ parserExec parser
+        (inp, out, err, _) <- runInteractiveCommand $ parserExec parser
         forkIO $ hPutStr inp $ buildLog parser
-        waitForProcess parserProc
         log <- hGetContents out
         let meta = lines log
         let [board, buildType, commit, buildTime, toolchain, builder, status,  hash, repoName, branch, outDir] = map last $ map (splitOn "=") meta

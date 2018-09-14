@@ -56,18 +56,17 @@ parseTest config outs buildDir outDir
     | (parser config) `elem` builtInParsers = parseTest' writeWithParser config outs buildDir outDir
     | otherwise = parseTest' writeWithOwn config outs buildDir outDir
 
-writeWithParser config outs buildDir outDir = do
+writeWithParser config outs outDir = do
     par <- getParser (parser config) outs
     writeReportFile par (outDir ++ "/report.txt")
 
-writeWithOwn config outs buildDir outDir = do
+writeWithOwn config outs outDir = do
     handle err $ do
         fileExists <- doesFileExist $ parser config
         when fileExists $ do
-            (inp, out, err, handle) <- runInteractiveCommand $ parser config
+            (inp, out, err, _) <- runInteractiveCommand $ parser config
             forkIO $ hPutStr inp $ concat $ map (\(n,c) -> c) outs
             log <- hGetContents out
-            waitForProcess handle
             writeFile (outDir ++ "/report.txt") log
 
     where
@@ -96,7 +95,7 @@ parseTest' writer config outs buildDir outDir = do
     toFile testMeta (outDirName ++ "/meta.txt")
     toFile meta (outDirName ++ "/build.log")
 
-    writer config outs buildDir outDirName
+    writer config outs outDirName
     writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) ->
                                              "\n------------------ Begin of " ++ n ++ " ------------------\n"
                                             ++ c ++ "\n"
