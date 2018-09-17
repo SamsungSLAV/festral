@@ -4,6 +4,6 @@
     "welesIP" : "127.0.0.1",
     "welesPort" : "5010",
     "welesFilePort" : "8888",
-    "reportsDir" : "/tmp/reports",
+    "serverRoot" : "/tmp/reports",
     "webPageIP" : "127.0.0.1:8888"
 }

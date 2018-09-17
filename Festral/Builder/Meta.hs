@@ -45,6 +45,7 @@ data Meta = Meta
     ,testerName :: String
     ,testTime   :: String
     ,testName   :: String
+    ,testStatus :: String
     }
 
 buildFields = 
@@ -66,6 +67,7 @@ testFields =
     , ("TESTER_NAME"    ,testerName)
     , ("TEST_TIME"      ,testTime)
     , ("TEST_NAME"      ,testName)
+    , ("TEST_STATUS"    ,testStatus)
     ]
 
 instance Show Meta where
@@ -80,8 +82,8 @@ readMeta :: String -> Meta
 readMeta str = chooseMeta filledMeta
     where
     filledMeta = readMeta' (orderFields (f str) buildFields ++ orderFields (f str) testFields)
-    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:outDir:t:tName:tTime:testName:_) =
-        MetaTest (Meta board bType commit bTime toolc builder stat hash outDir repName branch) t tName tTime testName
+    readMeta' (board:bType:commit:bTime:toolc:builder:stat:hash:repName:branch:outDir:t:tName:tTime:testName:testStatus:_) =
+        MetaTest (Meta board bType commit bTime toolc builder stat hash outDir repName branch) t tName tTime testName testStatus
 
     f x = map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 
@@ -104,7 +106,7 @@ toFile :: Meta -> FilePath -> IO ()
 toFile m fname = do
     writeFile fname $ show m
 
--- |Read 'Meta' from file. Now it can read only files created by 'toFile' function.
+-- |Read 'Meta' from file.
 fromMetaFile :: FilePath -> IO Meta
 fromMetaFile fname = do
     mdata <- catch (readFile fname) handler

@@ -15,6 +15,14 @@
             <option value="DS">DS</option>
             <option value="TIZEN4.0">TIZEN 4.0</option>
             <option value="TIZEN5.0">TIZEN 5.0</option>
+            <option value="master">master</option>
+            <option value="tizen">tizen</option>
+        </select>
+        Repository: <select onChange="filterAllTables('Repository', this.value);">
+            <option value="">all</option>
+            <option value="trustzone|trustware|tee-test">Trustware</option>
+            <option value="optee">OPTEE</option>
+            <option value="simulator">Simulator</option>
         </select>
     </form>  
     <div id="buildDiv">

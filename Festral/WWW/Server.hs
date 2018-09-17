@@ -33,16 +33,17 @@ fileServer req respond = do
     let opts = parseQuery $ show $ rawQueryString req
     sendRespond opts config respond $ pathInfo req
 
-sendRespond opts config r ["secosci", "download"] = r $ download opts config
+sendRespond opts config r ["secosci", "download"    ] = r $ download opts config
 sendRespond opts config r ["secosci", "download.php"] = r $ download opts config
-sendRespond opts config r ["secosci", "getlog.php"] = sendRespond opts config r ["secosci", "getlog"]
-sendRespond opts config r ["secosci", "getlog"] = do
+sendRespond opts config r ["secosci", "getlog.php"  ] = sendRespond opts config r ["secosci", "getlog"]
+sendRespond opts config r ["secosci", "getlog"      ] = do
     log <- readLog opts config
     r $ getlog log
-sendRespond opts config r ["secosci", "reports.php"] = sendRespond opts config r ["secosci", "reports"]
-sendRespond opts config r ["secosci", "reports"] = do
-    reports <- listDirectory $ reportsDir config
-    r $ listReports reports config opts
+sendRespond opts config r ["secosci", "files"       ] = sendRespond opts config r ["secosci", "reports"]
+sendRespond opts config r ["secosci", "reports.php" ] = sendRespond opts config r ["secosci", "reports"]
+sendRespond opts config r ["secosci", "reports"     ] = do
+    reports <- listDirectory $ serverRoot config
+    r $ listFiles reports config opts
 sendRespond a b c d = indexRespond a b c d
 
 download opts config = do
@@ -56,14 +57,14 @@ download opts config = do
         ] 
         (dir ++ "/" ++ build_hash ++ "/" ++ fname) Nothing
 
-listReports reports config opts = do
+listFiles reports config opts = do
     let fname = findField "file" opts
     report fname
 
     where
         report "" = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
-            $ map (\x -> BSU.fromString $ "<a href=\"reports?file="++ x ++"\">"++ x ++"</a><br>") (sort reports)
-        report x = responseFile status200 [(hContentType, contentTypeFromExt $ takeExtension x)] (reportsDir config ++ "/" ++ x) Nothing
+            $ map (\x -> BSU.fromString $ "<a href=\"files?file="++ x ++"\">"++ x ++"</a><br>") (sort reports)
+        report x = responseFile status200 [(hContentType, contentTypeFromExt $ takeExtension x)] (serverRoot config ++ "/" ++ x) Nothing
 
 contentTypeFromExt ".html"  = "text/html"
 contentTypeFromExt ".htm"   = "text/html"

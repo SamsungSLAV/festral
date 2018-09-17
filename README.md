@@ -65,7 +65,7 @@ Also since **v0.6.0** version whole program is configured by file `~/.festral.co
     "webPageIP" : "127.0.0.1 - ip of the web page SecosCI located at",
     "welesPort" : "port of the Weles API",
     "welesFilePort" : "Port where output files of the Weles are",
-    "reportsDir" : "Directory where reports for web page are located."
+    "serverRoot" : "directory which will be root of the fileserver"
 }
 ```
 This configuration file was separated from tests descriptions (see `festral test` section).

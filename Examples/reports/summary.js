@@ -28,8 +28,9 @@ function init(buildTable, testTable) {
 }
 
 function filterTable(tabName, field, value) {
+    regex = new RegExp(value);
     return fullTables[tabName].filter(function(row) {
-        return row[field].includes(value);
+        return row[field].match(value);
     });
 }
 

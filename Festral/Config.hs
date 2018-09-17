@@ -39,7 +39,7 @@ data TestRunnerConfig = TestRunnerConfig
     , welesPort     :: String
     , welesFilePort :: String
     , webPageIP     :: String
-    , reportsDir    :: FilePath
+    , serverRoot    :: FilePath
     } deriving (Show, Generic)
 
 instance FromJSON TestRunnerConfig
