@@ -62,14 +62,14 @@ data JobResult
     | UnknownError String
 
 instance Show JobResult where
-    show BuildFailed    = "Build failed. Nothing to test"
-    show BadYaml        = "Bad testcase YAML file"
-    show StartJobFailed = "Couldn't start job"
+    show BuildFailed    = "BUILD FAILED"
+    show BadYaml        = "YAML NOT FOUND"
+    show StartJobFailed = "NO JOB STARTED"
     show (JobId x)      = show x
     show (JobLogs x)    = show x
-    show DryadError     = "Failed to execute on Dryad"
-    show DownloadError  = "Failed to download all artifacts"
-    show (UnknownError x) = "Weles error: " ++ x
+    show DryadError     = "DEVICE FAILED"
+    show DownloadError  = "DOWNLOAD FILES ERROR"
+    show (UnknownError x) = "WELES ERROR: " ++ x
 
 -- |Run tests from config for all build directories listed in given string
 performForallNewBuilds :: FilePath -> String -> IO ()
@@ -289,7 +289,7 @@ testResults (JobLogs logs) m conf = do
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
 testResults err m c = do
-    putStrLn $ "[" ++ repoName m ++ "][ERROR]" ++ show err
+    putStrLn $ "[" ++ repoName m ++ "][ERROR][" ++ show err ++ "]"
     return $ TestResult (BadJob err) c
 
 yamlTemplater :: String -> TemplateType -> IO String

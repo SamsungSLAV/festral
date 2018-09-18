@@ -78,6 +78,7 @@ testSummary dir = do
     return (repoName meta, branch meta, testName meta', colorPercents pass (testStatus meta'), link)
 
 colorPercents :: (Int, Int) -> String -> String
+colorPercents (0,0) "COMPLETE" = "<font style=\"color:red;\">NO RESULTS</font>"
 colorPercents (0,0) status = "<font style=\"color:red;\">" ++ status ++ "</font>"
 colorPercents x@(pass, all) "SEGFAULT" = "<font style=\"color:"++ col x ++ ";\">" ++ show pass ++ "/" ++ show all 
                                     ++ "</font>" ++ "<font style=\"color:red;\"> (SEGFAULT)</font>"
