@@ -56,10 +56,10 @@ buildSummary :: String -> IO (String, String, String, String)
 buildSummary dir = do
     config <- getAppConfig
     meta <- fromMetaFile $ buildLogDir config ++ "/" ++ dir ++ "/meta.txt"
-    let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=build&hash=" ++ hash meta ++ "&time=" ++ buildTime meta
+    let link = "http://" ++ webPageIP config ++ "/secosci/getlog?type=build&hash=" ++ hash meta ++ "&time=" ++ buildTime meta
     return (repoName meta, branch meta, status meta, link)
 
--- |Gets name of the test result (sha1_time) and returns its build data as (repository name, branch name, test name, passed tests/ all tests)
+-- |Gets name of the test result (sha1_time) and returns its build data as (repository name, branch name, test name, passed tests/ all tests, log link)
 testSummary :: String -> IO (String, String, String, String, String)
 testSummary dir = do
     config <- getAppConfig
@@ -74,15 +74,17 @@ testSummary dir = do
                 else return ""
     let tests = parseTestRes $ splitWhen (isInfixOf "###############") $ splitOn "\n" report
     let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
-    let link = "http://" ++ webPageIP config ++ "/secosci/getlog.php?type=test&hash=" ++ hash meta ++ "&time=" ++ testTime meta'
-    return (repoName meta, branch meta, testName meta', colorPercents pass, link)
+    let link = "http://" ++ webPageIP config ++ "/secosci/getlog?type=test&hash=" ++ hash meta ++ "&time=" ++ testTime meta'
+    return (repoName meta, branch meta, testName meta', colorPercents pass (testStatus meta'), link)
 
-colorPercents :: (Int, Int) -> String
-colorPercents (0,0) = "<font style=\"color:red;\">" ++ "NOT PERFORMED" ++ "</font>"
-colorPercents (pass, all) = "<font style=\"color:"++ col ++ ";\">" ++ show pass ++ "/" ++ show all ++ "</font>"
-    where
-    col = "rgb(" ++ show (round (maxCol - passCol)) ++ "," ++ show (round (passCol)) ++ ",0)"
-    passCol = (maxCol/fromIntegral(all)) * fromIntegral(pass)
+colorPercents :: (Int, Int) -> String -> String
+colorPercents (0,0) status = "<font style=\"color:red;\">" ++ status ++ "</font>"
+colorPercents x@(pass, all) "SEGFAULT" = "<font style=\"color:"++ col x ++ ";\">" ++ show pass ++ "/" ++ show all 
+                                    ++ "</font>" ++ "<font style=\"color:red;\"> (SEGFAULT)</font>"
+colorPercents x@(pass, all) _ = "<font style=\"color:"++ col x ++ ";\">" ++ show pass ++ "/" ++ show all ++ "</font>" 
+
+col x = "rgb(" ++ show (round (maxCol - passCol x)) ++ "," ++ show (round (passCol x)) ++ ",0)"
+passCol (pass, all) = (maxCol/fromIntegral(all)) * fromIntegral(pass)
 
 maxCol = 150
 

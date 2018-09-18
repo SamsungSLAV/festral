@@ -88,7 +88,7 @@ readMeta str = chooseMeta filledMeta
     f x = map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 
 chooseMeta m@MetaTest{..}
-    | testName == "" || testTime == "" = metaData
+    | testName == "" || testTime == "" || testStatus == "" = metaData
     | otherwise = m
 
 orderFields str fields = map (\ (x,_) -> findField x str) fields

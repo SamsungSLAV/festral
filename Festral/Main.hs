@@ -5,7 +5,7 @@ module Main (
 import System.Process
 import System.IO
 import System.Environment
-import Festral.Weles.API
+import Festral.Weles.API hiding (info)
 import Options.Applicative
 import Data.Semigroup ((<>))
 import Festral.Tests.Test

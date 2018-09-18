@@ -3,7 +3,7 @@
 
 -- |Simple library for test management using Weles as testing server.
 module Festral.Weles.API (
-    Job(),
+    Job(..),
     curlJobs,
     getJob,
     getJobWhenDone,
@@ -34,13 +34,13 @@ import Festral.Files
 import Control.Exception
 
 -- |Job datatype describes json job object got from weles
-data Job = Job {
-    jobid   :: Int
-    ,name   :: String
-    ,created:: String
-    ,updated:: String
-    ,status :: String
-    ,info   :: String
+data Job = Job 
+    {jobid      :: Int
+    ,name       :: String
+    ,created    :: String
+    ,updated    :: String
+    ,status     :: String
+    ,info       :: String
 } deriving (Generic)
 
 instance FromJSON Job

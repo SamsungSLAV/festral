@@ -9,7 +9,8 @@ module Festral.Tests.Test (
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LB
-import Festral.Weles.API
+import Festral.Weles.API hiding (status, name)
+import qualified Festral.Weles.API as WJob (status, name)
 import Data.Maybe
 import Festral.Builder.Meta hiding (parse, fromFile)
 import System.Directory
@@ -43,14 +44,12 @@ data TestResult
 data TestStatus
     = SegFault FileContents
     | BadJob JobResult
-    | WelesError
     | TestSuccess FileContents
 
 instance Show TestStatus where
     show (SegFault _) = "SEGFAULT"
     show (BadJob x) = show x
-    show WelesError = "Weles error"
-    show (TestSuccess _) = "Performed"
+    show (TestSuccess _) = "COMPLETE"
 
 data JobResult
     = BuildFailed
@@ -58,7 +57,19 @@ data JobResult
     | StartJobFailed
     | JobId Int
     | JobLogs FileContents
-    deriving Show
+    | DryadError
+    | DownloadError
+    | UnknownError String
+
+instance Show JobResult where
+    show BuildFailed    = "Build failed. Nothing to test"
+    show BadYaml        = "Bad testcase YAML file"
+    show StartJobFailed = "Couldn't start job"
+    show (JobId x)      = show x
+    show (JobLogs x)    = show x
+    show DryadError     = "Failed to execute on Dryad"
+    show DownloadError  = "Failed to download all artifacts"
+    show (UnknownError x) = "Weles error: " ++ x
 
 -- |Run tests from config for all build directories listed in given string
 performForallNewBuilds :: FilePath -> String -> IO ()
@@ -101,6 +112,7 @@ writeWithOwn config outs outDir = do
         err :: SomeException -> IO ()
         err ex = putStrLn (show ex) >> return ()
 
+-- |Writes information about test to the metafile
 writeMetaTest status buildDir outDir name time meta = do
     tester <- getEffectiveUserName
     let testMeta = MetaTest meta tester tester time name status
@@ -130,8 +142,14 @@ parseTest' writer (TestResult status config) buildDir outDir = do
                                                      "\n------------------ Begin of " ++ n ++ " ------------------\n"
                                                     ++ c ++ "\n"
                                                     ++ "------------------ End of " ++ n ++ "   ------------------\n") outs)
-        writeLog _ _ = return ()
+        writeLog (BadJob x) t = do
+            meta <- fromMetaFile $ buildDir ++ "/meta.txt"
+            let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ t
+            writeFile (outDirName ++ "/tf.log") $ show x
 
+
+-- |Create directory with appended timestamp. If directory exists,
+-- wait for second for get new timestamp and retry.
 recreate_dir :: FilePath -> IOError -> IO String
 recreate_dir path ex
     | isAlreadyExistsError ex = do
@@ -205,22 +223,35 @@ waitForJob (JobId jobid) timeout m = do
     hFlush stdout
 
     job <- getJobWhenDone jobid timeout
-    jobFiles <- (filter (not . (isInfixOf ".rpm")) <$>) <$> getFileList jobid
-
-    putStrLn $ "[" ++ repoName m ++ "][" ++ show jobid ++ "]OK. Recieved files: " ++ show jobFiles
-
-    logs jobFiles jobid >>= logsToResults
+    putStrLn $ "[" ++ repoName m ++ "][" ++ show jobid ++ "]Finished: " ++ show (fmap WJob.status job)
+    filesFromJob job >>= outToResults
 
     where 
-        logsToResults :: Maybe FileContents -> IO JobResult
-        logsToResults Nothing = return StartJobFailed
-        logsToResults (Just logs) = return $ JobLogs logs
+        outToResults :: Either [String] JobResult -> IO JobResult
+        outToResults (Right x) = return x
+        outToResults (Left x) = do
+            y <- logs x jobid
+            return $ JobLogs y
 waitForJob x _ _ = return x
 
+filesFromJob :: Maybe Job -> IO (Either [String] JobResult)
+filesFromJob Nothing = return $ Right StartJobFailed
+filesFromJob (Just job) = if WJob.status job == "FAILED"
+                            then return $ Right (dryadErr job)
+                            else do
+                                jobFiles <- (filter (not . (isInfixOf ".rpm")) <$>) <$> getFileList (jobid job)
+                                if isNothing jobFiles
+                                    then return $ Right StartJobFailed
+                                    else return $ Left $ fromJust jobFiles
+
 -- |Extract tests results from list of the Weles job's filenames
-logs :: Maybe [String] -> Int -> IO (Maybe FileContents)
-logs Nothing _ = return Nothing
-logs (Just files) jobid = Just <$> (mapM (fileToFileContent jobid) files)
+logs :: [String] -> Int -> IO FileContents
+logs files jobid = mapM (fileToFileContent jobid) files
+
+dryadErr job
+    | info job == "Failed to download all artifacts for the Job" = DownloadError
+    | info job == "Failed to execute test on Dryad." = DryadError
+    | otherwise = UnknownError $ info job
 
 -- |Converts filename from Weles to pair (filename, contents)
 fileToFileContent :: Int -> String -> IO (String, String)
@@ -238,10 +269,10 @@ runTest target testConf = do
     config <- getAppConfig
     meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let yamlPath = yaml testConf
-    putStrLn $ "[" ++ repoName meta ++ "]Starting Weles job with " ++ yamlPath ++ " ..."
+    putStrLn $ "\n[" ++ repoName meta ++ "]Starting Weles job with " ++ yamlPath ++ " ..."
     yaml <- getYaml yamlPath target
     jobId <- runTestJob (status meta) yaml target
-    putStrLn $ "[" ++ repoName meta ++ "] " ++ show jobId
+    putStrLn $ "[" ++ repoName meta ++ "]Started job with id: " ++ show jobId
     jobRes <- waitForJob jobId 3600 meta
     testResults jobRes meta testConf
 
@@ -252,14 +283,14 @@ testResults BuildFailed m c = do
 testResults BadYaml m c = do
     putStrLn $ "[" ++ repoName m ++ "][ERROR]No such YAML testcase file." 
     return $ TestResult (BadJob BadYaml) c
-testResults StartJobFailed m c = do
-    putStrLn $ "[" ++ repoName m ++ "][ERROR]Something wrong happened with Weles server. Try later."
-    return $ TestResult WelesError c
 testResults (JobLogs logs) m conf = do
     resLog <- fromWelesFiles logs "results"
     if "Segmentation fault" `isInfixOf` out resLog
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
+testResults err m c = do
+    putStrLn $ "[" ++ repoName m ++ "][ERROR]" ++ show err
+    return $ TestResult (BadJob err) c
 
 yamlTemplater :: String -> TemplateType -> IO String
 yamlTemplater outDir (URI url) = do
