@@ -125,12 +125,11 @@ writeMetaTest status buildDir outDir name time meta = do
     toFile meta (outDirName ++ "/build.log")
 
 parseTest' writer (TestResult status config) buildDir outDir = do
-    let msg = extractErr status
     meta <- fromMetaFile $ buildDir ++ "/meta.txt"
     tm <- timeStamp
     let pathPrefix = outDir ++ "/" ++ hash meta
     time <- catch ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
-    writeMetaTest msg buildDir outDir (name config) time meta
+    writeMetaTest (show status) buildDir outDir (name config) time meta
     writeLog status time
 
     where
@@ -143,12 +142,14 @@ parseTest' writer (TestResult status config) buildDir outDir = do
                                                      "\n------------------ Begin of " ++ n ++ " ------------------\n"
                                                     ++ c ++ "\n"
                                                     ++ "------------------ End of " ++ n ++ "   ------------------\n") outs)
+        writeLog (BadJob (UnknownError x)) t = do
+            meta <- fromMetaFile $ buildDir ++ "/meta.txt"
+            let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ t
+            writeFile (outDirName ++ "/tf.log") $ x
         writeLog (BadJob x) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ t
             writeFile (outDirName ++ "/tf.log") $ show x
-        extractErr (BadJob (UnknownError x))  = show x
-        extractErr x = show x
 
 
 -- |Create directory with appended timestamp. If directory exists,
