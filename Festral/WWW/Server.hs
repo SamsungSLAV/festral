@@ -1,10 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Festral.WWW.Server (
-    runServerOnPort 
+    runServerOnPort
 )
 where
- 
+
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Network.HTTP.Types (status200, status404)
@@ -23,11 +23,11 @@ import Festral.WWW.TestGUI
 import Control.Exception
 import Network.HTTP.Types.Header
 import System.FilePath
- 
+
 runServerOnPort port = do
     putStrLn $ "Listening on port " ++ show port
     run port fileServer
- 
+
 fileServer req respond = do
     config <- getAppConfig
     let opts = parseQuery $ show $ rawQueryString req
@@ -50,26 +50,26 @@ download opts config = do
     let dir = buildLogDir config
     let build_hash = findField "build" opts
     let fname = findField "file" opts
-    responseFile status200 
-        [ 
-            ("Content-Disposition", BSU.fromString $ "attachment; filename=\""++ fname ++"\""), 
-            ("Content-Type", "application/octet-stream") 
-        ] 
+    responseFile status200 (contentTypeFromExt "" fname)
         (dir ++ "/" ++ build_hash ++ "/" ++ fname) Nothing
 
 listFiles reports config opts = do
     let fname = findField "file" opts
-    report fname
+    showFile fname
 
     where
-        report "" = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
+        showFile "" = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
             $ map (\x -> BSU.fromString $ "<a href=\"files?file="++ x ++"\">"++ x ++"</a><br>") (sort reports)
-        report x = responseFile status200 [(hContentType, contentTypeFromExt $ takeExtension x)] (serverRoot config ++ "/" ++ x) Nothing
+        showFile x = responseFile status200 (contentTypeFromExt (takeExtension x) x) (serverRoot config ++ "/" ++ x) Nothing
 
-contentTypeFromExt ".html"  = "text/html"
-contentTypeFromExt ".htm"   = "text/html"
-contentTypeFromExt ".css"   = "text/css"
-contentTypeFromExt _        = "text/plain"
+contentTypeFromExt ".html" _ = [(hContentType, "text/html")]
+contentTypeFromExt ".htm" _ = contentTypeFromExt ".html" ""
+contentTypeFromExt ".css" _ = [(hContentType, "text/css")]
+contentTypeFromExt _ fname =
+        [
+            (hContentDisposition, BSU.fromString $ "attachment; filename=\""++ fname ++"\""),
+            (hContentType, "application/octet-stream")
+        ]
 
 readLog opts config = do
     let logtype = findField "type" opts
@@ -83,10 +83,10 @@ readLog opts config = do
         resolveDir "build" = (buildLogDir config, "build.log")
         resolveDir "test" = (testLogDir config, "tf.log")
         resolveDir "" = ("","")
-    
+
 getlog log = responseBuilder status200
         [("Content-Type", "text/html")] $
         mconcat $ map copyByteString ["<pre>", BSU.fromString log, "</pre>"]
- 
+
 parseQuery :: String -> [[String]]
 parseQuery x = map (splitOn "=") $ filter (not . null) $ splitOneOf "?&\"" x
