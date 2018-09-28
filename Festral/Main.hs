@@ -17,6 +17,7 @@ import Paths_Festral (version)
 import Data.Version (showVersion)
 import Festral.WWW.Server
 import Festral.Config
+import Festral.Weles.Boruta
 
 main = runCmd =<< execParser
     (info (helper <*> parseOptsCmd <|> prgVersion <|> report)
@@ -30,7 +31,7 @@ data Command
         , outDir    :: String
         , noClean   :: Bool
         }
-    | Weles
+    | Slav
         { all       :: Bool
         , jobId     :: Int
         , done      :: Int
@@ -39,6 +40,7 @@ data Command
         , stdout    :: Bool
         , listFile  :: Bool
         , cancel    :: Bool
+        , workers   :: Bool
         }
     | TestControl
         { perfTest  :: FilePath
@@ -65,13 +67,13 @@ testDesc    = "Create jobs on remote Weles server with tests defined in .yaml fi
             ++"Put results of tests to the directory specified in testLogDir of the ~/.festral.conf configuration file"
 buildDesc   = "Build all repositories for all branches described in configuration file. "
             ++"Put results into the directory specified in the buildLogDir field of the ~/.festral.conf configuration file."
-welesDesc   = "Allow to use Weles API for accessing and managing Weles's jobs by hands."
+welesDesc   = "Allow to use SLAV API for accessing and managing Weles's jobs and Boruta's devices by hands."
 serverDesc  = "Run local file server for external parts of test process (like remote Weles server) could access needed files such built rpms."
 
 opts :: Parser Command
 opts = hsubparser
     ( command "build" (info buildopts (progDesc buildDesc))
-    <>command "weles" (info welesopts (progDesc welesDesc))
+    <>command "slav" (info welesopts (progDesc welesDesc))
     <>command "test" (info testCtl (progDesc testDesc))
     <>command "server" (info runServer (progDesc serverDesc))
     )
@@ -125,7 +127,7 @@ prgVersion = Version
 
 
 welesopts :: Parser Command
-welesopts = Weles
+welesopts = Slav
     <$> switch
         ( long  "all"
         <>short 'a'
@@ -165,6 +167,10 @@ welesopts = Weles
         ( long  "cancel"
         <>short 'c'
         <>help  "Cancel job specified by -i option." )
+    <*> switch
+        ( long  "workers"
+        <>short 'w'
+        <>help  "Show list of workers of the Boruta" )
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -202,8 +208,9 @@ runCmd _ = putStrLn "Some parameter missed. Run program with --help option to se
 
 
 subCmd :: Command -> IO ()
-subCmd (Weles all id done fname start stdout listFile cancel)
+subCmd (Slav all id done fname start stdout listFile cancel workers)
     | all = show <$> curlJobs >>= putStrLn
+    | workers = show <$> curlWorkers >>= putStrLn
     | cancel = cancelJob id
     | start = show <$> startJob fname >>= putStrLn
     | listFile && fname == "" = show <$> getFileList id >>= putStrLn

@@ -34,7 +34,7 @@ configFile = do
 getAppConfig = do
     confPath <- configFile
     exists <- doesFileExist confPath
-    when (not exists) $ LB.writeFile confPath $ encode (TestRunnerConfig "/tmp/build" "/tmp/test" "127.0.0.1" "6666" "6666" "127.0.0.1" "~/.festral/html")
+    when (not exists) $ LB.writeFile confPath $ encode (AppConfig "/tmp/build" "/tmp/test" "127.0.0.1" "6666" "6666" "127.0.0.1" "~/.festral/html" "127.0.0.1:6666")
     confStr <- LB.readFile confPath
-    let Just config = decode confStr :: Maybe TestRunnerConfig
+    let Just config = decode confStr :: Maybe AppConfig
     return config

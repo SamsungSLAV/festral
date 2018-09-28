@@ -6,7 +6,7 @@
 -- Configuration file is just JSON file with fields as in 'TestRunnerConfig'.
 module Festral.Config (
     TestConfig (..),
-    TestRunnerConfig (..)
+    AppConfig (..)
 ) where
 
 import Data.Aeson
@@ -18,7 +18,7 @@ data TestConfig = TestConfig
     { repo  :: String
     , yaml  :: FilePath
     , parser:: String
-    , name :: String
+    , name  :: String
     } deriving (Show, Generic)
 
 instance FromJSON TestConfig where
@@ -31,8 +31,8 @@ instance FromJSON TestConfig where
 
 instance ToJSON TestConfig
 
--- |Describes basic festral-weles application configuration.
-data TestRunnerConfig = TestRunnerConfig
+-- |Describes basic festral application configuration.
+data AppConfig = AppConfig
     { buildLogDir   :: FilePath
     , testLogDir    :: FilePath
     , welesIP       :: String
@@ -40,7 +40,8 @@ data TestRunnerConfig = TestRunnerConfig
     , welesFilePort :: String
     , webPageIP     :: String
     , serverRoot    :: FilePath
+    , borutaIP      :: String
     } deriving (Show, Generic)
 
-instance FromJSON TestRunnerConfig
-instance ToJSON TestRunnerConfig
+instance FromJSON AppConfig
+instance ToJSON AppConfig
