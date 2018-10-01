@@ -42,14 +42,14 @@ data Caps = Caps
 instance Show Caps where
     show x = "  {\n"
            ++"    \"Addr\":"          ++ show (addr x)        ++ ",\n"
-           ++"    \"DeviceType\":"    ++ show (deviceType x)  ++ ",\n"
+           ++"    \"device_type\":"   ++ show (deviceType x)  ++ ",\n"
            ++"    \"UUID\":"          ++ show (uuid x)        ++ "\n"
            ++"  }"
 
 instance FromJSON Caps where
     parseJSON = withObject "Caps" $ \o -> do
         addr        <- o .:? "Addr"         .!= ""
-        deviceType  <- o .:? "DeviceType"   .!= ""
+        deviceType  <- o .:? "device_type"  .!= ""
         uuid        <- o .:? "UUID"         .!= ""
         return Caps{..}
 instance ToJSON Caps
@@ -100,6 +100,17 @@ instance Show BorutaRequest where
           ++ "  \"Caps\":"  ++ show (reqCaps x) ++ "\n"
           ++ "}"
 
+data BorutaAuth = BorutaAuth
+    { sshKey    :: String
+    , username  :: String
+    } deriving (Generic, Show)
+instance FromJSON BorutaAuth where
+    parseJSON = withObject "BorutaAuth" $ \o -> do
+        sshKey      <- o .: "Key"
+        username    <- o .: "Username"
+        return BorutaAuth{..}
+instance ToJSON BorutaAuth
+
 -- |Return device type of the given worker
 workerDeviceType :: Worker -> String
 workerDeviceType worker = deviceType $ caps worker
@@ -147,3 +158,24 @@ allRequests = do
                 then return []
                 else return $ fromJust res
         else return []
+
+-- |Return ssh key for session for given by name target. If this target has running session
+-- it returns key for it, othervise it opens new request
+getTargetKey :: String -> IO (Maybe BorutaAuth)
+getTargetKey device = do
+    requests <- allRequests
+    let active = filter (\(BorutaRequest id state caps) -> (state == "IN PROGRESS") && (deviceType caps == device)) requests
+    id <- if length active == 0
+        then createRequest device
+        else return $ Just $ reqID $ head active
+    putStrLn $ show id
+    if isNothing id
+        then return Nothing
+        else getKey $ fromJust id
+
+getKey :: Int -> IO (Maybe BorutaAuth)
+getKey id = do
+    url <- borutaAddr
+    (_, out, err, _) <- runInteractiveCommand $ "curl -sL --data \"\" http://" ++ url ++ "/api/v1/reqs/" ++ show id ++ "/acquire_worker"
+    outStr <- hGetContents out
+    return $ decode (BL.pack outStr)
