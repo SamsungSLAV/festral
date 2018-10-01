@@ -3,6 +3,7 @@
 -- |Simple library for test management using Weles as testing server.
 module Festral.Weles.Boruta (
     curlWorkers,
+    createRequest,
     Worker (..)
 ) where
 
@@ -16,6 +17,11 @@ import Network.Curl
 import Network.Curl.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BL (pack)
 import Data.Maybe
+import Data.Time.Clock
+import Data.Time.Format
+import System.Process
+import System.IO
+import Data.List.Split
 
 -- |Data type describing Boruta worker
 data Worker = Worker
@@ -84,3 +90,25 @@ curlWorkers = do
                 then return []
                 else return $ fromJust res
         else return []
+
+-- |Helper datatype for getting request ID from boruta after creating it
+data ReqID = ReqID {reqID :: Int} deriving Generic
+
+instance FromJSON ReqID where
+    parseJSON = withObject "ReqID" $ \o -> do
+        reqID <- o .: "ReqID"
+        return ReqID{..}
+instance ToJSON ReqID
+
+-- |Create request for given target for 60 minutes from now with priority 4
+createRequest :: String -> IO (Maybe Int)
+createRequest target = do
+    time <- getCurrentTime
+    let now = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" time
+    let afterHour = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" $ addUTCTime 3600 time -- Add 1 hour (3600 seconds)
+    let request = "{\\\"Deadline\\\": \\\""++ afterHour ++"\\\", \\\"ValidAfter\\\": \\\""++ now ++"\\\", \\\"Caps\\\" : { \\\"device_type\\\": \\\""++ target ++ "\\\" }, \\\"Priority\\\": 4 }"
+    url <- borutaAddr
+    (_, out, err, _) <- runInteractiveCommand $ "curl -sL --data \"" ++ request ++"\" http://" ++ url ++ "/api/reqs/"
+    outStr <- hGetContents out
+    let req = decode (BL.pack outStr) :: Maybe ReqID
+    return $ reqID <$> req

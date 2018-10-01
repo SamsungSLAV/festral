@@ -41,6 +41,7 @@ data Command
         , listFile  :: Bool
         , cancel    :: Bool
         , workers   :: Bool
+        , req       :: String
         }
     | TestControl
         { perfTest  :: FilePath
@@ -67,13 +68,15 @@ testDesc    = "Create jobs on remote Weles server with tests defined in .yaml fi
             ++"Put results of tests to the directory specified in testLogDir of the ~/.festral.conf configuration file"
 buildDesc   = "Build all repositories for all branches described in configuration file. "
             ++"Put results into the directory specified in the buildLogDir field of the ~/.festral.conf configuration file."
-welesDesc   = "Allow to use SLAV API for accessing and managing Weles's jobs and Boruta's devices by hands."
+welesDesc   = "Deprecated. This name is for backward compatibility. See slav."
+slavDesc    = "Allow to use SLAV API for accessing and managing Weles's jobs and Boruta's devices by hands."
 serverDesc  = "Run local file server for external parts of test process (like remote Weles server) could access needed files such built rpms."
 
 opts :: Parser Command
 opts = hsubparser
     ( command "build" (info buildopts (progDesc buildDesc))
-    <>command "slav" (info welesopts (progDesc welesDesc))
+    <>command "weles" (info welesopts (progDesc welesDesc))
+    <>command "slav" (info welesopts (progDesc slavDesc))
     <>command "test" (info testCtl (progDesc testDesc))
     <>command "server" (info runServer (progDesc serverDesc))
     )
@@ -171,6 +174,12 @@ welesopts = Slav
         ( long  "workers"
         <>short 'w'
         <>help  "Show list of workers of the Boruta" )
+    <*> strOption
+        ( long  "request"
+        <>short 'r'
+        <>value ""
+        <>metavar "DEVICE_NAME"
+        <>help  "Create new request for Boruta for given worker." )
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -208,9 +217,10 @@ runCmd _ = putStrLn "Some parameter missed. Run program with --help option to se
 
 
 subCmd :: Command -> IO ()
-subCmd (Slav all id done fname start stdout listFile cancel workers)
+subCmd (Slav all id done fname start stdout listFile cancel workers req)
     | all = show <$> curlJobs >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
+    | req /= "" = show <$> createRequest req >>= putStrLn
     | cancel = cancelJob id
     | start = show <$> startJob fname >>= putStrLn
     | listFile && fname == "" = show <$> getFileList id >>= putStrLn

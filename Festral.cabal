@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.8.6
+Version:    0.8.7
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -21,11 +21,12 @@ Library
         semigroups,
         time,
         directory >= 1.2.3.0,
-        unix,
+        unix >= 2.7.2.2,
         monad-parallel,
         filepath,
         wai, warp, http-types, blaze-builder, utf8-string,
-        filesystem-trees
+        filesystem-trees,
+        time
     Exposed-modules:
        Festral.Weles.API,
        Festral.Template,
