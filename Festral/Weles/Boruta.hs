@@ -4,6 +4,7 @@
 module Festral.Weles.Boruta (
     curlWorkers,
     createRequest,
+    allRequests,
     Worker (..)
 ) where
 
@@ -42,14 +43,14 @@ instance Show Caps where
     show x = "  {\n"
            ++"    \"Addr\":"          ++ show (addr x)        ++ ",\n"
            ++"    \"DeviceType\":"    ++ show (deviceType x)  ++ ",\n"
-           ++"    \"UUID\":"          ++ show (uuid x)        ++ ",\n"
+           ++"    \"UUID\":"          ++ show (uuid x)        ++ "\n"
            ++"  }"
 
 instance FromJSON Caps where
     parseJSON = withObject "Caps" $ \o -> do
-        addr        <- o .:? "Addr" .!= ""
-        deviceType  <- o .: "DeviceType"
-        uuid        <- o .: "UUID"
+        addr        <- o .:? "Addr"         .!= ""
+        deviceType  <- o .:? "DeviceType"   .!= ""
+        uuid        <- o .:? "UUID"         .!= ""
         return Caps{..}
 instance ToJSON Caps
 
@@ -58,7 +59,7 @@ instance Show Worker where
           ++ "  \"WorkerUUID\":"  ++ show (workerUUID x)  ++ ",\n"
           ++ "  \"State\":"       ++ show (state x)       ++ ",\n"
           ++ "  \"Groups\":"      ++ show (groups x)      ++ ",\n"
-          ++ "  \"Caps\":"        ++ show (caps x)        ++ ",\n"
+          ++ "  \"Caps\":"        ++ show (caps x)        ++ "\n"
           ++ "}"
 
 instance FromJSON Worker where
@@ -69,6 +70,35 @@ instance FromJSON Worker where
         caps        <- o .: "Caps"
         return Worker{..}
 instance ToJSON Worker
+
+-- |Helper datatype for getting request ID from boruta after creating it
+data ReqID = ReqID {simpleReqID :: Int} deriving Generic
+
+instance FromJSON ReqID where
+    parseJSON = withObject "ReqID" $ \o -> do
+        simpleReqID <- o .: "ReqID"
+        return ReqID{..}
+instance ToJSON ReqID
+
+data BorutaRequest = BorutaRequest
+    { reqID     :: Int
+    , reqState  :: String
+    , reqCaps   :: Caps
+    } deriving (Generic)
+
+instance FromJSON BorutaRequest where
+    parseJSON = withObject "BorutaRequest" $ \o -> do
+        reqID       <- o .: "ID"
+        reqState    <- o .: "State"
+        reqCaps     <- o .: "Caps"
+        return BorutaRequest{..}
+instance ToJSON BorutaRequest
+instance Show BorutaRequest where
+    show x = "{\n"
+          ++ "  \"ID\":"    ++ show (reqID x)   ++ ",\n"
+          ++ "  \"State\":" ++ show (reqState x)++ ",\n"
+          ++ "  \"Caps\":"  ++ show (reqCaps x) ++ "\n"
+          ++ "}"
 
 -- |Return device type of the given worker
 workerDeviceType :: Worker -> String
@@ -84,21 +114,13 @@ curlWorkers = do
     addr <- borutaAddr
     (err, str) <- curlGetString (addr ++ "/api/workers") [CurlFollowLocation True]
     if err == CurlOK
-        then do 
+        then do
             let res = decode (BL.pack str) :: Maybe [Worker]
             if isNothing res
                 then return []
                 else return $ fromJust res
         else return []
 
--- |Helper datatype for getting request ID from boruta after creating it
-data ReqID = ReqID {reqID :: Int} deriving Generic
-
-instance FromJSON ReqID where
-    parseJSON = withObject "ReqID" $ \o -> do
-        reqID <- o .: "ReqID"
-        return ReqID{..}
-instance ToJSON ReqID
 
 -- |Create request for given target for 60 minutes from now with priority 4
 createRequest :: String -> IO (Maybe Int)
@@ -111,4 +133,17 @@ createRequest target = do
     (_, out, err, _) <- runInteractiveCommand $ "curl -sL --data \"" ++ request ++"\" http://" ++ url ++ "/api/reqs/"
     outStr <- hGetContents out
     let req = decode (BL.pack outStr) :: Maybe ReqID
-    return $ reqID <$> req
+    return $ simpleReqID <$> req
+
+-- |List all requests from Boruta
+allRequests :: IO [BorutaRequest]
+allRequests = do
+    addr <- borutaAddr
+    (err, str) <- curlGetString (addr ++ "/api/reqs") [CurlFollowLocation True]
+    if err == CurlOK
+        then do
+            let res = decode (BL.pack str) :: Maybe [BorutaRequest]
+            if isNothing res
+                then return []
+                else return $ fromJust res
+        else return []

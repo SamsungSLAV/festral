@@ -42,6 +42,7 @@ data Command
         , cancel    :: Bool
         , workers   :: Bool
         , req       :: String
+        , allReq    :: Bool
         }
     | TestControl
         { perfTest  :: FilePath
@@ -180,6 +181,9 @@ welesopts = Slav
         <>value ""
         <>metavar "DEVICE_NAME"
         <>help  "Create new request for Boruta for given worker." )
+    <*> switch
+        ( long  "all-requests"
+        <>help  "Show list of all requests of Boruta" )
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -217,8 +221,9 @@ runCmd _ = putStrLn "Some parameter missed. Run program with --help option to se
 
 
 subCmd :: Command -> IO ()
-subCmd (Slav all id done fname start stdout listFile cancel workers req)
+subCmd (Slav all id done fname start stdout listFile cancel workers req allReqs)
     | all = show <$> curlJobs >>= putStrLn
+    | allReqs = show <$> allRequests >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
     | req /= "" = show <$> createRequest req >>= putStrLn
     | cancel = cancelJob id
