@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, DeriveGeneric #-}
 
 -- |Simple library for test management using Weles as testing server.
-module Festral.Weles.Boruta (
+module Festral.SLAV.Boruta (
     curlWorkers,
     createRequest,
     allRequests,

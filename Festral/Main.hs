@@ -5,7 +5,7 @@ module Main (
 import System.Process
 import System.IO
 import System.Environment
-import Festral.Weles.API hiding (info)
+import Festral.SLAV.Weles hiding (info)
 import Options.Applicative
 import Data.Semigroup ((<>))
 import Festral.Tests.Test
@@ -17,7 +17,7 @@ import Paths_Festral (version)
 import Data.Version (showVersion)
 import Festral.WWW.Server
 import Festral.Config
-import Festral.Weles.Boruta
+import Festral.SLAV.Boruta
 
 main = runCmd =<< execParser
     (info (helper <*> parseOptsCmd <|> prgVersion <|> report)
@@ -31,7 +31,7 @@ data Command
         , outDir    :: String
         , noClean   :: Bool
         }
-    | Slav
+    | Weles
         { all       :: Bool
         , jobId     :: Int
         , done      :: Int
@@ -40,7 +40,9 @@ data Command
         , stdout    :: Bool
         , listFile  :: Bool
         , cancel    :: Bool
-        , workers   :: Bool
+        }
+    | Boruta
+        { workers   :: Bool
         , req       :: String
         , allReq    :: Bool
         , console   :: String
@@ -70,15 +72,15 @@ testDesc    = "Create jobs on remote Weles server with tests defined in .yaml fi
             ++"Put results of tests to the directory specified in testLogDir of the ~/.festral.conf configuration file"
 buildDesc   = "Build all repositories for all branches described in configuration file. "
             ++"Put results into the directory specified in the buildLogDir field of the ~/.festral.conf configuration file."
-welesDesc   = "Deprecated. This name is for backward compatibility. See slav."
-slavDesc    = "Allow to use SLAV API for accessing and managing Weles's jobs and Boruta's devices by hands."
+borutaDesc   = "Give access for the device farm of the Boruta and managament devices under test by hands."
+welesDesc    = "Allow to use SLAV API for accessing and managing Weles's jobs and Boruta's devices by hands."
 serverDesc  = "Run local file server for external parts of test process (like remote Weles server) could access needed files such built rpms."
 
 opts :: Parser Command
 opts = hsubparser
     ( command "build" (info buildopts (progDesc buildDesc))
     <>command "weles" (info welesopts (progDesc welesDesc))
-    <>command "slav" (info welesopts (progDesc slavDesc))
+    <>command "boruta" (info borutaOpts (progDesc borutaDesc))
     <>command "test" (info testCtl (progDesc testDesc))
     <>command "server" (info runServer (progDesc serverDesc))
     )
@@ -132,7 +134,7 @@ prgVersion = Version
 
 
 welesopts :: Parser Command
-welesopts = Slav
+welesopts = Weles
     <$> switch
         ( long  "all"
         <>short 'a'
@@ -172,10 +174,13 @@ welesopts = Slav
         ( long  "cancel"
         <>short 'c'
         <>help  "Cancel job specified by -i option." )
-    <*> switch
+
+borutaOpts :: Parser Command
+borutaOpts = Boruta
+    <$> switch
         ( long  "workers"
         <>short 'w'
-        <>help  "Show list of workers of the Boruta" )
+        <>help  "Show list of workers (registered devices) of the Boruta" )
     <*> strOption
         ( long  "request"
         <>short 'r'
@@ -183,14 +188,15 @@ welesopts = Slav
         <>metavar "DEVICE_NAME"
         <>help  "Create new request for Boruta for given worker." )
     <*> switch
-        ( long  "all-requests"
+        ( long  "all"
+        <>short 'a'
         <>help  "Show list of all requests of Boruta" )
     <*> strOption
         ( long  "console"
         <>value ""
         <>metavar "DEVICE_NAME"
         <>help  "Open SSH console for given device" )
-
+    
 testCtl :: Parser Command
 testCtl = TestControl
     <$> strOption
@@ -227,15 +233,8 @@ runCmd _ = putStrLn "Some parameter missed. Run program with --help option to se
 
 
 subCmd :: Command -> IO ()
-subCmd (Slav
-            all id done fname start
-            stdout listFile cancel workers
-            req allReqs console)
+subCmd (Weles all id done fname start stdout listFile cancel)
     | all = show <$> curlJobs >>= putStrLn
-    | console /= "" = execDryadConsole console
-    | allReqs = show <$> allRequests >>= putStrLn
-    | workers = show <$> curlWorkers >>= putStrLn
-    | req /= "" = show <$> createRequest req >>= putStrLn
     | cancel = cancelJob id
     | start = show <$> startJob fname >>= putStrLn
     | listFile && fname == "" = show <$> getFileList id >>= putStrLn
@@ -243,6 +242,13 @@ subCmd (Slav
     | stdout = getJobOut id >>= putStrLn
     | done == 0 && id /= (-1) = show <$> getJob id >>= putStrLn
     | id /= (-1) = show <$> getJobWhenDone id done >>= putStrLn
+    | otherwise = runCmd None
+
+subCmd (Boruta workers req allReqs console)
+    | console /= "" = execDryadConsole console
+    | allReqs = show <$> allRequests >>= putStrLn
+    | workers = show <$> curlWorkers >>= putStrLn
+    | req /= "" = show <$> createRequest req >>= putStrLn
     | otherwise = runCmd None
 
 subCmd (TestControl conf "") = do

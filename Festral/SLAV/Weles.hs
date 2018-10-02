@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 -- |Simple library for test management using Weles as testing server.
-module Festral.Weles.API (
+module Festral.SLAV.Weles (
     Job(..),
     curlJobs,
     getJob,

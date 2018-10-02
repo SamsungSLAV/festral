@@ -9,8 +9,8 @@ module Festral.Tests.Test (
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy as LB
-import Festral.Weles.API hiding (status, name)
-import qualified Festral.Weles.API as WJob (status, name)
+import Festral.SLAV.Weles hiding (status, name)
+import qualified Festral.SLAV.Weles as WJob (status, name)
 import Data.Maybe
 import Festral.Builder.Meta hiding (parse, fromFile)
 import System.Directory
