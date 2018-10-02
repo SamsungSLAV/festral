@@ -43,6 +43,7 @@ data Command
         , workers   :: Bool
         , req       :: String
         , allReq    :: Bool
+        , console   :: String
         }
     | TestControl
         { perfTest  :: FilePath
@@ -184,6 +185,11 @@ welesopts = Slav
     <*> switch
         ( long  "all-requests"
         <>help  "Show list of all requests of Boruta" )
+    <*> strOption
+        ( long  "console"
+        <>value ""
+        <>metavar "DEVICE_NAME"
+        <>help  "Open SSH console for given device" )
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -221,8 +227,12 @@ runCmd _ = putStrLn "Some parameter missed. Run program with --help option to se
 
 
 subCmd :: Command -> IO ()
-subCmd (Slav all id done fname start stdout listFile cancel workers req allReqs)
+subCmd (Slav
+            all id done fname start
+            stdout listFile cancel workers
+            req allReqs console)
     | all = show <$> curlJobs >>= putStrLn
+    | console /= "" = execDryadConsole console
     | allReqs = show <$> allRequests >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
     | req /= "" = show <$> createRequest req >>= putStrLn
@@ -245,7 +255,8 @@ subCmd (TestControl conf "") = do
 
 subCmd (TestControl config fname) = performTestWithConfig config fname
 
-subCmd (Build config repos "" noClean) = getAppConfig >>= (\x -> subCmd (Build config repos (buildLogDir x) noClean))
+subCmd (Build config repos "" noClean) = getAppConfig >>=
+    (\x -> subCmd (Build config repos (buildLogDir x) noClean))
 subCmd (Build config repos out noClean) = do
     freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
