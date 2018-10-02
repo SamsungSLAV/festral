@@ -7,6 +7,7 @@ Festral consists of some small utilities:
 
 * `festral build` - utility for building repositories. It takes simple json file with information about what to build, how to build and what branches to build and just do it.
 * `festral weles` - utility for communication with Weles tests server.
+* `festral boruta` - utility for connecting devices of the farm directly.
 * `festral test` - utility for performing tests described by yaml files on remote Weles server and recieving results of the tests.
 * `festral server` - simple built-in web server for sharing built files and logs.
 
@@ -195,6 +196,25 @@ Available options:
   -h,--help                Show this help text
 
 ```
+------------------
+### festral boruta
+
+The `festral boruta` is tool for connecting to devices registered in the Boruta's farm of SLAV stack. This tool is more low-lewel then even `festral weles`, but it could
+be helpful when you need to have console for device under test and its MuxPi.
+
+You can get list of all workers (devices) by calling
+```
+festral boruta -w
+```
+
+Now devices are identified by its `device_type` field of the output JSON, so if you are want to have onsole for e.g. some `kantM1` board, you can 
+get it by command
+```
+festral boruta --console kantM1
+```
+This command will open ssh session which will be **valid not more than 1 hour** for one of the running boards of that type. If no running boards are present, this command will send 
+new request for start this target.
+
 ------------------
 ### festral test
 
