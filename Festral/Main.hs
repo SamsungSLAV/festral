@@ -43,7 +43,6 @@ data Command
         }
     | Boruta
         { workers   :: Bool
-        , req       :: String
         , allReq    :: Bool
         , console   :: String
         }
@@ -181,12 +180,6 @@ borutaOpts = Boruta
         ( long  "workers"
         <>short 'w'
         <>help  "Show list of workers (registered devices) of the Boruta" )
-    <*> strOption
-        ( long  "request"
-        <>short 'r'
-        <>value ""
-        <>metavar "DEVICE_NAME"
-        <>help  "Create new request for Boruta for given worker." )
     <*> switch
         ( long  "all"
         <>short 'a'
@@ -244,11 +237,10 @@ subCmd (Weles all id done fname start stdout listFile cancel)
     | id /= (-1) = show <$> getJobWhenDone id done >>= putStrLn
     | otherwise = runCmd None
 
-subCmd (Boruta workers req allReqs console)
+subCmd (Boruta workers allReqs console)
     | console /= "" = execDryadConsole console
     | allReqs = show <$> allRequests >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
-    | req /= "" = show <$> createRequest req >>= putStrLn
     | otherwise = runCmd None
 
 subCmd (TestControl conf "") = do

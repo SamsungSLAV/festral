@@ -3,7 +3,6 @@
 -- |Simple library for test management using Weles as testing server.
 module Festral.SLAV.Boruta (
     curlWorkers,
-    createRequest,
     allRequests,
     getTargetAuth,
     execDryadConsole,
@@ -22,11 +21,11 @@ import qualified Data.ByteString.Lazy.Char8 as BL (pack)
 import Data.Maybe
 import Data.Time.Clock
 import Data.Time.Format
-import System.Process
 import System.Posix.Process
 import System.IO
 import System.IO.Temp
 import Data.List.Split
+import Control.Exception
 
 -- |Data type describing Boruta worker
 data Worker = Worker
@@ -43,6 +42,64 @@ data Caps = Caps
     , uuid          :: String
     } deriving (Generic)
 
+-- |Helper datatype for getting request ID from boruta after creating it
+data ReqID = ReqID {simpleReqID :: Int} deriving Generic
+
+data BorutaRequest = BorutaRequestIn
+    { reqID     :: Int
+    , reqState  :: String
+    , reqCapsIn :: Caps
+    }
+    | BorutaRequestOut
+    { deadline  :: String
+    , validAfter:: String
+    , reqCapsOut:: Caps
+    , priority  :: Int
+    }
+    deriving (Generic)
+
+data Addr = Addr
+    { ip    :: String
+    , port  :: Int
+    , zone  :: String
+    } deriving (Show, Generic)
+
+data BorutaAuth = BorutaAuth
+    { sshKey    :: String
+    , username  :: String
+    , authAddr  :: Addr
+    } deriving (Generic, Show)
+
+instance FromJSON Addr where
+    parseJSON = withObject "Addr" $ \o -> do
+        ip   <- o .: "IP"
+        port <- o .: "Port"
+        zone <- o .: "Zone"
+        return Addr{..}
+instance ToJSON Addr
+instance FromJSON BorutaRequest where
+    parseJSON = withObject "BorutaRequestIn" $ \o -> do
+        reqID       <- o .: "ID"
+        reqState    <- o .: "State"
+        reqCapsIn   <- o .: "Caps"
+        return BorutaRequestIn{..}
+
+instance ToJSON BorutaRequest where
+    toJSON (BorutaRequestOut d v caps p) =
+        object ["Deadline"      .= d
+               ,"ValidAfter"    .= v
+               ,"Priority"      .= p
+               ,"Caps"          .= caps
+               ]
+
+instance Show BorutaRequest where
+    show (BorutaRequestIn i s c) = "{\n"
+          ++ "  \"ID\":"    ++ show i ++ ",\n"
+          ++ "  \"State\":" ++ s ++ ",\n"
+          ++ "  \"Caps\":"  ++ show c ++ "\n"
+          ++ "}"
+    show x = show $ toJSON x
+
 instance Show Caps where
     show x = "  {\n"
            ++"    \"Addr\":"          ++ show (addr x)        ++ ",\n"
@@ -56,7 +113,19 @@ instance FromJSON Caps where
         deviceType  <- o .:? "device_type"  .!= ""
         uuid        <- o .:? "UUID"         .!= ""
         return Caps{..}
-instance ToJSON Caps
+
+instance ToJSON Caps where
+    toJSON (Caps a d u) = object
+        [ "Addr"        .= a
+        , "device_type" .= d
+        , "UUID"        .= u
+        ]
+
+instance FromJSON ReqID where
+    parseJSON = withObject "ReqID" $ \o -> do
+        simpleReqID <- o .: "ReqID"
+        return ReqID{..}
+instance ToJSON ReqID
 
 instance Show Worker where
     show x = "{\n"
@@ -74,55 +143,6 @@ instance FromJSON Worker where
         caps        <- o .: "Caps"
         return Worker{..}
 instance ToJSON Worker
-
--- |Helper datatype for getting request ID from boruta after creating it
-data ReqID = ReqID {simpleReqID :: Int} deriving Generic
-
-instance FromJSON ReqID where
-    parseJSON = withObject "ReqID" $ \o -> do
-        simpleReqID <- o .: "ReqID"
-        return ReqID{..}
-instance ToJSON ReqID
-
-data BorutaRequest = BorutaRequest
-    { reqID     :: Int
-    , reqState  :: String
-    , reqCaps   :: Caps
-    } deriving (Generic)
-
-instance FromJSON BorutaRequest where
-    parseJSON = withObject "BorutaRequest" $ \o -> do
-        reqID       <- o .: "ID"
-        reqState    <- o .: "State"
-        reqCaps     <- o .: "Caps"
-        return BorutaRequest{..}
-instance ToJSON BorutaRequest
-instance Show BorutaRequest where
-    show x = "{\n"
-          ++ "  \"ID\":"    ++ show (reqID x)   ++ ",\n"
-          ++ "  \"State\":" ++ show (reqState x)++ ",\n"
-          ++ "  \"Caps\":"  ++ show (reqCaps x) ++ "\n"
-          ++ "}"
-
-data Addr = Addr
-    { ip    :: String
-    , port  :: Int
-    , zone  :: String
-    } deriving (Show, Generic)
-
-instance FromJSON Addr where
-    parseJSON = withObject "Addr" $ \o -> do
-        ip   <- o .: "IP"
-        port <- o .: "Port"
-        zone <- o .: "Zone"
-        return Addr{..}
-instance ToJSON Addr
-
-data BorutaAuth = BorutaAuth
-    { sshKey    :: String
-    , username  :: String
-    , authAddr  :: Addr
-    } deriving (Generic, Show)
 
 instance FromJSON BorutaAuth where
     parseJSON = withObject "BorutaAuth" $ \o -> do
@@ -151,24 +171,26 @@ curlWorkers = do
             [CurlFollowLocation True]
     return $ fromMaybe [] (decode (BL.pack str) :: Maybe [Worker])
 
--- |Create request for given target for 60 minutes from now with priority 4
-createRequest :: String -> IO (Maybe Int)
-createRequest target = do
+-- |Create request for given target defined by `Caps` for 60 minutes from now
+-- with priority 4
+createRequest :: Caps -> IO (Maybe Int)
+createRequest caps = do
     time <- getCurrentTime
     let now = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" time
     let afterHour = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" $
                     addUTCTime 3600 time -- Add 1 hour (3600 seconds)
-    let request = "{\\\"Deadline\\\": \\\""
-                ++ afterHour ++ "\\\", \\\"ValidAfter\\\": \\\""
-                ++ now ++ "\\\", \\\"Caps\\\" : { \\\"device_type\\\": \\\""
-                ++ target ++ "\\\" }, \\\"Priority\\\": 4 }"
+    let request = BorutaRequestOut afterHour now caps 4
     (addr, port) <- borutaAddr
-    (_, out, err, _) <- runInteractiveCommand $
-        "curl -sL --data \"" ++ request ++
-        "\" http://" ++ addr ++ ":" ++ port ++ "/api/reqs/"
-    outStr <- hGetContents out
-    let req = decode (BL.pack outStr) :: Maybe ReqID
+    req <- handle handleCurlInt $ Just <$> ((curlAeson
+            parseJSON
+            "POST"
+            (addr ++ ":" ++ port ++ "/api/reqs/")
+            [CurlFollowLocation True]
+            (Just request)) :: IO ReqID)
     return $ simpleReqID <$> req
+    where
+        handleCurlInt :: CurlAesonException -> IO (Maybe ReqID)
+        handleCurlInt e = putStrLn (show e) >> return Nothing
 
 -- |List all requests from Boruta
 allRequests :: IO [BorutaRequest]
@@ -186,23 +208,27 @@ getTargetAuth :: String -> IO (Maybe BorutaAuth)
 getTargetAuth device = do
     requests <- allRequests
     let active = filter
-            (\(BorutaRequest id state caps) ->
+            (\(BorutaRequestIn id state caps) ->
                 (state == "IN PROGRESS")
                 && (deviceType caps == device))
             requests
     id <- if length active == 0
-        then createRequest device
+        then createRequest (Caps "" device "")
         else return $ Just $ reqID $ head active
     maybe (return Nothing) getKey id
 
 getKey :: Int -> IO (Maybe BorutaAuth)
 getKey id = do
     (addr, port) <- borutaAddr
-    (_, out, err, _) <- runInteractiveCommand $
-        "curl -sL --data \"\" http://" ++ addr ++ ":" ++ port
-        ++ "/api/v1/reqs/" ++ show id ++ "/acquire_worker"
-    outStr <- hGetContents out
-    return $ decode (BL.pack outStr)
+    handle curlHandler $ Just <$> curlAeson
+        parseJSON
+        "POST"
+        (addr ++ ":" ++ port ++ "/api/v1/reqs/" ++ show id ++ "/acquire_worker")
+        [CurlFollowLocation True]
+        (Nothing :: Maybe Caps)
+
+curlHandler :: CurlAesonException -> IO (Maybe BorutaAuth)
+curlHandler e = putStrLn (show e) >> return Nothing
 
 -- |Exec ssh session for given device specified by device_type
 execDryadConsole :: String -> IO ()
@@ -210,14 +236,15 @@ execDryadConsole device = do
     auth <- getTargetAuth device
     (addr, _) <- borutaAddr
     keyFile <- maybe (return "") writeKey auth
-    maybe (return ())
-        (\auth -> executeFile "ssh" True
+    maybe (return ()) (\auth ->
+        executeFile "ssh" True
             [ (username auth) ++ "@" ++ addr
             , "-p"
             , (show $ port $ authAddr auth)
             , "-i"
             , keyFile
-            ] Nothing)
+            ]
+            Nothing)
         auth
 
 writeKey auth = writeSystemTempFile "boruta-key" (sshKey auth)
