@@ -77,14 +77,20 @@ performForallNewBuilds _ "" = return ()
 performForallNewBuilds conf list = do
     Par.mapM_ (performTestWithConfig conf) $ lines list
 
--- |Read configuration file from first parameter and build directory from second and make test log from it
+-- |Read configuration file from first parameter and build directory from
+-- second and make test log from it
 performTestWithConfig :: FilePath -> String -> IO ()
 performTestWithConfig confPath target = do
     confStr <- LB.readFile confPath
     let Just config = decode confStr :: Maybe [TestConfig]
     appConfig <- getAppConfig
     tests <- runTests config target
-    mapM_ (\ testRes -> parseTest testRes (buildLogDir appConfig ++ "/" ++ target) (testLogDir appConfig)) tests
+    mapM_ (\ testRes ->
+            parseTest
+                testRes
+                (buildLogDir appConfig ++ "/" ++ target)
+                (testLogDir appConfig))
+        tests
 
 builtInParsers = ["TCT", "XTest"]
 
@@ -92,7 +98,8 @@ builtInParsers = ["TCT", "XTest"]
 -- and creates directory with test logs.
 parseTest :: TestResult -> FilePath -> FilePath -> IO ()
 parseTest res@(TestResult _ config) buildDir outDir
-    | (parser config) `elem` builtInParsers = parseTest' writeWithParser res buildDir outDir
+    | (parser config) `elem` builtInParsers
+        = parseTest' writeWithParser res buildDir outDir
     | otherwise = parseTest' writeWithOwn res buildDir outDir
 
 writeWithParser config outs outDir = do
@@ -128,7 +135,9 @@ parseTest' writer (TestResult status config) buildDir outDir = do
     meta <- fromMetaFile $ buildDir ++ "/meta.txt"
     tm <- timeStamp
     let pathPrefix = outDir ++ "/" ++ hash meta
-    time <- catch ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm) (recreate_dir pathPrefix)
+    time <- catch
+                ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm)
+                (recreate_dir pathPrefix)
     writeMetaTest (show status) buildDir outDir (name config) time meta
     writeLog status time
 
@@ -138,10 +147,15 @@ parseTest' writer (TestResult status config) buildDir outDir = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
             writer config outs outDirName
-            writeFile (outDirName ++ "/tf.log") (concat $ map (\(n,c) ->
-                                                     "\n------------------ Begin of " ++ n ++ " ------------------\n"
-                                                    ++ c ++ "\n"
-                                                    ++ "------------------ End of " ++ n ++ "   ------------------\n") outs)
+            writeFile
+                (outDirName ++ "/tf.log")
+                (concat $ map (\(n,c) ->
+                    "\n------------------ Begin of "
+                    ++ n ++ " ------------------\n"
+                    ++ c ++ "\n"
+                    ++ "------------------ End of "
+                    ++ n ++ "   ------------------\n")
+                outs)
         writeLog (BadJob (UnknownError x)) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ t
@@ -159,10 +173,15 @@ recreate_dir path ex
     | isAlreadyExistsError ex = do
         threadDelay 1000000 -- wait for 1 second
         time <- timeStamp
-        catch ((createDirectory $ path ++ "_" ++ time) >> return time) (recreate_dir path)
+        catch
+            ((createDirectory $ path ++ "_" ++ time) >> return time)
+            (recreate_dir path)
     | isDoesNotExistError ex = do
         time <- timeStamp
-        catch ((createDirectoryIfMissing True $ path ++ "_" ++ time) >> return time) (recreate_dir path)
+        catch
+            ((createDirectoryIfMissing True $ path ++ "_" ++ time)
+                >> return time)
+            (recreate_dir path)
     | otherwise = (putStrLn $ show ex) >> timeStamp
 
 timeStamp = do
@@ -182,7 +201,8 @@ getParser "XTest" testRes = do
 runTests :: [TestConfig] -> String -> IO [TestResult]
 runTests config target = do
     appConfig <- getAppConfig
-    metaStr <- readFile $ (buildLogDir appConfig) ++ "/" ++ target ++ "/meta.txt"
+    metaStr <- readFile $
+                (buildLogDir appConfig) ++ "/" ++ target ++ "/meta.txt"
     let meta = readMeta metaStr
     let configs = filterConf config meta
 
@@ -200,10 +220,12 @@ getYaml templatePath buildID = do
     yamlTemplate <- catch (readFile templatePath) fileNotExists
     if yamlTemplate == ""
         then return Nothing
-        else fmap Just $ generateFromTemplate yamlTemplate $ yamlTemplater buildOutDir
+        else fmap Just $
+                generateFromTemplate yamlTemplate $
+                yamlTemplater buildOutDir
 
--- |Helper function for use pattern matching for resolve different errors before test start.
--- runTestJob buildStatus (Maybe parsedYaml) buildId
+-- |Helper function for use pattern matching for resolve different errors
+-- before test start. RunTestJob buildStatus (Maybe parsedYaml) buildId
 runTestJob :: String -> Maybe String -> String -> IO JobResult
 runTestJob _ Nothing _ = return BadYaml
 runTestJob "FAILED" _ _ = return BuildFailed
@@ -211,10 +233,12 @@ runTestJob "SUCCEED" (Just yaml) buildId = do
     config <- getAppConfig
     buildOutDir <- buildResDir buildId
     handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") yaml
-    jobId <- handle badJob $ withCurrentDirectory buildOutDir $ startJob (buildOutDir ++ "/test.yml")
+    jobId <- handle badJob $
+                withCurrentDirectory buildOutDir $
+                startJob (buildOutDir ++ "/test.yml")
     return $ getJobId jobId
 
-    where 
+    where
         getJobId :: Maybe Int -> JobResult
         getJobId Nothing = StartJobFailed
         getJobId (Just id) = JobId id
@@ -223,14 +247,16 @@ runTestJob _ _ _ = return StartJobFailed
 -- |Wait for job if it started successfully and return its results after finish
 waitForJob :: JobResult -> Int -> Meta -> IO JobResult
 waitForJob (JobId jobid) timeout m = do
-    putStrLn $ "[" ++ repoName m ++ "][" ++ show jobid ++ "]Waiting for job finished with " ++ show timeout ++ "sec. timeout ..."
+    putLog m $ brace (show jobid)
+        ++ "Waiting for job finished with "
+        ++ show timeout ++ "sec. timeout ..."
     hFlush stdout
 
     job <- getJobWhenDone jobid timeout
-    putStrLn $ "[" ++ repoName m ++ "][" ++ show jobid ++ "]Finished: " ++ show (fmap WJob.status job)
+    putLog m $ brace (show jobid) ++ "Finished: " ++ show (fmap WJob.status job)
     filesFromJob job >>= outToResults
 
-    where 
+    where
         outToResults :: Either [String] JobResult -> IO JobResult
         outToResults (Right x) = return x
         outToResults (Left x) = do
@@ -243,7 +269,9 @@ filesFromJob Nothing = return $ Right StartJobFailed
 filesFromJob (Just job) = if WJob.status job == "FAILED"
                             then return $ Right (dryadErr job)
                             else do
-                                jobFiles <- (filter (not . (isInfixOf ".rpm")) <$>) <$> getFileList (jobid job)
+                                jobFiles <-
+                                    (filter (not . (isInfixOf ".rpm")) <$>)
+                                    <$> getFileList (jobid job)
                                 if isNothing jobFiles
                                     then return $ Right StartJobFailed
                                     else return $ Left $ fromJust jobFiles
@@ -261,31 +289,29 @@ dryadErr job
 fileToFileContent :: Int -> String -> IO (String, String)
 fileToFileContent jobid fname = do
     content <- getJobOutFile jobid fname
-    let content' = if isNothing content
-                    then ""
-                    else fromJust content
+    let content' = fromMaybe "" content
     return (fname, content')
 
--- |Run test for the given build and return pairs (file name, contents) of files created on Weles
--- runTest build_name path_to_config_fiile
+-- |Run test for the given build and return pairs (file name, contents) of files
+-- created on Weles.
 runTest :: String -> TestConfig -> IO TestResult
 runTest target testConf = do
     config <- getAppConfig
     meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let yamlPath = yaml testConf
-    putStrLn $ "\n[" ++ repoName meta ++ "]Starting Weles job with " ++ yamlPath ++ " ..."
+    putLog meta $ "Starting Weles job with " ++ yamlPath ++ " ..."
     yaml <- getYaml yamlPath target
     jobId <- runTestJob (status meta) yaml target
-    putStrLn $ "[" ++ repoName meta ++ "]Started job with id: " ++ show jobId
+    putLog meta $ "Started job with id: " ++ show jobId
     jobRes <- waitForJob jobId 3600 meta
     testResults jobRes meta testConf
 
 testResults :: JobResult -> Meta -> TestConfig -> IO TestResult
 testResults BuildFailed m c = do
-    putStrLn ("[" ++ repoName m ++ "][NOTE]This repository build failed. Nothing to test.") 
+    putLog m "[NOTE]This repository build failed. Nothing to test."
     return $ TestResult (BadJob BuildFailed) c
 testResults BadYaml m c = do
-    putStrLn $ "[" ++ repoName m ++ "][ERROR]No such YAML testcase file." 
+    putLog m "[ERROR]No such YAML testcase file."
     return $ TestResult (BadJob BadYaml) c
 testResults (JobLogs logs) m conf = do
     resLog <- fromWelesFiles logs "results"
@@ -293,15 +319,29 @@ testResults (JobLogs logs) m conf = do
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
 testResults err m c = do
-    putStrLn $ "[" ++ repoName m ++ "][ERROR][" ++ show err ++ "]"
+    putLog m $ "[ERROR]" ++ brace (show err)
     return $ TestResult (BadJob err) c
+
+putLog m y = putStrLn $ mlog m ++ y
+    where
+        mlog m = "[" ++ repoName m ++ "][" ++ branch m ++ "]"
+
+brace x = "[" ++ x ++ "]"
 
 yamlTemplater :: String -> TemplateType -> IO String
 yamlTemplater outDir (URI url) = do
     config <- getAppConfig
     rpms <- catch (getDirectoryContents outDir) dirDoesntExists
-    let rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $ filter(isInfixOf url) $ rpms
-    return $ "uri: 'http://" ++ webPageIP config ++ "/secosci/download.php?file=" ++ resolvedName rpmname ++ "&build=" ++ hash ++ "/" ++ dir ++ "'"
+    let rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $
+            filter(isInfixOf url) $ rpms
+    return $ "uri: 'http://"
+        ++ webPageIP config
+        ++ "/secosci/download.php?file="
+        ++ resolvedName rpmname
+        ++ "&build="
+        ++ hash
+        ++ "/"
+        ++ dir ++ "'"
     where
         (dir:hash:_) = reverse $ splitOn "/" outDir
 
@@ -309,8 +349,16 @@ yamlTemplater outDir (Latest_URI url) = do
     config <- getAppConfig
     cachePath <- buildCache
     cache <- catch (readFile cachePath) fileNotExists
-    let (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $ sortBy (\a b -> length a `compare` length b) $ filter (isInfixOf url) $ splitOn "\n" cache
-    return $ "uri: 'http://"++ webPageIP config ++ "/secosci/download.php?file=" ++ cachedName ++ "&build=" ++ cachedHash ++ "/build_res'"
+    let (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $
+            sortBy (\a b -> length a `compare` length b)
+            $ filter (isInfixOf url) $ splitOn "\n" cache
+    return $ "uri: 'http://"
+        ++ webPageIP config
+        ++ "/secosci/download.php?file="
+        ++ cachedName
+        ++ "&build="
+        ++ cachedHash
+        ++ "/build_res'"
 
 yamlTemplater outDir (RPMInstallCurrent pkg) = do
     uri <- yamlTemplater outDir (URI pkg)
@@ -328,7 +376,8 @@ yamlTemplaterRpm  uri package =
     ++ "                  dest: '/tmp/" ++ rpmName ++ "'\n"
     ++ "                  alias: '" ++ rpmName ++ "'\n"
     ++ "              - run:\n"
-    ++ "                  name: \"'rpm -i /tmp/" ++ rpmName ++ " --force 2>&1 >> /tmp/install.log'\""
+    ++ "                  name: \"'rpm -i /tmp/"
+    ++ rpmName ++ " --force 2>&1 >> /tmp/install.log'\""
     where
         rpmName = package ++ ".rpm"
 
