@@ -44,7 +44,9 @@ data Command
     | Boruta
         { workers   :: Bool
         , allReq    :: Bool
-        , console   :: String
+        , console   :: Bool
+        , devType   :: String
+        , deviceId  :: String
         }
     | TestControl
         { perfTest  :: FilePath
@@ -184,11 +186,21 @@ borutaOpts = Boruta
         ( long  "all"
         <>short 'a'
         <>help  "Show list of all requests of Boruta" )
-    <*> strOption
+    <*> switch
         ( long  "console"
+        <>help  "Open SSH console for target specified by -u or by -t option. If device type is specified by -i option open consoly for any device matching this type." )
+    <*> strOption
+        ( long  "device_type"
         <>value ""
-        <>metavar "DEVICE_NAME"
-        <>help  "Open SSH console for given device" )
+        <>short 't'
+        <>metavar "DEVICE_TYPE"
+        <>help  "Specify device type of the target" )
+    <*> strOption
+        ( long  "uuid"
+        <>value ""
+        <>short 'u'
+        <>metavar "DEVICE_UUID"
+        <>help  "Specify UUID of the target device" )
     
 testCtl :: Parser Command
 testCtl = TestControl
@@ -224,7 +236,6 @@ runCmd (Cmd x) = subCmd x
 
 runCmd _ = putStrLn "Some parameter missed. Run program with --help option to see usage."
 
-
 subCmd :: Command -> IO ()
 subCmd (Weles all id done fname start stdout listFile cancel)
     | all = show <$> curlJobs >>= putStrLn
@@ -237,8 +248,9 @@ subCmd (Weles all id done fname start stdout listFile cancel)
     | id /= (-1) = show <$> getJobWhenDone id done >>= putStrLn
     | otherwise = runCmd None
 
-subCmd (Boruta workers allReqs console)
-    | console /= "" = execDryadConsole console
+subCmd (Boruta workers allReqs console dType dUUID)
+    | console && dType /= "" = execAnyDryadConsole dType
+    | console && dUUID /= "" = execSpecifiedDryadConsole dUUID
     | allReqs = show <$> allRequests >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
     | otherwise = runCmd None

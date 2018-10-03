@@ -4,8 +4,8 @@
 module Festral.SLAV.Boruta (
     curlWorkers,
     allRequests,
-    getTargetAuth,
-    execDryadConsole,
+    execAnyDryadConsole,
+    execSpecifiedDryadConsole,
     Worker (..)
 ) where
 
@@ -95,7 +95,7 @@ instance ToJSON BorutaRequest where
 instance Show BorutaRequest where
     show (BorutaRequestIn i s c) = "{\n"
           ++ "  \"ID\":"    ++ show i ++ ",\n"
-          ++ "  \"State\":" ++ s ++ ",\n"
+          ++ "  \"State\":\"" ++ s ++ "\",\n"
           ++ "  \"Caps\":"  ++ show c ++ "\n"
           ++ "}"
     show x = show $ toJSON x
@@ -115,11 +115,13 @@ instance FromJSON Caps where
         return Caps{..}
 
 instance ToJSON Caps where
-    toJSON (Caps a d u) = object
-        [ "Addr"        .= a
-        , "device_type" .= d
-        , "UUID"        .= u
+    toJSON (Caps a d u) = object $ catMaybes
+        [ "Addr"        .=. a
+        , "device_type" .=. d
+        , "UUID"        .=. u
         ]
+
+(.=.) x y = if y == "" then Nothing else Just (x .= y)
 
 instance FromJSON ReqID where
     parseJSON = withObject "ReqID" $ \o -> do
@@ -190,7 +192,7 @@ createRequest caps = do
     return $ simpleReqID <$> req
     where
         handleCurlInt :: CurlAesonException -> IO (Maybe ReqID)
-        handleCurlInt e = putStrLn (show e) >> return Nothing
+        handleCurlInt e = putStrLn "Can't create new request" >> return Nothing
 
 -- |List all requests from Boruta
 allRequests :: IO [BorutaRequest]
@@ -204,18 +206,29 @@ allRequests = do
 
 -- |Return ssh key for session for given by name target. If this target has
 -- running session it returns key for it, othervise it opens new request
-getTargetAuth :: String -> IO (Maybe BorutaAuth)
-getTargetAuth device = do
+getTargetAuth :: (BorutaRequest -> Bool) -> Caps -> IO (Maybe BorutaAuth)
+getTargetAuth selector caps = do
     requests <- allRequests
-    let active = filter
-            (\(BorutaRequestIn id state caps) ->
-                (state == "IN PROGRESS")
-                && (deviceType caps == device))
-            requests
+    let active = filter selector requests
     id <- if length active == 0
-        then createRequest (Caps "" device "")
+        then createRequest caps
         else return $ Just $ reqID $ head active
     maybe (return Nothing) getKey id
+
+getSpecifiedTargetAuth targetUUID = do
+    let caps = Caps "" "" targetUUID
+    let selector = (\(BorutaRequestIn _ state caps) -> 
+            ((uuid caps) == targetUUID)
+            && (state == "IN PROGRESS"))
+    getTargetAuth selector caps
+
+-- |Get any accessible device od givet device_type
+getDeviceTypeAuth device = do
+    let caps = Caps "" device ""
+    let selector = (\(BorutaRequestIn _ state caps) -> 
+            (state == "IN PROGRESS")
+            && (deviceType caps == device))
+    getTargetAuth selector caps
 
 getKey :: Int -> IO (Maybe BorutaAuth)
 getKey id = do
@@ -228,12 +241,19 @@ getKey id = do
         (Nothing :: Maybe Caps)
 
 curlHandler :: CurlAesonException -> IO (Maybe BorutaAuth)
-curlHandler e = putStrLn (show e) >> return Nothing
+curlHandler e = putStrLn ("All targets are busy and no one can be requested"
+    ++ " immediately. Try later.") >> return Nothing
 
--- |Exec ssh session for given device specified by device_type
-execDryadConsole :: String -> IO ()
-execDryadConsole device = do
-    auth <- getTargetAuth device
+-- |Exec ssh session for any device which matches specified device_type
+execAnyDryadConsole :: String -> IO ()
+execAnyDryadConsole = ((=<<) execDryadConsole) . getDeviceTypeAuth
+
+-- |Exec ssh session for device specified by its UUID
+execSpecifiedDryadConsole :: String -> IO ()
+execSpecifiedDryadConsole = ((=<<) execDryadConsole) . getSpecifiedTargetAuth
+
+execDryadConsole :: Maybe BorutaAuth -> IO ()
+execDryadConsole auth = do
     (addr, _) <- borutaAddr
     keyFile <- maybe (return "") writeKey auth
     maybe (return ()) (\auth ->
