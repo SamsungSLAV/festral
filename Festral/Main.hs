@@ -47,6 +47,7 @@ data Command
         , console   :: Bool
         , devType   :: String
         , deviceId  :: String
+        , close     :: Int
         }
     | TestControl
         { perfTest  :: FilePath
@@ -74,7 +75,7 @@ testDesc    = "Create jobs on remote Weles server with tests defined in .yaml fi
 buildDesc   = "Build all repositories for all branches described in configuration file. "
             ++"Put results into the directory specified in the buildLogDir field of the ~/.festral.conf configuration file."
 borutaDesc   = "Give access for the device farm of the Boruta and managament devices under test by hands."
-welesDesc    = "Allow to use SLAV API for accessing and managing Weles's jobs and Boruta's devices by hands."
+welesDesc    = "Low-level client for Weles API for accessing and managing jobs by hands."
 serverDesc  = "Run local file server for external parts of test process (like remote Weles server) could access needed files such built rpms."
 
 opts :: Parser Command
@@ -201,7 +202,13 @@ borutaOpts = Boruta
         <>short 'u'
         <>metavar "DEVICE_UUID"
         <>help  "Specify UUID of the target device" )
-    
+    <*> option auto
+        ( long  "close"
+        <>short 'c'
+        <>value (-1)
+        <>metavar "REQUEST_ID"
+        <>help  "Close request given by ID." )
+
 testCtl :: Parser Command
 testCtl = TestControl
     <$> strOption
@@ -248,11 +255,12 @@ subCmd (Weles all id done fname start stdout listFile cancel)
     | id /= (-1) = show <$> getJobWhenDone id done >>= putStrLn
     | otherwise = runCmd None
 
-subCmd (Boruta workers allReqs console dType dUUID)
+subCmd (Boruta workers allReqs console dType dUUID close)
     | console && dType /= "" = execAnyDryadConsole dType
     | console && dUUID /= "" = execSpecifiedDryadConsole dUUID
     | allReqs = show <$> allRequests >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
+    | close >= 0 = closeRequest close
     | otherwise = runCmd None
 
 subCmd (TestControl conf "") = do

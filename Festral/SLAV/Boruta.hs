@@ -6,6 +6,7 @@ module Festral.SLAV.Boruta (
     allRequests,
     execAnyDryadConsole,
     execSpecifiedDryadConsole,
+    closeRequest,
     Worker (..)
 ) where
 
@@ -214,7 +215,7 @@ getTargetAuth selector caps = do
 
 getSpecifiedTargetAuth targetUUID = do
     let caps = Caps "" "" targetUUID
-    let selector = (\(BorutaRequestIn _ state caps) -> 
+    let selector = (\(BorutaRequestIn _ state caps) ->
             ((uuid caps) == targetUUID)
             && (state == "IN PROGRESS"))
     getTargetAuth selector caps
@@ -222,7 +223,7 @@ getSpecifiedTargetAuth targetUUID = do
 -- |Get any accessible device od givet device_type
 getDeviceTypeAuth device = do
     let caps = Caps "" device ""
-    let selector = (\(BorutaRequestIn _ state caps) -> 
+    let selector = (\(BorutaRequestIn _ state caps) ->
             (state == "IN PROGRESS")
             && (deviceType caps == device))
     getTargetAuth selector caps
@@ -265,3 +266,16 @@ execDryadConsole auth = do
         auth
 
 writeKey auth = writeSystemTempFile "boruta-key" (sshKey auth)
+
+closeRequest :: Int -> IO ()
+closeRequest id = do
+    (addr, port) <- borutaAddr
+    handle h $ curlAeson
+        parseJSON
+        "POST"
+        (addr ++ ":" ++ port ++ "/api/v1/reqs/" ++ show id ++ "/close")
+        [CurlFollowLocation True]
+        (Nothing :: Maybe Caps)
+    where
+        h :: CurlAesonException -> IO ()
+        h _ = putStrLn "Cant access requesteed ID" >> return ()
