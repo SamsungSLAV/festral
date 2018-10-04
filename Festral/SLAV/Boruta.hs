@@ -7,6 +7,10 @@ module Festral.SLAV.Boruta (
     execAnyDryadConsole,
     execSpecifiedDryadConsole,
     closeRequest,
+    execMuxPi,
+    execDUT,
+    pushMuxPi,
+    pushDUT,
     Worker (..)
 ) where
 
@@ -22,7 +26,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Maybe
 import Data.Time.Clock
 import Data.Time.Format
-import System.Posix.Process
+import System.Process
 import System.IO
 import System.IO.Temp
 import Data.List.Split
@@ -70,6 +74,13 @@ data BorutaAuth = BorutaAuth
     , username  :: String
     , authAddr  :: Addr
     } deriving (Generic, Show)
+
+data DryadSSH = DryadSSH
+    { dsUser:: String
+    , dsIp  :: String
+    , dsPort:: Int
+    , idFile    :: FilePath
+    }
 
 instance FromJSON Addr where
     parseJSON = withObject "Addr" $ \o -> do
@@ -220,7 +231,7 @@ getSpecifiedTargetAuth targetUUID = do
             && (state == "IN PROGRESS"))
     getTargetAuth selector caps
 
--- |Get any accessible device od givet device_type
+-- |Get any accessible device of given device_type
 getDeviceTypeAuth device = do
     let caps = Caps "" device ""
     let selector = (\(BorutaRequestIn _ state caps) ->
@@ -244,29 +255,61 @@ curlHandler e = putStrLn ("All targets are busy and no one can be requested"
 
 -- |Exec ssh session for any device which matches specified device_type
 execAnyDryadConsole :: String -> IO ()
-execAnyDryadConsole = ((=<<) execDryadConsole) . getDeviceTypeAuth
+execAnyDryadConsole x = execDryad (sshCmd "") =<< getDeviceTypeAuth x
 
 -- |Exec ssh session for device specified by its UUID
 execSpecifiedDryadConsole :: String -> IO ()
-execSpecifiedDryadConsole = ((=<<) execDryadConsole) . getSpecifiedTargetAuth
+execSpecifiedDryadConsole x = execDryad (sshCmd "") =<< getSpecifiedTargetAuth x
 
-execDryadConsole :: Maybe BorutaAuth -> IO ()
-execDryadConsole auth = do
+-- |Execute command on MuxPi
+execMuxPi :: String -> String -> IO ()
+execMuxPi uid cmd = execDryad (sshCmd cmd) =<< getSpecifiedTargetAuth uid
+
+-- |Execute command on the device under test of the Dryad specified by UUID
+execDUT :: String -> String -> IO ()
+execDUT uid cmd = execDryad (sshCmd $ "/usr/local/bin/dut_exec.sh " ++ cmd)
+    =<<  getSpecifiedTargetAuth uid
+
+-- |Push file from host to the MuxPi of Dryad identified by UUID
+pushMuxPi :: String -> FilePath -> FilePath -> IO ()
+pushMuxPi uid from to = execDryad (scpCmd from to) 
+    =<< getSpecifiedTargetAuth uid
+
+-- |Push file from host to the device under test identified by UUID
+pushDUT :: String -> FilePath -> FilePath -> IO ()
+pushDUT uid from to = do
+    auth <- getSpecifiedTargetAuth uid
+    execDryad (scpCmd from tmpfile) auth
+    execDryad (sshCmd $ "/usr/local/bin/dut_copyto.sh " ++ tmpfile ++ " " ++ to)
+        auth
+    execDryad (sshCmd $ "rm " ++ tmpfile) auth
+    where
+        tmpfile = "/tmp/festral_copied_file"
+
+sshCmd cmd x = "ssh " 
+    ++ dsUser x ++ "@" ++ dsIp x ++ " -p " ++ show (dsPort x)
+    ++ " -i " ++ idFile x ++ " " ++ cmd
+scpCmd fname out x = "scp "
+    ++ "-i " ++ idFile x ++ " -P " ++ show (dsPort x) ++ " " 
+    ++ fname ++ " " ++ dsUser x
+    ++ "@" ++ dsIp x ++ ":" ++ out
+
+type DryadCmd = (DryadSSH -> String)
+
+-- |This function takes function converting dryad connection data to the command
+-- and this function's argument and executes this command.
+execDryad :: DryadCmd -> Maybe BorutaAuth -> IO ()
+execDryad f auth = do
     (addr, _) <- borutaAddr
     keyFile <- maybe (return "") writeKey auth
-    maybe (return ()) (\auth ->
-        executeFile "ssh" True
-            [ (username auth) ++ "@" ++ addr
-            , "-p"
-            , (show $ port $ authAddr auth)
-            , "-i"
-            , keyFile
-            ]
-            Nothing)
-        auth
+    maybe (return ()) (\ auth -> 
+        let creds = DryadSSH 
+                (username auth) addr (port $ authAddr auth) keyFile in
+        callCommand $ f creds) auth
 
 writeKey auth = writeSystemTempFile "boruta-key" (sshKey auth)
 
+-- |Close Boruta request specified by its ID
 closeRequest :: Int -> IO ()
 closeRequest id = do
     (addr, port) <- borutaAddr

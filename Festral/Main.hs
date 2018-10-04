@@ -48,6 +48,10 @@ data Command
         , devType   :: String
         , deviceId  :: String
         , close     :: Int
+        , exec      :: String
+        , dut       :: Bool
+        , push      :: String
+        , bOutFile  :: FilePath
         }
     | TestControl
         { perfTest  :: FilePath
@@ -208,6 +212,25 @@ borutaOpts = Boruta
         <>value (-1)
         <>metavar "REQUEST_ID"
         <>help  "Close request given by ID." )
+    <*> strOption
+        ( long  "exec"
+        <>value ""
+        <>metavar "COMMAND"
+        <>help  "Execute COMMAND on the MuxPi target specified by UUID with -u option. If --dut option is enabled execute command directly on device under test instead of MuxPi" )
+    <*> switch
+        ( long "dut"
+        <>help "Pass command directly to the device under test instead of MuxPi" )
+    <*> strOption
+        ( long  "push"
+        <>value ""
+        <>metavar "FILENAME"
+        <>help  "Push file to the MuxPi target specified by UUID with -u option into the location specified by -o option. If --dut option is enabled push directly on device under test instead of MuxPi" )
+    <*> strOption
+        ( long  "out"
+        <>short 'o'
+        <>value ""
+        <>metavar "FILENAME"
+        <>help  "Specify output filename." )
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -255,12 +278,16 @@ subCmd (Weles all id done fname start stdout listFile cancel)
     | id /= (-1) = show <$> getJobWhenDone id done >>= putStrLn
     | otherwise = runCmd None
 
-subCmd (Boruta workers allReqs console dType dUUID close)
+subCmd (Boruta workers allReqs console dType dUUID close ex dut push out)
     | console && dType /= "" = execAnyDryadConsole dType
     | console && dUUID /= "" = execSpecifiedDryadConsole dUUID
     | allReqs = show <$> allRequests >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
     | close >= 0 = closeRequest close
+    | ex /= "" && dUUID /= "" && dut = execDUT dUUID ex
+    | ex /= "" && dUUID /= "" = execMuxPi dUUID ex
+    | push /= "" && out /= "" && dUUID /= "" && dut = pushDUT dUUID push out
+    | push /= "" && out /= "" && dUUID /= "" = pushMuxPi dUUID push out
     | otherwise = runCmd None
 
 subCmd (TestControl conf "") = do
