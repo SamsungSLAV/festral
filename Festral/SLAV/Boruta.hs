@@ -17,7 +17,7 @@ import Festral.Config
 import Control.Exception
 import Network.Curl
 import Network.Curl.Aeson
-import qualified Data.ByteString.Lazy.Char8 as BL (pack)
+import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Maybe
 import Data.Time.Clock
 import Data.Time.Format
@@ -93,11 +93,8 @@ instance ToJSON BorutaRequest where
                ]
 
 instance Show BorutaRequest where
-    show (BorutaRequestIn i s c) = "{\n"
-          ++ "  \"ID\":"    ++ show i ++ ",\n"
-          ++ "  \"State\":\"" ++ s ++ "\",\n"
-          ++ "  \"Caps\":"  ++ show c ++ "\n"
-          ++ "}"
+    show (BorutaRequestIn i s c) =
+          "[" ++ show i ++ "," ++ s ++ "," ++ BL.unpack (encode c) ++ "]\n"
     show x = show $ toJSON x
 
 instance Show Caps where
