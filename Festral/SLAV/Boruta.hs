@@ -11,6 +11,7 @@ module Festral.SLAV.Boruta (
     execDUT,
     pushMuxPi,
     pushDUT,
+    dutBoot,
     Worker (..)
 ) where
 
@@ -267,12 +268,12 @@ execMuxPi uid cmd = execDryad (sshCmd cmd) =<< getSpecifiedTargetAuth uid
 
 -- |Execute command on the device under test of the Dryad specified by UUID
 execDUT :: String -> String -> IO ()
-execDUT uid cmd = execDryad (sshCmd $ "/usr/local/bin/dut_exec.sh " ++ cmd)
+execDUT uid cmd = execDryad (sshCmd ./"dut_exec.sh " ++ cmd)
     =<<  getSpecifiedTargetAuth uid
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
 pushMuxPi :: String -> FilePath -> FilePath -> IO ()
-pushMuxPi uid from to = execDryad (scpCmd from to) 
+pushMuxPi uid from to = execDryad (scpCmd from to)
     =<< getSpecifiedTargetAuth uid
 
 -- |Push file from host to the device under test identified by UUID
@@ -280,17 +281,17 @@ pushDUT :: String -> FilePath -> FilePath -> IO ()
 pushDUT uid from to = do
     auth <- getSpecifiedTargetAuth uid
     execDryad (scpCmd from tmpfile) auth
-    execDryad (sshCmd $ "/usr/local/bin/dut_copyto.sh " ++ tmpfile ++ " " ++ to)
+    execDryad (sshCmd ./ "dut_copyto.sh " ++ tmpfile ++ " " ++ to)
         auth
     execDryad (sshCmd $ "rm " ++ tmpfile) auth
     where
         tmpfile = "/tmp/festral_copied_file"
 
-sshCmd cmd x = "ssh " 
+sshCmd cmd x = "ssh "
     ++ dsUser x ++ "@" ++ dsIp x ++ " -p " ++ show (dsPort x)
     ++ " -i " ++ idFile x ++ " " ++ cmd
 scpCmd fname out x = "scp "
-    ++ "-i " ++ idFile x ++ " -P " ++ show (dsPort x) ++ " " 
+    ++ "-i " ++ idFile x ++ " -P " ++ show (dsPort x) ++ " "
     ++ fname ++ " " ++ dsUser x
     ++ "@" ++ dsIp x ++ ":" ++ out
 
@@ -302,8 +303,8 @@ execDryad :: DryadCmd -> Maybe BorutaAuth -> IO ()
 execDryad f auth = do
     (addr, _) <- borutaAddr
     keyFile <- maybe (return "") writeKey auth
-    maybe (return ()) (\ auth -> 
-        let creds = DryadSSH 
+    maybe (return ()) (\ auth ->
+        let creds = DryadSSH
                 (username auth) addr (port $ authAddr auth) keyFile in
         callCommand $ f creds) auth
 
@@ -322,3 +323,12 @@ closeRequest id = do
     where
         h :: CurlAesonException -> IO ()
         h _ = putStrLn "Cant access requesteed ID" >> return ()
+
+-- |Boot up device under test specified by UUID
+dutBoot uid = execMuxPi uid ./"dut_boot.sh"
+            >>execMuxPi uid ./"dut_login.sh root"
+
+-- |Prepend executable path to the string and execute function
+infixr 4 ./
+(./) :: (String -> a) -> String -> a
+f ./ x = f $ "/usr/local/bin/" ++ x

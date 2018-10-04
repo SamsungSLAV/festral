@@ -52,6 +52,7 @@ data Command
         , dut       :: Bool
         , push      :: String
         , bOutFile  :: FilePath
+        , boot      :: Bool
         }
     | TestControl
         { perfTest  :: FilePath
@@ -231,6 +232,10 @@ borutaOpts = Boruta
         <>value ""
         <>metavar "FILENAME"
         <>help  "Specify output filename." )
+    <*> switch
+        ( long  "boot"
+        <>short 'b'
+        <>help  "Boot device under test dpecified by UUID with -u option" )
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -278,11 +283,12 @@ subCmd (Weles all id done fname start stdout listFile cancel)
     | id /= (-1) = show <$> getJobWhenDone id done >>= putStrLn
     | otherwise = runCmd None
 
-subCmd (Boruta workers allReqs console dType dUUID close ex dut push out)
+subCmd (Boruta workers allReqs console dType dUUID close ex dut push out boot)
     | console && dType /= "" = execAnyDryadConsole dType
     | console && dUUID /= "" = execSpecifiedDryadConsole dUUID
     | allReqs = show <$> allRequests >>= putStrLn
     | workers = show <$> curlWorkers >>= putStrLn
+    | boot && dUUID /=  "" = dutBoot dUUID
     | close >= 0 = closeRequest close
     | ex /= "" && dUUID /= "" && dut = execDUT dUUID ex
     | ex /= "" && dUUID /= "" = execMuxPi dUUID ex
