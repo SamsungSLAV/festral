@@ -72,10 +72,10 @@ instance Show JobResult where
     show (UnknownError x) = "WELES ERROR"
 
 -- |Run tests from config for all build directories listed in given string
-performForallNewBuilds :: FilePath -> String -> IO ()
-performForallNewBuilds _ "" = return ()
+performForallNewBuilds :: FilePath -> [String] -> IO ()
+performForallNewBuilds _ [] = return ()
 performForallNewBuilds conf list = do
-    Par.mapM_ (performTestWithConfig conf) $ lines list
+    Par.mapM_ (performTestWithConfig conf) list
 
 -- |Read configuration file from first parameter and build directory from
 -- second and make test log from it

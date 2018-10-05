@@ -73,7 +73,7 @@ data Command
     | Boruta BorutaSubOpt
     | TestControl
         { perfTest  :: FilePath
-        , buildPath :: FilePath
+        , buildPaths:: [FilePath]
         }
     | Server
         { serverPort :: Int }
@@ -344,12 +344,7 @@ testCtl = TestControl
         <>help  "Run tests listed in TEST_CONFIG_FILE for specified by -f \
         \option build directory. Run for all targets listed in \
         \'~/.festral/fresh_builds' file if no target specified." )
-    <*> strOption
-        ( long  "with-build"
-        <>short 'b'
-        <>metavar "BUILD_DIR"
-        <>value ""
-        <>help  "Run test only for this build if defined" )
+    <*> some (argument str (metavar "BUILD_DIRS..."))
 
 runServer :: Parser Command
 runServer = Server
@@ -378,15 +373,15 @@ reportCmd _ _ = runCmd None
 subCmd :: Command -> IO ()
 subCmd (Weles x) = welesSubCmd x
 subCmd (Boruta x) = borutaSubCmd x
-subCmd (TestControl conf "") = do
+subCmd (TestControl conf []) = do
     lastTestFile <- freshTests
     writeFile lastTestFile ""
 
     listFile <- freshBuilds
     list <- readFile listFile
-    performForallNewBuilds conf list
+    performForallNewBuilds conf $ lines list
 
-subCmd (TestControl config fname) = performTestWithConfig config fname
+subCmd (TestControl config fnames) = performForallNewBuilds config fnames
 
 subCmd (Build config repos "" noClean) = getAppConfig >>=
     (\x -> subCmd (Build config repos (buildLogDir x) noClean))
