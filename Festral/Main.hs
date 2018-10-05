@@ -394,13 +394,14 @@ subCmd (Build config repos out noClean) = do
     freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
 
-    builder' <- builderFromFile config
-    if isJust builder'
-        then do
-            let Just builder = builder'
-            mapM_ (\x -> build x (BuildOptions noClean) repos out) builder
-        else
-            putStrLn "ERROR: Check your configuration JSON: it has bad format."
+    builder <- builderFromFile config
+    let cutHere = "-------------------- Result builds -----------------------\n"
+    putStrLn =<< (return . ((++) cutHere)) =<<  maybe
+        (return "ERROR: Check your configuration JSON: it has bad format.")
+        ((unlines <$>).(concat <$>)
+            .mapM (\x -> build x (BuildOptions noClean) repos out))
+        builder
+    where
 
 subCmd (Server port) = runServerOnPort port
 

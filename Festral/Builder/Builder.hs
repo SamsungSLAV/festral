@@ -1,18 +1,21 @@
 {-# LANGUAGE DeriveGeneric #-}
 
--- |Module for building process managament. It get information about build targets
+-- |Module for building process managament. It get information about build
+-- targets
 -- from given .json file formatted as follow:
 --
 -- @
 -- [{"buildName": "name of the project to build",
 --   "buildCmd" : "command used to build, e.g. gbs build -A armv7l ...",
 --   "buildRepo": "origin repusitory address of the project",
---   "buildResParser" : "name of the built-in parsers ("GBS") or path to the own binary parser, see below",
+--   "buildResParser" : "name of the built-in parsers ("GBS") or path to the
+--   own binary parser, see below",
 --   "branch":["master", "other branch", "etc"]
 --   }, another build targets ... ]
 -- @
 --
--- Parser is some script or binary which generates meta.txt file from output of your 'buildCmd' command.
+-- Parser is some script or binary which generates meta.txt file from output of
+-- your 'buildCmd' command.
 --
 -- meta.txt file has format:
 --
@@ -23,11 +26,13 @@
 --  BUILD_TIME=build time in format YYYYMMDDHHMMSS
 --  TOOLCHAIN=name of toolchain used for build
 --  BUILDER=username of builder
---  BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there are other ones)
+--  BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there
+--  are other ones)
 --  BUILD_HASH=hash of the build
 -- @
 --
--- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes meta file to the 'stdout'
+-- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes
+-- meta file to the 'stdout'
 module Festral.Builder.Builder (
     builderFromFile,
     build,
@@ -87,55 +92,70 @@ builderFromFile fname = do
     file <- LB.readFile fname
     return $ decode file
 
--- |Build target located in the first path + build name and put meta file to the directory tree with given in seconf path root directory
--- build buildObject rood_dir_of_project root_dir_of_output_files
-build :: Build -> BuildOptions -> FilePath -> FilePath -> IO ()
+-- |Build target located in the first path + build name and put meta file to
+-- the directory tree with given in seconf path root directory
+-- build buildObject rood_dir_of_project root_dir_of_output_files.
+-- Returns list of names of built directories.
+build :: Build -> BuildOptions -> FilePath -> FilePath -> IO [String]
 build build opts wdir outdir = do
     cloneRepo wdir build
     let srcDir = wdir ++ "/" ++ buildName build
-    mapM_ (\x -> handle handler $ withCurrentDirectory srcDir (buildOne srcDir x)) (branches build)
-    where
-        buildOne srcDir branch = do
-            (logfile, loghandle) <- openTempFileWithDefaultPermissions "/tmp" "build.log"
-            hSetEncoding loghandle latin1
-            prepareRepo srcDir branch
-            buildWithLog logfile (buildCmd build) srcDir
-            parser <- getParser (buildResParser build) loghandle
-            meta <- getMeta parser build branch
-            let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
-            createDirectoryIfMissing True outDirName
-            toFile meta (outDirName ++ "/meta.txt")
+    mapM (\x -> handle badFile $
+        withCurrentDirectory srcDir (buildOne srcDir x opts outdir build))
+        (branches build)
 
-            let getBuildOut = if noCleanRes opts then copyDirectory else renameDirectory
+buildOne srcDir branch opts outdir build = do
+    (logfile, loghandle) <-
+        openTempFileWithDefaultPermissions "/tmp" "build.log"
+    hSetEncoding loghandle latin1
+    prepareRepo srcDir branch
+    buildWithLog logfile (buildCmd build) srcDir
+    parser <- getParser (buildResParser build) loghandle
+    meta <- getMeta parser build branch
+    let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
+    createDirectoryIfMissing True outDirName
+    toFile meta (outDirName ++ "/meta.txt")
 
-            catch (getBuildOut (outDir meta) (outDirName ++ "/build_res")) handler
-            catch (renameFile logfile (outDirName ++ "/build.log")) (copyHandler logfile (outDirName ++ "/build.log"))
-            bLogFile <- freshBuilds
-            appendFile bLogFile (hash meta ++ "_" ++ buildTime meta ++ "\n")
+    let getBuildOut = if noCleanRes opts then copyDirectory else renameDirectory
 
-            resFiles <- handle badDir $ getDirectoryContents (outDirName ++ "/build_res")
-            cachePath <- buildCache
-            cache <- handle badFile $ readFile cachePath
-            let new = foldl (updateCache (hash meta ++ "_" ++ buildTime meta)) cache resFiles
-            when (length new > 0) $
-                handle handler $ writeFile cachePath new
-                where
-                    copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
-                    copyHandler a b ex = copyFile a b
-                    badDir :: SomeException -> IO [FilePath]
-                    badDir ex = putStrLn (show ex) >> return [""]
-                    badFile :: SomeException -> IO String
-                    badFile ex = putStrLn (show ex) >> return ""
+    catch (getBuildOut (outDir meta) (outDirName ++ "/build_res")) handler
+    catch (renameFile logfile (outDirName ++ "/build.log"))
+        (copyHandler logfile (outDirName ++ "/build.log"))
+    bLogFile <- freshBuilds
+    appendFile bLogFile (hash meta ++ "_" ++ buildTime meta ++ "\n")
 
-        handler :: SomeException -> IO ()
-        handler ex = putStrLn $ show ex
+    resFiles <- handle badDir $
+        getDirectoryContents (outDirName ++ "/build_res")
+    cachePath <- buildCache
+    cache <- handle badFile $ readFile cachePath
+    let out = hash meta ++ "_" ++ buildTime meta
+    let new = foldl (updateCache out)
+            cache resFiles
+    when (length new > 0) $
+        handle handler $ writeFile cachePath new
+    return out
 
--- |Replace old hash with new if file already is in the string, otherwise just add it
+copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
+copyHandler a b ex = copyFile a b
+
+badDir :: SomeException -> IO [FilePath]
+badDir ex = putStrLn (show ex) >> return [""]
+
+badFile :: SomeException -> IO String
+badFile ex = putStrLn (show ex) >> return ""
+
+handler :: SomeException -> IO ()
+handler ex = putStrLn $ show ex
+
+-- |Replace old hash with new if file already is in the string,
+-- otherwise just add it
 updateCache :: String -> String -> FilePath -> String
 updateCache _ old "" = old
 updateCache _ old "." = old
 updateCache _ old ".." = old
-updateCache hash old file = (concat $ replaceHash <$> splitOn "#" <$> splitOn "\n" old) ++ file ++ "#" ++ hash
+updateCache hash old file =
+    (concat $ replaceHash <$> splitOn "#" <$> splitOn "\n" old)
+        ++ file ++ "#" ++ hash
     where
         replaceHash (pkg:oldHash:_)
             | pkg == file = ""
@@ -144,18 +164,31 @@ updateCache hash old file = (concat $ replaceHash <$> splitOn "#" <$> splitOn "\
 
 cloneRepo :: FilePath -> Build -> IO ()
 cloneRepo wdir (Build name _ remote _ _) = do
-    catch (callCommand $ "git clone " ++ remote ++ " " ++ wdir ++ "/" ++ name) handler
+    catch (callCommand $ "git clone " ++ remote ++ " " ++ wdir ++ "/" ++ name)
+        handler
         where
             handler :: SomeException -> IO ()
             handler ex = return ()
 
--- |Run given parser and create Meta from it, but replace user and commit data with actual
+-- |Run given parser and create Meta from it, but replace user and commit
+-- data with actual
 getMeta :: Parser a -> Build -> String -> IO Meta
 getMeta p b branch = do
     commit <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    return $ Meta (board m) (buildType m) commit (buildTime m) (toolchain m) builder (status m) commit (outDir m) (buildName b) branch
+    return $ Meta
+                (board m)
+                (buildType m)
+                commit
+                (buildTime m)
+                (toolchain m)
+                builder
+                (status m)
+                commit
+                (outDir m)
+                (buildName b)
+                branch
 
 -- |Resolve parser type from its name
 getParser :: String -> Handle -> IO (Parser a)
@@ -177,10 +210,12 @@ prepareRepo srcDir brunch =
         ++ brunch ++ " ; git fetch ; git pull origin " ++ brunch) handler
     where
         handler :: SomeException -> IO ()
-        handler e = putStrLn "Setting up working branch failed. Build current..."
+        handler e =
+            putStrLn "Setting up working branch failed. Build current..."
 
 buildWithLog fname cmd wdir = do
-    catch (callCommand $ "cd " ++ wdir ++ " ; " ++ cmd ++ " | tee " ++ fname) handler
+    catch (callCommand $ "cd " ++ wdir ++ " ; " ++ cmd ++ " | tee " ++ fname)
+        handler
     where
         handler :: SomeException -> IO ()
         handler ex = putStrLn "Build failed"
