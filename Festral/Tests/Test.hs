@@ -141,7 +141,7 @@ parseTest' writer (TestResult status config) buildDir outDir = do
                 (recreate_dir pathPrefix)
     writeMetaTest (show status) buildDir outDir (name config) time meta
     writeLog status time
-    return $ outDirName meta time
+    return $ hash meta ++ "_" ++ time
 
     where
         writeLog (SegFault outs) t = writeLog (TestSuccess outs) t

@@ -18,6 +18,7 @@ import Data.Version (showVersion)
 import Festral.WWW.Server
 import Festral.Config
 import Festral.SLAV.Boruta
+import Control.Concurrent
 
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion <|> report)
@@ -353,7 +354,7 @@ testCtl = TestControl
         <>metavar "FILENAME"
         <>value ""
         <>help  "Write names of the performed tests into the file." )
-    <*> some (argument str (metavar "BUILD_DIRS..."))
+    <*> many (argument str (metavar "BUILD_DIRS..."))
 
 runServer :: Parser Command
 runServer = Server
@@ -382,6 +383,8 @@ subCmd :: Command -> IO ()
 subCmd (Weles x) = welesSubCmd x
 subCmd (Boruta x) = borutaSubCmd x
 subCmd (TestControl conf out []) = do
+    appCfg <- getAppConfig
+    forkIO $ runServerOnPort (webPagePort appCfg)
     lastTestFile <- freshTests
     writeFile lastTestFile ""
 
@@ -391,6 +394,8 @@ subCmd (TestControl conf out []) = do
     outF out $ unlines outs
 
 subCmd (TestControl config out fnames) = do
+    appCfg <- getAppConfig
+    forkIO $ runServerOnPort (webPagePort appCfg)
     outs <- performForallNewBuilds config fnames
     outF out $ unlines outs
 
