@@ -1,9 +1,11 @@
 {
-    "buildLogDir" : "/tmp",
-    "testLogDir" : "/tmp",
+    "buildLogDir" : "/home/builds",
+    "testLogDir" : "/home/tests",
     "welesIP" : "127.0.0.1",
-    "welesPort" : "5010",
-    "welesFilePort" : "8888",
-    "serverRoot" : "/tmp/reports",
-    "webPageIP" : "127.0.0.1:8888"
+    "welesPort" : 5010,
+    "welesFilePort" : 8888,
+    "festralIP" : "127.0.0.1",
+    "festralPort" : 8888,
+    "serverRoot" : "/home/reports",
+    "borutaIP" : "127.0.0.1"
 }
