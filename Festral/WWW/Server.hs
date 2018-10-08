@@ -35,12 +35,15 @@ fileServer req respond = do
 
 sendRespond opts config r ["secosci", "download"    ] = r $ download opts config
 sendRespond opts config r ["secosci", "download.php"] = r $ download opts config
-sendRespond opts config r ["secosci", "getlog.php"  ] = sendRespond opts config r ["secosci", "getlog"]
+sendRespond opts config r ["secosci", "getlog.php"  ] = sendRespond opts config
+    r ["secosci", "getlog"]
 sendRespond opts config r ["secosci", "getlog"      ] = do
     log <- readLog opts config
     r $ getlog log
-sendRespond opts config r ["secosci", "files"       ] = sendRespond opts config r ["secosci", "reports"]
-sendRespond opts config r ["secosci", "reports.php" ] = sendRespond opts config r ["secosci", "reports"]
+sendRespond opts config r ["secosci", "files"       ] = sendRespond opts config
+    r ["secosci", "reports"]
+sendRespond opts config r ["secosci", "reports.php" ] = sendRespond opts config
+    r ["secosci", "reports"]
 sendRespond opts config r ["secosci", "reports"     ] = do
     reports <- listDirectory $ serverRoot config
     r $ listFiles reports config opts
@@ -58,16 +61,21 @@ listFiles reports config opts = do
     showFile fname
 
     where
-        showFile "" = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
-            $ map (\x -> BSU.fromString $ "<a href=\"files?file="++ x ++"\">"++ x ++"</a><br>") (sort reports)
-        showFile x = responseFile status200 (contentTypeFromExt (takeExtension x) x) (serverRoot config ++ "/" ++ x) Nothing
+        showFile "" = responseBuilder status200 [("Content-Type", "text/html")]
+            $ mconcat $ map copyByteString
+            $ map (\x -> BSU.fromString $ "<a href=\"files?file="++ x ++"\">"
+            ++ x ++"</a><br>") (sort reports)
+        showFile x = responseFile status200
+                    (contentTypeFromExt (takeExtension x) x)
+                    (serverRoot config ++ "/" ++ x) Nothing
 
 contentTypeFromExt ".html" _ = [(hContentType, "text/html")]
 contentTypeFromExt ".htm" _ = contentTypeFromExt ".html" ""
 contentTypeFromExt ".css" _ = [(hContentType, "text/css")]
 contentTypeFromExt _ fname =
         [
-            (hContentDisposition, BSU.fromString $ "attachment; filename=\""++ fname ++"\""),
+            (hContentDisposition, BSU.fromString
+                $ "attachment; filename=\""++ fname ++"\""),
             (hContentType, "application/octet-stream")
         ]
 
@@ -79,7 +87,8 @@ readLog opts config = do
     let fpath = dir ++ "/" ++ hash ++ "_" ++ time ++ "/" ++ fname
     BS.unpack <$> BS.readFile fpath
     where
-        -- return pair (directory to the log/build from config, logfile name dependent on type of log)
+        -- return pair (directory to the log/build from config, logfile name
+        -- dependent on type of log)
         resolveDir "build" = (buildLogDir config, "build.log")
         resolveDir "test" = (testLogDir config, "tf.log")
         resolveDir "" = ("","")
