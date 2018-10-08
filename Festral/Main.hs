@@ -64,15 +64,16 @@ data WelesSubOpts
 
 data Command
     = Build
-        { config    :: String
-        , reposPath :: String
-        , outDir    :: String
+        { config    :: FilePath
+        , reposPath :: FilePath
         , noClean   :: Bool
+        , outFile   :: FilePath
         }
     | Weles WelesSubOpts
     | Boruta BorutaSubOpt
     | TestControl
         { perfTest  :: FilePath
+        , outTestRes:: FilePath
         , buildPaths:: [FilePath]
         }
     | Server
@@ -132,17 +133,17 @@ buildopts = Build
         <> metavar  "DIRECTORY"
         <> short    'r'
         <> help     "Directory with repositories to build." )
-    <*> strOption
-        (  long     "out"
-        <> metavar  "DIRECTORY"
-        <> short    'o'
-        <> value    ""
-        <> help     "Output root directory" )
     <*> switch
         ( long      "no-clean-builds"
         <>help      "Do not clean output of built repositories. This option is \
         \needed if some repositories requires packages from other repositories \
         \were built before." )
+    <*> strOption
+        ( long      "out"
+        <>short     'o'
+        <>value     ""
+        <>metavar   "FILENAME"
+        <>help      "Write names of the made builds into the file." )
 
 reportHTMLParser :: Parser ReportType
 reportHTMLParser = HTML
@@ -346,6 +347,12 @@ testCtl = TestControl
         <>help  "Run tests listed in TEST_CONFIG_FILE for specified by -f \
         \option build directory. Run for all targets listed in \
         \'~/.festral/fresh_builds' file if no target specified." )
+    <*> strOption
+        ( long  "out"
+        <>short 'o'
+        <>metavar "FILENAME"
+        <>value ""
+        <>help  "Write names of the performed tests into the file." )
     <*> some (argument str (metavar "BUILD_DIRS..."))
 
 runServer :: Parser Command
@@ -374,30 +381,31 @@ reportCmd _ _ = runCmd None
 subCmd :: Command -> IO ()
 subCmd (Weles x) = welesSubCmd x
 subCmd (Boruta x) = borutaSubCmd x
-subCmd (TestControl conf []) = do
+subCmd (TestControl conf out []) = do
     lastTestFile <- freshTests
     writeFile lastTestFile ""
 
     listFile <- freshBuilds
     list <- readFile listFile
-    performForallNewBuilds conf $ lines list
+    outs <- performForallNewBuilds conf $ lines list
+    outF out $ unlines outs
 
-subCmd (TestControl config fnames) = performForallNewBuilds config fnames
+subCmd (TestControl config out fnames) = do
+    outs <- performForallNewBuilds config fnames
+    outF out $ unlines outs
 
-subCmd (Build config repos "" noClean) = getAppConfig >>=
-    (\x -> subCmd (Build config repos (buildLogDir x) noClean))
-subCmd (Build config repos out noClean) = do
+subCmd (Build config repos noClean outFile) = do
     freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
+    appCfg <- getAppConfig
 
     builder <- builderFromFile config
-    let cutHere = "-------------------- Result builds -----------------------\n"
-    putStrLn =<< (return . ((++) cutHere)) =<<  maybe
+    (outF outFile) =<<  maybe
         (return "ERROR: Check your configuration JSON: it has bad format.")
         ((unlines <$>).(concat <$>)
-            .mapM (\x -> build x (BuildOptions noClean) repos out))
+            .mapM (\x -> build x (BuildOptions noClean) repos
+            (buildLogDir appCfg)))
         builder
-    where
 
 subCmd (Server port) = runServerOnPort port
 
@@ -437,3 +445,8 @@ justPutStrLn errMsg x
 
 readNotEmpty "" = return ""
 readNotEmpty x = readFile x
+
+cutHere = "-------------------- Result outputs -----------------------\n"
+
+outF "" = (\ x -> putStrLn (cutHere ++ x))
+outF x = writeFile x

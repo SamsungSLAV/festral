@@ -1,31 +1,10 @@
 [
     {
-        "buildName" : "gpapi-tests",
-        "buildCmd" : "./build_ca_rpm.sh -p=OpTEE -t=tf",
-        "buildRepo" : "git@127.0.0.1:gpapi-tests/gpapi_tests.git",
-        "buildResParser" : "GBS",
-        "branches" : ["master"]
-    },
-    {
         "buildName" : "tct-test-ta",
         "buildCmd" : "gbs build -A armv7l -P tizen_vd --overwrite",
         "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
         "buildResParser" : "GBS",
-        "branches" : ["arm"]
-    },
-    {
-        "buildName" : "Trustware",
-        "buildCmd" : "cp -rf target-tee ../ ; cd ../target-tee; git init; git add .; git commit -m \"copy from trustware\"; gbs build -A armv7l -P tizen_vd --overwrite",
-        "buildRepo" : "127.0.0.1/repo",
-        "buildResParser" : "GBS",
-        "branches" : ["master"]
-    },
-    {
-        "buildName" : "Trustware",
-        "buildCmd" : "cp -rf target-ree ../ ; cd ../target-ree; git init; git add .; git commit -m \"copy from trustware\"; gbs build -A armv7l -P tizen_vd --overwrite",
-        "buildRepo" : "127.0.0.1/repo",
-        "buildResParser" : "GBS",
-        "branches" : ["master"]
+        "branches" : ["arm", "master", "optee"]
     },
     {
         "buildName" : "festral",
@@ -33,6 +12,5 @@
         "buildRepo" : "git@127.0.0.1:u.harbuz/festral.git",
         "buildResParser" : "Examples/hs_build_parser.sh",
         "branches" : ["master"]
-
     }
 ]

@@ -71,21 +71,22 @@ instance Show JobResult where
     show DownloadError  = "DOWNLOAD FILES ERROR"
     show (UnknownError x) = "WELES ERROR"
 
--- |Run tests from config for all build directories listed in given string
-performForallNewBuilds :: FilePath -> [String] -> IO ()
-performForallNewBuilds _ [] = return ()
+-- |Run tests from config for all build directories listed in given string.
+-- Returns list of names of test results directories
+performForallNewBuilds :: FilePath -> [String] -> IO [String]
+performForallNewBuilds _ [] = return []
 performForallNewBuilds conf list = do
-    Par.mapM_ (performTestWithConfig conf) list
+    concat <$> Par.mapM (performTestWithConfig conf) list
 
 -- |Read configuration file from first parameter and build directory from
 -- second and make test log from it
-performTestWithConfig :: FilePath -> String -> IO ()
+performTestWithConfig :: FilePath -> String -> IO [String]
 performTestWithConfig confPath target = do
     confStr <- LB.readFile confPath
     let Just config = decode confStr :: Maybe [TestConfig]
     appConfig <- getAppConfig
     tests <- runTests config target
-    mapM_ (\ testRes ->
+    mapM (\ testRes ->
             parseTest
                 testRes
                 (buildLogDir appConfig ++ "/" ++ target)
@@ -95,8 +96,8 @@ performTestWithConfig confPath target = do
 builtInParsers = ["TCT", "XTest"]
 
 -- |Get result of test, build directory and out root directory
--- and creates directory with test logs.
-parseTest :: TestResult -> FilePath -> FilePath -> IO ()
+-- and creates directory with test logs. Returns name of out directory.
+parseTest :: TestResult -> FilePath -> FilePath -> IO String
 parseTest res@(TestResult _ config) buildDir outDir
     | (parser config) `elem` builtInParsers
         = parseTest' writeWithParser res buildDir outDir
@@ -140,15 +141,15 @@ parseTest' writer (TestResult status config) buildDir outDir = do
                 (recreate_dir pathPrefix)
     writeMetaTest (show status) buildDir outDir (name config) time meta
     writeLog status time
+    return $ outDirName meta time
 
     where
         writeLog (SegFault outs) t = writeLog (TestSuccess outs) t
         writeLog (TestSuccess outs) time = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
-            let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
-            writer config outs outDirName
+            writer config outs (outDirName meta time)
             writeFile
-                (outDirName ++ "/tf.log")
+                ((outDirName meta time) ++ "/tf.log")
                 (concat $ map (\(n,c) ->
                     "\n------------------ Begin of "
                     ++ n ++ " ------------------\n"
@@ -158,12 +159,11 @@ parseTest' writer (TestResult status config) buildDir outDir = do
                 outs)
         writeLog (BadJob (UnknownError x)) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
-            let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ t
-            writeFile (outDirName ++ "/tf.log") $ x
+            writeFile ((outDirName meta t) ++ "/tf.log") $ x
         writeLog (BadJob x) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
-            let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ t
-            writeFile (outDirName ++ "/tf.log") $ show x
+            writeFile ((outDirName meta t) ++ "/tf.log") $ show x
+        outDirName meta time = outDir ++ "/" ++ hash meta ++ "_" ++ time
 
 
 -- |Create directory with appended timestamp. If directory exists,
