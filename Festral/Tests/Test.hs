@@ -335,7 +335,8 @@ yamlTemplater outDir (URI url) = do
     let rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $
             filter(isInfixOf url) $ rpms
     return $ "uri: 'http://"
-        ++ webPageIP config
+        ++ webPageIP config ++ ":"
+        ++ show (webPagePort config)
         ++ "/secosci/download.php?file="
         ++ resolvedName rpmname
         ++ "&build="
@@ -353,7 +354,8 @@ yamlTemplater outDir (Latest_URI url) = do
             sortBy (\a b -> length a `compare` length b)
             $ filter (isInfixOf url) $ splitOn "\n" cache
     return $ "uri: 'http://"
-        ++ webPageIP config
+        ++ webPageIP config ++ ":"
+        ++ show (webPagePort config)
         ++ "/secosci/download.php?file="
         ++ cachedName
         ++ "&build="

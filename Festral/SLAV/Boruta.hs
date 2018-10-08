@@ -179,7 +179,7 @@ curlWorkers = do
     (addr, port) <- borutaAddr
     (err, str) <-
         curlGetString
-            (addr ++ ":" ++ port ++ "/api/workers")
+            (addr ++ ":" ++ show port ++ "/api/workers")
             [CurlFollowLocation True]
     return $ fromMaybe [] (decode (BL.pack str) :: Maybe [Worker])
 
@@ -196,7 +196,7 @@ createRequest caps = do
     req <- handle handleCurlInt $ Just <$> ((curlAeson
             parseJSON
             "POST"
-            (addr ++ ":" ++ port ++ "/api/reqs/")
+            (addr ++ ":" ++ show port ++ "/api/reqs/")
             [CurlFollowLocation True]
             (Just request)) :: IO ReqID)
     return $ simpleReqID <$> req
@@ -210,7 +210,7 @@ allRequests = do
     (addr, port) <- borutaAddr
     (err, str) <-
         curlGetString
-            (addr ++ ":" ++ port ++ "/api/reqs")
+            (addr ++ ":" ++ show port ++ "/api/reqs")
             [CurlFollowLocation True]
     return $ fromMaybe [] (decode (BL.pack str) :: Maybe [BorutaRequest])
 
@@ -246,7 +246,8 @@ getKey id = do
     handle curlHandler $ Just <$> curlAeson
         parseJSON
         "POST"
-        (addr ++ ":" ++ port ++ "/api/v1/reqs/" ++ show id ++ "/acquire_worker")
+        (addr ++ ":" ++ show port ++ "/api/v1/reqs/" 
+            ++ show id ++ "/acquire_worker")
         [CurlFollowLocation True]
         (Nothing :: Maybe Caps)
 
@@ -317,7 +318,7 @@ closeRequest id = do
     handle h $ curlAeson
         parseJSON
         "POST"
-        (addr ++ ":" ++ port ++ "/api/v1/reqs/" ++ show id ++ "/close")
+        (addr ++ ":" ++ show port ++ "/api/v1/reqs/" ++ show id ++ "/close")
         [CurlFollowLocation True]
         (Nothing :: Maybe Caps)
     where

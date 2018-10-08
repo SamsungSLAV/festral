@@ -38,12 +38,13 @@ data AppConfig = AppConfig
     { buildLogDir   :: FilePath
     , testLogDir    :: FilePath
     , welesIP       :: String
-    , welesPort     :: String
-    , welesFilePort :: String
+    , welesPort     :: Int
+    , welesFilePort :: Int
     , webPageIP     :: String
+    , webPagePort   :: Int
     , serverRoot    :: FilePath
     , borutaIP      :: String
-    , borutaPort    :: String
+    , borutaPort    :: Int
     } deriving (Show, Generic)
 
 instance FromJSON AppConfig where
@@ -51,11 +52,12 @@ instance FromJSON AppConfig where
         buildLogDir     <- o .:? "buildLogDir"  .!= "/tmp/builds"
         testLogDir      <- o .:? "testLogDir"   .!= "/tmp/tests"
         welesIP         <- o .:? "welesIP"      .!= "127.0.0.1"
-        welesPort       <- o .:? "welesPort"    .!= "8888"
-        welesFilePort   <- o .:? "welesFilePort".!= "8888"
-        webPageIP       <- o .:? "webPageIP"    .!= "127.0.0.1:8888"
+        welesPort       <- o .:? "welesPort"    .!= 8888
+        welesFilePort   <- o .:? "welesFilePort".!= 8888
+        webPageIP       <- o .:? "festralIP"    .!= "127.0.0.1"
+        webPagePort     <- o .:? "festralPort"  .!= 8888
         serverRoot      <- o .:? "serverRoot"   .!= "/tmp/festral_server"
         borutaIP        <- o .:? "borutaIP"     .!= "127.0.0.1"
-        borutaPort      <- o .:? "borutaPort"   .!= "6666"
+        borutaPort      <- o .:? "borutaPort"   .!= 6666
         return AppConfig{..}
 instance ToJSON AppConfig

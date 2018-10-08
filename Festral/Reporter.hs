@@ -70,7 +70,7 @@ buildSummary :: String -> IO (String, String, String, String)
 buildSummary dir = do
     config <- getAppConfig
     meta <- fromMetaFile $ buildLogDir config ++ "/" ++ dir ++ "/meta.txt"
-    let link = "http://" ++ webPageIP config
+    let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
             ++ "/secosci/getlog?type=build&hash="
             ++ hash meta ++ "&time=" ++ buildTime meta
     return (repoName meta, branch meta, status meta, link)
@@ -93,7 +93,7 @@ testSummary dir = do
             splitOn "\n" report
     let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $
             processReport <$> splitOn "," <$> tests
-    let link = "http://" ++ webPageIP config
+    let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
              ++ "/secosci/getlog?type=test&hash=" ++ hash meta
              ++ "&time=" ++ testTime meta'
     return (repoName meta, branch meta, testName meta',
