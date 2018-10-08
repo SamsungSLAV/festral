@@ -1,5 +1,6 @@
 module Festral.Reporter (
-    reportHTML
+    reportHTML,
+    testReportText
 ) where
 
 import System.IO
@@ -36,30 +37,46 @@ defaultHTML time =
 
 -- |Generate HTML report file with results of the latest builds and tests
 reportHTML :: String -> IO String
-reportHTML ""  = show <$> getZonedTime >>= (\time -> generateFromTemplate (defaultHTML time) templateHTML)
-reportHTML src = generateFromTemplate src templateHTML 
+reportHTML "" = show <$> getZonedTime >>=
+    (\time -> generateFromTemplate (defaultHTML time) templateHTML)
+reportHTML src = generateFromTemplate src templateHTML
+
+-- |Generate simple text report about tests and builds given as parameters
+testReportText :: [String] -> IO [String]
+testReportText dirs = do
+    testSummaries <- mapM testSummary dirs
+    mapM (\ (n,b,t,s,_) -> return $ unwords [n,b,t] ++  " [" ++ s ++ "]")
+        testSummaries
 
 makeBuildRow :: (String, String, String, String) -> String
-makeBuildRow (repo, branch, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td "++ color status ++">"
+makeBuildRow (repo, branch, status, link)
+    = "<tr><td>" ++ repo ++ "</td><td>"
+    ++ branch ++ "</td><td "++ color status ++ ">"
     ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
 
 makeTestRow :: (String, String, String, String, String) -> String
-makeTestRow (repo, branch, name, status, link) = "<tr><td>" ++ repo ++ "</td><td>" ++ branch ++ "</td><td>" ++ name ++ "</td><td "++ color status ++">"
+makeTestRow (repo, branch, name, status, link)
+    = "<tr><td>" ++ repo ++ "</td><td>" ++ branch
+    ++ "</td><td>" ++ name ++ "</td><td "++ color status ++">"
     ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
 
 color "SUCCEED" = "style=\"color:green;\""
 color "FAILED" = "style=\"color:red;\""
 color _ = ""
 
--- |Gets name of the build (sha1_time) and returns its build data as (repository name, branch name, build status)
+-- |Gets name of the build (sha1_time) and returns its build
+-- data as (repository name, branch name, build status)
 buildSummary :: String -> IO (String, String, String, String)
 buildSummary dir = do
     config <- getAppConfig
     meta <- fromMetaFile $ buildLogDir config ++ "/" ++ dir ++ "/meta.txt"
-    let link = "http://" ++ webPageIP config ++ "/secosci/getlog?type=build&hash=" ++ hash meta ++ "&time=" ++ buildTime meta
+    let link = "http://" ++ webPageIP config
+            ++ "/secosci/getlog?type=build&hash="
+            ++ hash meta ++ "&time=" ++ buildTime meta
     return (repoName meta, branch meta, status meta, link)
 
--- |Gets name of the test result (sha1_time) and returns its build data as (repository name, branch name, test name, passed tests/ all tests, log link)
+-- |Gets name of the test result (sha1_time) and returns its build data as
+-- (repository name, branch name, test name, passed tests/ all tests, log link)
 testSummary :: String -> IO (String, String, String, String, String)
 testSummary dir = do
     config <- getAppConfig
@@ -72,19 +89,24 @@ testSummary dir = do
     report <- if reportExists
                 then readFile reportPath
                 else return ""
-    let tests = parseTestRes $ splitWhen (isInfixOf "###############") $ splitOn "\n" report
-    let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $ processReport <$> splitOn "," <$> tests
-    let link = "http://" ++ webPageIP config ++ "/secosci/getlog?type=test&hash=" ++ hash meta ++ "&time=" ++ testTime meta'
-    return (repoName meta, branch meta, testName meta', colorPercents pass (testStatus meta'), link)
+    let tests = parseTestRes $ splitWhen (isInfixOf "###############") $
+            splitOn "\n" report
+    let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $
+            processReport <$> splitOn "," <$> tests
+    let link = "http://" ++ webPageIP config
+             ++ "/secosci/getlog?type=test&hash=" ++ hash meta
+             ++ "&time=" ++ testTime meta'
+    return (repoName meta, branch meta, testName meta',
+            percents pass (testStatus meta'), link)
 
-colorPercents :: (Int, Int) -> String -> String
-colorPercents (0,0) "COMPLETE" = "<font style=\"color:red;\">NO RESULTS</font>"
-colorPercents (0,0) status = "<font style=\"color:red;\">" ++ status ++ "</font>"
-colorPercents x@(pass, all) "SEGFAULT" = "<font style=\"color:"++ col x ++ ";\">" ++ show pass ++ "/" ++ show all 
-                                    ++ "</font>" ++ "<font style=\"color:red;\"> (SEGFAULT)</font>"
-colorPercents x@(pass, all) _ = "<font style=\"color:"++ col x ++ ";\">" ++ show pass ++ "/" ++ show all ++ "</font>" 
+percents :: (Int, Int) -> String -> String
+percents (0,0) "COMPLETE" = "NO RESULTS"
+percents (0,0) status = status
+percents x@(pass, all) "SEGFAULT" = show pass ++ "/" ++ show all ++ "(SEGFAULT)"
+percents x@(pass, all) _ = show pass ++ "/" ++ show all
 
-col x = "rgb(" ++ show (round (maxCol - passCol x)) ++ "," ++ show (round (passCol x)) ++ ",0)"
+col x = "rgb(" ++ show (round (maxCol - passCol x)) ++ ","
+    ++ show (round (passCol x)) ++ ",0)"
 passCol (pass, all) = (maxCol/fromIntegral(all)) * fromIntegral(pass)
 
 maxCol = 150
@@ -101,11 +123,13 @@ templateHTML :: TemplateType -> IO String
 templateHTML (BuildTable id) = do
     buildsFile <- freshBuilds
     builds <- readFile buildsFile
-    buildSummaries <- sequence $ map buildSummary $ filter (not . (== "")) $ splitOn "\n" builds
+    buildSummaries <- sequence $ map buildSummary $
+        filter (not . (== "")) $ splitOn "\n" builds
     let rows = concat $ map makeBuildRow buildSummaries
     return $  "    <table id=\"" ++ id ++ "\">\n"
            ++ "        <thead><tr>\n"
-           ++ "             <th>Repository</th><th>Branch</th><th>Build result</th><th>Log file</th>\n"
+           ++ "             <th>Repository</th><th>Branch</th><th>Build result\
+           \</th><th>Log file</th>\n"
            ++ "        </tr></thead>\n"
            ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
@@ -113,11 +137,13 @@ templateHTML (BuildTable id) = do
 templateHTML (TestTable id) = do
     testsFile <- freshTests
     tests <- readFile testsFile
-    testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $ splitOn "\n" tests
+    testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $
+        splitOn "\n" tests
     let rows = concat $ map makeTestRow testSummaries
     return $  "    <table id=\"" ++ id ++ "\">\n"
            ++ "        <thead><tr>\n"
-           ++ "             <th>Repository</th><th>Branch</th><th>Test name</th><th>Test result</th><th>Log file</th>\n"
+           ++ "             <th>Repository</th><th>Branch</th><th>Test name\
+           \</th><th>Test result</th><th>Log file</th>\n"
            ++ "        </tr></thead>\n"
            ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"

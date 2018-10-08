@@ -83,7 +83,7 @@ data ReportType
         { htmlRep       :: Bool
         , templateHTML  :: FilePath
         }
-    | TextReport Bool
+    | TextReport Bool [FilePath]
 
 data Options
     = Cmd Command
@@ -163,6 +163,8 @@ reportText = TextReport
     <$> switch
         (  long     "text-report"
         <> help     "Show results of the tests as simple text." )
+    <*> some (argument str (metavar "TEST_DIRS..." <> help "Test directories \
+    \returned by Festral test"))
 
 report :: Parser Options
 report = Report
@@ -366,8 +368,7 @@ reportCmd (HTML True x) "" = putStrLn =<< reportHTML =<< readNotEmpty x
 reportCmd (HTML True x) o = do
     html <- reportHTML =<< readNotEmpty x
     writeFile o html
-reportCmd (TextReport True) "" = undefined
-reportCmd (TextReport True) o = undefined
+reportCmd (TextReport True args) o = mapM_ putStrLn =<< (testReportText args)
 reportCmd _ _ = runCmd None
 
 subCmd :: Command -> IO ()
