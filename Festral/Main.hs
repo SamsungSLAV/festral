@@ -367,7 +367,7 @@ runServer = Server
         ( long  "port"
         <>short 'p'
         <>metavar "PORT_NUMPER"
-        <>value 8080
+        <>value 8888
         <>help  "Port of the file server to start on" )
 
 runCmd :: Options -> IO ()
