@@ -52,7 +52,7 @@ data BorutaSubOpt
 data JobOpts
     = WaitJob Int
     | JobSTDOut Bool
-    | ListFiles String
+    | ListFiles Bool String
     | CancelJob Bool
 
 data WelesSubOpts
@@ -204,8 +204,13 @@ welesJobSTDOUT = JobSTDOut
 
 welesListFiles :: Parser JobOpts
 welesListFiles = ListFiles
-    <$> strOption
+    <$> switch
         ( long  "list-files"
+        <>help  "List files available on the Weles server. If -f option \
+        \specified, show content of this file.")
+    <*> strOption
+        ( long  "file"
+        <>short 'f'
         <>metavar "FILENAME"
         <>value ""
         <>help  "Print content of FILENAME on Weles server of print list of \
@@ -422,8 +427,8 @@ welesSubCmd _ = runCmd None
 jobCmd (WaitJob 0) id = show <$> getJob id >>= putStrLn
 jobCmd (WaitJob x) id = show <$> getJobWhenDone id x >>= putStrLn
 jobCmd (JobSTDOut True) id = getJobOut id >>= putStrLn
-jobCmd (ListFiles "") id = show <$> getFileList id >>= putStrLn
-jobCmd (ListFiles x) id = getJobOutFile id x >>= justPutStrLn "No such job."
+jobCmd (ListFiles True "") id = show <$> getFileList id >>= putStrLn
+jobCmd (ListFiles True x) id = getJobOutFile id x >>=justPutStrLn "No such job."
 jobCmd (CancelJob True) id = cancelJob id
 jobCmd _ _ = runCmd None
 

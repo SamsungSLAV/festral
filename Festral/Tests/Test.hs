@@ -350,7 +350,7 @@ yamlTemplater outDir (Latest_URI url) = do
     config <- getAppConfig
     cachePath <- buildCache
     cache <- catch (readFile cachePath) fileNotExists
-    let (cachedName:cachedHash:_) = splitOn "#" $ resolvedName $
+    let (cachedName,cachedHash) = resolvePkg $ splitOn "#" $ resolvedName $
             sortBy (\a b -> length a `compare` length b)
             $ filter (isInfixOf url) $ splitOn "\n" cache
     return $ "uri: 'http://"
@@ -361,6 +361,9 @@ yamlTemplater outDir (Latest_URI url) = do
         ++ "&build="
         ++ cachedHash
         ++ "/build_res'"
+    where
+        resolvePkg (x:y:_) = (x,y)
+        resolvePkg _ = ("","")
 
 yamlTemplater outDir (RPMInstallCurrent pkg) = do
     uri <- yamlTemplater outDir (URI pkg)
