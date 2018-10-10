@@ -168,7 +168,8 @@ reportText :: Parser ReportType
 reportText = TextReport
     <$> switch
         (  long     "text-report"
-        <> help     "Show results of the tests as simple text." )
+        <> help     "Show results of the tests as simple text. \
+        \Builds are ignored." )
 
 report :: Parser Command
 report = Report
@@ -381,10 +382,26 @@ runCmd (Cmd x) = subCmd x
 runCmd _ = putStrLn "Some parameter missed. Run program with --help option \
 \to see usage."
 
+reportCmd (HTML True x) o [] = do
+    testFile <- freshTests
+    tests <- readFile testFile
+    buildFile <- freshBuilds
+    builds <- readFile buildFile
+    let all = builds ++ "\n" ++ tests
+    reportCmd (HTML True x) o $ lines all
+
 reportCmd (HTML True x) o args = do
-    html <- reportHTML =<< readNotEmpty x
-    outF o $ html
-reportCmd (TextReport True) o args = mapM_ (outF o) =<< (testReportText args)
+    html <- flip reportHTML args =<< (readNotEmpty x)
+    writeOut o $ html
+
+reportCmd (TextReport True) o [] = do
+    testFile <- freshTests
+    tests <- readFile testFile
+    reportCmd (TextReport True) o $ lines tests
+
+reportCmd (TextReport True) o args =
+    writeOut o =<< unlines <$> testReportText args
+
 reportCmd _ _ _ = runCmd None
 
 subCmd :: Command -> IO ()
@@ -400,13 +417,13 @@ subCmd (TestControl conf out []) = do
     listFile <- freshBuilds
     list <- readFile listFile
     outs <- performForallNewBuilds conf $ lines list
-    outF out $ unlines outs
+    writeOut out $ cutHere ++ unlines outs
 
 subCmd (TestControl config out fnames) = do
     appCfg <- getAppConfig
     forkIO $ runServerOnPort (webPagePort appCfg)
     outs <- performForallNewBuilds config fnames
-    outF out $ unlines outs
+    writeOut out $ cutHere ++ unlines outs
 
 subCmd (Build config repos noClean outFile) = do
     freshBuildsFile <- freshBuilds
@@ -414,9 +431,9 @@ subCmd (Build config repos noClean outFile) = do
     appCfg <- getAppConfig
 
     builder <- builderFromFile config
-    (outF outFile) =<<  maybe
+    (writeOut outFile) =<<  maybe
         (return "ERROR: Check your configuration JSON: it has bad format.")
-        ((unlines <$>).(concat <$>)
+        ((((++)cutHere)<$>).(unlines <$>).(concat <$>)
             .mapM (\x -> build x (BuildOptions noClean) repos
             (buildLogDir appCfg)))
         builder
@@ -462,5 +479,5 @@ readNotEmpty x = readFile x
 
 cutHere = "-------------------- Result outputs -----------------------\n"
 
-outF "" = (\ x -> putStrLn (cutHere ++ x))
-outF x = writeFile x
+writeOut "" = putStrLn
+writeOut x = writeFile x

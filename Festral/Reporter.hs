@@ -31,20 +31,22 @@ defaultHTML time =
            ++ "    <h2>Build summary:</h2>\n"
            ++ "    ##TEMPLATE_BUILD_TABLE buildTable##\n"
            ++ "    <h2>Test summary:</h2>\n"
-           ++ "    ##TEMPLATE_TEST_TABLE buildTable##\n"
+           ++ "    ##TEMPLATE_TEST_TABLE testTable##\n"
            ++ "</body>\n"
            ++ "</html>\n"
 
--- |Generate HTML report file with results of the latest builds and tests
-reportHTML :: String -> IO String
-reportHTML "" = show <$> getZonedTime >>=
-    (\time -> generateFromTemplate (defaultHTML time) templateHTML)
-reportHTML src = generateFromTemplate src templateHTML
+-- |Generate HTML report file with results given by second parameter
+reportHTML :: String -> [String] -> IO String
+reportHTML "" dirs = show <$> getZonedTime >>=
+    (\time -> reportHTML (defaultHTML time) dirs)
+reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 
 -- |Generate simple text report about tests and builds given as parameters
 testReportText :: [String] -> IO [String]
 testReportText dirs = do
-    testSummaries <- mapM testSummary dirs
+    metas <- mapM metaByName dirs
+    let tests = fst <$> filter (\ (n,m) -> isTest m) metas
+    testSummaries <- mapM testSummary tests
     mapM (\ (n,b,t,s,_) -> return $ unwords [n,b,t] ++  " [" ++ s ++ "]")
         testSummaries
 
@@ -119,12 +121,11 @@ parseTestRes :: [[String]] -> [String]
 parseTestRes (_:x:_) = x
 parseTestRes _ = []
 
-templateHTML :: TemplateType -> IO String
-templateHTML (BuildTable id) = do
-    buildsFile <- freshBuilds
-    builds <- readFile buildsFile
-    buildSummaries <- sequence $ map buildSummary $
-        filter (not . (== "")) $ splitOn "\n" builds
+templateHTML :: [String] -> TemplateType -> IO String
+templateHTML dirs (BuildTable id) = do
+    metas <- mapM metaByName dirs
+    let builds = fst <$> filter (\ (n,m) -> isBuild m) metas
+    buildSummaries <- sequence $ map buildSummary builds
     let rows = concat $ map makeBuildRow buildSummaries
     return $  "    <table id=\"" ++ id ++ "\">\n"
            ++ "        <thead><tr>\n"
@@ -134,11 +135,10 @@ templateHTML (BuildTable id) = do
            ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
 
-templateHTML (TestTable id) = do
-    testsFile <- freshTests
-    tests <- readFile testsFile
-    testSummaries <- sequence $ map testSummary $ filter (not . (== "")) $
-        splitOn "\n" tests
+templateHTML dirs (TestTable id) = do
+    metas <- mapM metaByName dirs
+    let tests = fst <$> filter (\ (n,m) -> isTest m) metas
+    testSummaries <- sequence $ map testSummary tests
     let rows = concat $ map makeTestRow testSummaries
     return $  "    <table id=\"" ++ id ++ "\">\n"
            ++ "        <thead><tr>\n"
@@ -148,4 +148,14 @@ templateHTML (TestTable id) = do
            ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
 
-templateHTML _ = return ""
+templateHTML _ _ = return ""
+
+metaByName name = do
+    config <- getAppConfig
+    let build = buildLogDir config ++ "/" ++ name ++ "/meta.txt"
+    let test = testLogDir config ++ "/" ++ name ++ "/meta.txt"
+    tMeta <- fromMetaFile test
+    meta <- if isTest tMeta
+                then return tMeta
+                else fromMetaFile build
+    return (name, meta)
