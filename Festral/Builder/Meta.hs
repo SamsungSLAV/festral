@@ -9,6 +9,9 @@ module Festral.Builder.Meta (
     show,
     readMeta,
     fromMetaFile,
+    isBuild,
+    isTest,
+    isMeta,
     findField
 ) where
 
@@ -48,6 +51,7 @@ data Meta = Meta
     ,testName   :: String
     ,testStatus :: String
     }
+    | NotMeta
 
 buildFields =
     [ ("BOARD"          ,board)
@@ -74,6 +78,7 @@ testFields =
 instance Show Meta where
     show m@Meta{..} = unparse m buildFields
     show m@MetaTest{..} = (show $ metaData) ++ (unparse m testFields)
+    show _ = "Invalid meta data"
 
 unparse m = foldl (\ s (name, f) -> s ++ name ++ "=" ++ f m ++ "\n") ""
 
@@ -98,7 +103,10 @@ readMeta str = chooseMeta filledMeta
     f x = map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 
 chooseMeta m@MetaTest{..}
-    | testName == "" || testTime == "" || testStatus == "" = metaData
+    | testName == "" || testTime == "" || testStatus == "" = chooseMeta metaData
+    | otherwise = m
+chooseMeta m@Meta{..}
+    | buildType == "" || status == "" || hash == "" || repoName == "" = NotMeta
     | otherwise = m
 
 orderFields str fields = map (\ (x,_) -> findField x str) fields
@@ -109,7 +117,6 @@ findField name (x:xs)
     | head x == name = last x
     | otherwise = findField name xs
 findField name [] = ""
-
 
 -- |Write 'Meta' to the file at given path
 toFile :: Meta -> FilePath -> IO ()
@@ -124,5 +131,15 @@ fromMetaFile fname = do
 
     where
         handler :: SomeException -> IO String
-        handler e = putStrLn (show e) >> return ""
+        handler e = return ""
 
+-- |Check if given meta is Meta
+isBuild Meta{} = True
+isBuild _ = False
+
+-- |Check if given meta is MetaTest
+isTest MetaTest{} = True
+isTest _ = False
+
+-- |Check if given meta is valid meta type
+isMeta x = isBuild x || isTest x

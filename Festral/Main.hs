@@ -100,12 +100,12 @@ parseOptsCmd :: Parser Options
 parseOptsCmd = Cmd <$> opts
 
 testDesc    = "Create jobs on remote Weles server with tests defined in .yaml \
-\files and process responces with results of its execution. Put results of tests\
-\to the directory specified in testLogDir of the ~/.festral.conf configuration \
-\file."
+\files and process responces with results of its execution. Put results of \
+\tests to the directory specified in testLogDir of the ~/.festral.conf \
+\configuration file."
 buildDesc   = "Build all repositories for all branches described in \
-\configuration file. Put results into the directory specified in the buildLogDir\
-\field of the ~/.festral.conf configuration file."
+\configuration file. Put results into the directory specified in the \
+\buildLogDir field of the ~/.festral.conf configuration file."
 borutaDesc   = "Give access for the device farm of the Boruta and managament \
 \devices under test by hands."
 welesDesc    = "Low-level client for Weles API for accessing and managing jobs \
