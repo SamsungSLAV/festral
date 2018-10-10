@@ -21,7 +21,7 @@ import Festral.SLAV.Boruta
 import Control.Concurrent
 
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
-    (info (helper <*> parseOptsCmd <|> prgVersion <|> report)
+    (info (helper <*> parseOptsCmd <|> prgVersion)
      (progDesc "Festral - unified application for automating of building and \
      \testing process")
     )
@@ -79,21 +79,22 @@ data Command
         }
     | Server
         { serverPort :: Int }
+    | Report
+        { rtype     :: ReportType
+        , rOutFile  :: FilePath
+        , rPaths    :: [FilePath]
+        }
 
 data ReportType
     = HTML
         { htmlRep       :: Bool
         , templateHTML  :: FilePath
         }
-    | TextReport Bool [FilePath]
+    | TextReport Bool
 
 data Options
     = Cmd Command
     | Version Bool
-    | Report
-        { rtype     :: ReportType
-        , rOutFile  :: FilePath
-        }
     | None
 
 parseOptsCmd :: Parser Options
@@ -106,12 +107,14 @@ testDesc    = "Create jobs on remote Weles server with tests defined in .yaml \
 buildDesc   = "Build all repositories for all branches described in \
 \configuration file. Put results into the directory specified in the \
 \buildLogDir field of the ~/.festral.conf configuration file."
-borutaDesc   = "Give access for the device farm of the Boruta and managament \
+borutaDesc  = "Give access for the device farm of the Boruta and managament \
 \devices under test by hands."
-welesDesc    = "Low-level client for Weles API for accessing and managing jobs \
+welesDesc   = "Low-level client for Weles API for accessing and managing jobs \
 \by hands."
 serverDesc  = "Run local file server for external parts of test process \
 \(like remote Weles server) could access needed files such built rpms."
+reportDesc  = "Create different types of reports based on test and build \
+\results."
 
 opts :: Parser Command
 opts = hsubparser
@@ -120,6 +123,7 @@ opts = hsubparser
     <>command "boruta" (info borutaOpts (progDesc borutaDesc))
     <>command "test" (info testCtl (progDesc testDesc))
     <>command "server" (info runServer (progDesc serverDesc))
+    <>command "report" (info report (progDesc reportDesc))
     )
 
 buildopts :: Parser Command
@@ -165,10 +169,8 @@ reportText = TextReport
     <$> switch
         (  long     "text-report"
         <> help     "Show results of the tests as simple text." )
-    <*> some (argument str (metavar "TEST_DIRS..." <> help "Test directories \
-    \returned by Festral test"))
 
-report :: Parser Options
+report :: Parser Command
 report = Report
     <$> (reportHTMLParser <|> reportText )
     <*> strOption
@@ -177,6 +179,9 @@ report = Report
         <> short    'o'
         <> value    ""
         <> help     "Output directory for summary report." )
+    <*> many (argument str
+        (  metavar  "TEST_NAMES..."
+        <> help     "Test and build names."))
 
 prgVersion :: Parser Options
 prgVersion = Version
@@ -372,21 +377,20 @@ runServer = Server
 
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
-runCmd (Report x o) = reportCmd x o
 runCmd (Cmd x) = subCmd x
 runCmd _ = putStrLn "Some parameter missed. Run program with --help option \
 \to see usage."
 
-reportCmd (HTML True x) "" = putStrLn =<< reportHTML =<< readNotEmpty x
-reportCmd (HTML True x) o = do
+reportCmd (HTML True x) o args = do
     html <- reportHTML =<< readNotEmpty x
-    writeFile o html
-reportCmd (TextReport True args) o = mapM_ putStrLn =<< (testReportText args)
-reportCmd _ _ = runCmd None
+    outF o $ html
+reportCmd (TextReport True) o args = mapM_ (outF o) =<< (testReportText args)
+reportCmd _ _ _ = runCmd None
 
 subCmd :: Command -> IO ()
 subCmd (Weles x) = welesSubCmd x
 subCmd (Boruta x) = borutaSubCmd x
+subCmd (Report x o p) = reportCmd x o p
 subCmd (TestControl conf out []) = do
     appCfg <- getAppConfig
     forkIO $ runServerOnPort (webPagePort appCfg)
