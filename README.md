@@ -1,35 +1,46 @@
 # Festral
 
-This package is developed and adopted for usage with existing extended secos CI system (http://127.0.0.1:81/u.harbuz/secosci) which consists of PHP page, MySQL database and set of scripts for importing
-data to the database from the formatted in some way files. This package uses set of configuration files for management of repositories building and testing.
+This package is developed and adopted for usage with existing extended secos CI 
+system (http://127.0.0.1:81/u.harbuz/secosci) which consists of PHP page, 
+MySQL database and set of scripts for importing
+data to the database from the formatted in some way files. This package uses set
+of configuration files for management of repositories building and testing.
 
 Festral consists of some small utilities:
 
-* `festral build` - utility for building repositories. It takes simple json file with information about what to build, how to build and what branches to build and just do it.
+* `festral build` - utility for building repositories. It takes simple json file
+with information about what to build, how to build and what branches to build 
+and just do it.
 * `festral weles` - utility for communication with Weles tests server.
 * `festral boruta` - utility for connecting devices of the farm directly.
-* `festral test` - utility for performing tests described by yaml files on remote Weles server and recieving results of the tests.
-* `festral server` - simple built-in web server for sharing built files and logs.
+* `festral test` - utility for performing tests described by yaml files on 
+remote Weles server and recieving results of the tests.
+* `festral server` - simple built-in web server for sharing built files and 
+logs.
 * `festral report` - generate reports in various formats
 
 ----------
 ### How to build
 Installation scripts presented below are made on Ubuntu 16.04.
 
-`Festral` is written in Haskell and for building it from sources your need to have installed `haskell-platform` package for your distribution:
+`Festral` is written in Haskell and for building it from sources your need to 
+have installed `haskell-platform` package for your distribution:
 
 ```
  $ sudo apt install haskell-platform
 ```
 
-The next step is to install `cabal` package manager which will configure `Festral's` sources, resolve its dependencies, build and install package for you:
+The next step is to install `cabal` package manager which will configure 
+`Festral's` sources, resolve its dependencies, build and install 
+package for you:
 
 ```
  $ sudo apt install cabal-install
  $ cabal update
  ```
 
-Now you can build the package. Go to the root directory of the `Festral` sources (it contains Setup.hs file) and run:
+Now you can build the package. Go to the root directory of the `Festral` 
+sources (it contains Setup.hs file) and run:
 
 ```
  $ sudo apt install libghc-curl-dev
@@ -43,27 +54,25 @@ After installing curl library you can just run `make` command of maki by hands:
  $ runhaskell Setup.hs install
 ```
 
-If build finished with success, you will find festral executable in the directory `dist/build/festral/festral-build/festral-build` and `dist/build/festral/festral-weles/festral-weles`
+If build finished with success, you will find festral executable in the 
+directory `dist/build/festral/festral-build/festral-build` and 
+`dist/build/festral/festral-weles/festral-weles`
 
------------
 # Usage
 -----------
 ### festral
 
-Since **v.0.6.0** version all subutilities was unified in subcommands in one `festral` command. You can get information about it by typing `festral --help`.
-Avaible commands are: `build`, `weles`, `test`, `server`.
-
-### HTML reporting
-
-There is also option `--html-report` available without any command which generates HTML summary report about latest builds and tests and put it into stdout or into file specified by -f option.
-The simple templating mechanism for HTML is available: you can put in your own HTML file `##TEMPLATE_BUILD_TABLE tableId##` row and it will be replaced by HTML table of build results, and
-`##TEMPLATE_TEST_TABLE tableId##` for inserting table with test results. Parameter `tableId` is the html node id, this table will be accessible by it from html/css/javascript files.
-There is example of such page template and JavaScript for it in `Examples/reports/`.
+Since **v.0.6.0** version all subutilities was unified in subcommands in one 
+`festral` command. You can get information about it by typing `festral --help`.
+Avaible commands are: `build`, `weles`, `boruta`, `test`, `server`, `report`.
 
 ### configuration
 
-Also since **v0.6.0** version whole program is configured by file `~/.festral.conf` formatted as below (see example at `Examples/config.json`):
-Since **v.0.8.0** field `reportsDir` was renamed to `serverRoot` so **YOU MUST CHANGE YOUR CONFIG after update to the v.0.8 from previous versions**.
+Also since **v0.6.0** version whole program is configured by file 
+`~/.festral.conf` formatted as below (see example at `Examples/config.json`):
+Since **v.0.8.0** field `reportsDir` was renamed to `serverRoot` 
+so **YOU MUST CHANGE YOUR CONFIG after update to the v.0.8 
+from previous versions**.
 
 ```
 {
@@ -79,27 +88,33 @@ Since **v.0.8.0** field `reportsDir` was renamed to `serverRoot` so **YOU MUST C
     "borutaPort" : 6666
 }
 ```
-This configuration file was separated from tests descriptions (see `festral test` section).
+This configuration file was separated from tests descriptions 
+(see `festral test` section).
 
 Other commands are described below:
 
 ### festral build
 
-This command clone and build all targets listed in configuration json file: each target is built for every branch listed for this target.
+This command clone and build all targets listed in configuration json file: 
+each target is built for every branch listed for this target.
 
 The `festral build` utility has simple command format:
 
 ```
- $ festral build (-c <config json>) (-r <repositories location>) (-o <output directory>)
+ $ festral build (-c <config json>) (-r <repositories location>) 
+(-o <output directory>)
 ```
 
-The main part of these arguments is `config json` which contains description of build targets.
-It has format described below (see example of this file in `Examples/buildconfig.json`):
+The main part of these arguments is `config json` which contains description 
+of build targets.
+It has format described below (see example of this file in 
+`Examples/buildconfig.json`):
 
 ```
  [
     {
-        # Name of the repository, remote repository will be cloned to the directory with this name under <repositories location>
+        # Name of the repository, remote repository will be cloned to the 
+directory with this name under <repositories location>
         "buildName" : "tct-test-ta",
         # Command to be used for build this repository
         "buildCmd" : "gbs build -A armv7l -P tizen_vd",
@@ -107,14 +122,16 @@ It has format described below (see example of this file in `Examples/buildconfig
         "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
         # Name of the parser of the build results. See description below.
         "buildResParser" : "GBS",
-        # List of the branches to be built. Every one from these will be built for the target.
+        # List of the branches to be built. Every one from these will be built 
+for the target.
         "branches" : ["master", "arm", "devel"]
     },
     { ... Some other build targets ... }
  ]
 ```
 
-Parser is some script or binary which generates meta.txt file from output of your `buildCmd` command.
+Parser is some script or binary which generates meta.txt file from output 
+of your `buildCmd` command.
 
 `meta.txt` file has format:
 
@@ -125,7 +142,8 @@ Parser is some script or binary which generates meta.txt file from output of you
  BUILD_TIME=#build time in format YYYYMMDDHHMMSS
  TOOLCHAIN=#name of toolchain used for build
  BUILDER=#username of builder
- BUILD_STATUS=#result of build (SUCCEED and FAILED are known, but may be there are other ones)
+ BUILD_STATUS=#result of build (SUCCEED and FAILED are known, but may be 
+ there are other ones)
  BUILD_HASH=#hash of the build
  REPO_NAME=#name of the built repository
  BRANCH=#name of the built branch
@@ -138,31 +156,50 @@ Parser is some script or binary which generates meta.txt file from output of you
  TEST_STATUS=#Status of the executed tests. See below for possible values.
 ```
 
-Parser script MUST gets output of the `buildCmd` from its `stdin` after start and writes meta file to the `stdout`.
+Parser script MUST gets output of the `buildCmd` from its `stdin` after start 
+and writes meta file to the `stdout`.
 
-`repository location` is path where directories cloned from `buildRepo`'s of targets projects will be put.
+`repository location` is path where directories cloned from `buildRepo`'s of 
+targets projects will be put.
 
-`output directory` is directory where builds results will be put in format 'commithash_buildtime'
+`output directory` is directory where builds results will be put in format 
+'commithash_buildtime'
 
 After running this command program will do:
 
-  1. clone all repository listed in `config json` to the subdirectory of `repositories location`
-  2. checkout for each branch listed in `config json` for current repository and run specified in config build command
-  3. pass standard output of build command to the parser specified in the config for this repository
+  1. clone all repository listed in `config json` to the subdirectory of 
+  `repositories location`
+  2. checkout for each branch listed in `config json` for current repository 
+  and run specified in config build command
+  3. pass standard output of build command to the parser specified in the 
+  config for this repository
   4. create `meta.txt` file from parsed build output
-  5. create directory named as `commitSha1Hash_buildtime` in the `output directory` and put here `meta.txt`, raw build log as `build.log` file
-  6. create subdirectory `build_res` and move here all files from parsed `OUT_DIR` meta field
-  7. add name of build directory to the `~/.festral/fresh_builds` file and update `~/.festral/build.cache` file by new out files.
+  5. create directory named as `commitSha1Hash_buildtime` in the 
+  `output directory` and put here `meta.txt`, raw build log as `build.log` file
+  6. create subdirectory `build_res` and move here all files from parsed 
+  `OUT_DIR` meta field
+  7. add name of build directory to the `~/.festral/fresh_builds` file and 
+  update `~/.festral/build.cache` file by new out files.
 
 Currently possible statuses for `TEST_STATUS`:
-  - `BUILD FAILED` - test was not started because repository under test has not built successfully.
-  - `YAML NOT FOUND` - YAML file from test config for this repository does not exist
+  - `BUILD FAILED` - test was not started because repository under test has 
+  not built successfully.
+  - `YAML NOT FOUND` - YAML file from test config for this repository does 
+  not exist
   - `NO JOB STARTED` - Weles job has not been started because some error occured
-  - `DEVICE FAILED` - Device Under Test (DUT) was failed what means that communication between Mux-Pi and DUT was lost or command executed on DUT exit with fatal error or some other problems appeared on tested board.
-  - `DOWNLOAD FILES ERROR` - failed to download all artifacts by Weles server: it usually means that one of the URI appeared in YAML file is invalid or that there is no free space on the Weles server.
-  - `WELES ERROR` - test job failed with some other error: error message is in log file
-  - `SEGFAULT` - `segmentation fault` error was appeared during testing process, so pass/all test rating can be not complete
-  - `COMPLETE` - test executed on Dryad with no errors. **It doesn't mean that tests passed successfully**, for see test results see test output generated by test parser (see `festral test`).
+  - `DEVICE FAILED` - Device Under Test (DUT) was failed what means that 
+  communication between Mux-Pi and DUT was lost or command executed on DUT exit
+  with fatal error or some other problems appeared on tested board.
+  - `DOWNLOAD FILES ERROR` - failed to download all artifacts by Weles server: 
+  it usually means that one of the URI appeared in YAML file is invalid or that 
+  there is no free space on the Weles server.
+  - `WELES ERROR` - test job failed with some other error: error message is in 
+  log file
+  - `SEGFAULT` - `segmentation fault` error was appeared during testing process,
+  so pass/all test rating can be not complete
+  - `COMPLETE` - test executed on Dryad with no errors. **It doesn't mean that 
+  tests passed successfully**, for see test results see test output generated by
+  test parser (see `festral test`).
 
 --------------
 ### festral weles
@@ -180,7 +217,8 @@ For starting single test use
 ```
  $ festral weles -s yaml_file.yml
 ```
-This command writes id of the new job to the console, which you can pass to the -i option and get information about job. For example:
+This command writes id of the new job to the console, which you can pass to 
+the -i option and get information about job. For example:
 ```
  $ festral weles -i 112233
 ```
@@ -192,7 +230,8 @@ will print standard output of the test job
 ```
  $ festral weles -i 112233 --list-files -f test12348.txt
 ```
-will print content of the file owned by Weles with name test12348.txt if it is in the artefactorium of this job.
+will print content of the file owned by Weles with name test12348.txt if it is 
+in the artefactorium of this job.
 
 To see list of files use
 ```
@@ -201,7 +240,9 @@ To see list of files use
 ------------------
 ### festral boruta
 
-The `festral boruta` is tool for connecting to devices registered in the Boruta's farm of SLAV stack. This tool is more low-lewel then even `festral weles`, but it could
+The `festral boruta` is tool for connecting to devices registered in the 
+Boruta's farm of SLAV stack. This tool is more low-lewel then even 
+`festral weles`, but it could
 be helpful when you need to have console for device under test and its MuxPi.
 
 You can get list of all workers (devices) by calling
@@ -209,19 +250,24 @@ You can get list of all workers (devices) by calling
 festral boruta -w
 ```
 
-Now devices are identified by its `device_type` field of the output JSON, so if you are want to have onsole for e.g. some `kantM1` board, you can 
+Now devices are identified by its `device_type` field of the output JSON, 
+so if you are want to have onsole for e.g. some `kantM1` board, you can 
 get it by command
 ```
  $ festral boruta --console-device kantM1
 ```
-This command will open ssh session which will be **valid not more than 1 hour** for one of the running boards of that type. If no running boards are present, this command will send 
-new request for start this target. This method is bad because you couldn't use this device by UUID during this session.
+This command will open ssh session which will be **valid not more than 1 hour** 
+for one of the running boards of that type. If no running boards are present, 
+this command will send 
+new request for start this target. This method is bad because you couldn't use 
+this device by UUID during this session.
 
 list all requests and statuses of Boruta:
 ```
  $ festral boruta -a
 ```
-Open ssh console for  MuxPi specified by its UUID (you can find it in list of workers, see festral boruta -w):
+Open ssh console for  MuxPi specified by its UUID (you can find it in list of 
+workers, see festral boruta -w):
 ```
  $ festral boruta --console-uuid 355e0604-7832-4c21-948c-86c55989118f
 ```
