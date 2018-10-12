@@ -26,10 +26,12 @@ main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
      \testing process")
     )
 
+-- |Helper type for segregate opening console by type or by UUID.
 data BorutaConsole
     = ConsoleFromUUID String
     | ConsoleFromType String
 
+-- |Helper type for unite push and exec options.
 data DryadAction
     = DryadExec String
     | DryadPush
@@ -37,6 +39,7 @@ data DryadAction
         , pushOut   :: FilePath
         }
 
+-- |Representation of boruta command options.
 data BorutaSubOpt
     = Workers Bool
     | AllRequests Bool
@@ -49,12 +52,14 @@ data BorutaSubOpt
         }
     | Boot String
 
+-- |Helper type for unify all Weles options which use job ID parameter.
 data JobOpts
     = WaitJob Int
     | JobSTDOut Bool
     | ListFiles Bool String
     | CancelJob Bool
 
+-- |Representation of the weles command options.
 data WelesSubOpts
     = AllJobs Bool
     | StartJob FilePath
@@ -63,6 +68,7 @@ data WelesSubOpts
         , jobId  :: Int
         }
 
+-- |Type which is root of all program commands tree.
 data Command
     = Build
         { config    :: FilePath
@@ -85,6 +91,7 @@ data Command
         , rPaths    :: [FilePath]
         }
 
+-- |Helper type for segregating report command options.
 data ReportType
     = HTML
         { htmlRep       :: Bool
@@ -92,6 +99,7 @@ data ReportType
         }
     | TextReport Bool
 
+-- |Options of the program called without commands (festral entery point).
 data Options
     = Cmd Command
     | Version Bool
@@ -417,13 +425,13 @@ subCmd (TestControl conf out []) = do
     listFile <- freshBuilds
     list <- readFile listFile
     outs <- performForallNewBuilds conf $ lines list
-    writeOut out $ cutHere ++ unlines outs
+    writeOut out $ unlines outs
 
 subCmd (TestControl config out fnames) = do
     appCfg <- getAppConfig
     forkIO $ runServerOnPort (webPagePort appCfg)
     outs <- performForallNewBuilds config fnames
-    writeOut out $ cutHere ++ unlines outs
+    writeOut out $ unlines outs
 
 subCmd (Build config repos noClean outFile) = do
     freshBuildsFile <- freshBuilds
@@ -433,7 +441,7 @@ subCmd (Build config repos noClean outFile) = do
     builder <- builderFromFile config
     (writeOut outFile) =<<  maybe
         (return "ERROR: Check your configuration JSON: it has bad format.")
-        ((((++)cutHere)<$>).(unlines <$>).(concat <$>)
+        ((unlines <$>).(concat <$>)
             .mapM (\x -> build x (BuildOptions noClean) repos
             (buildLogDir appCfg)))
         builder
@@ -479,5 +487,5 @@ readNotEmpty x = readFile x
 
 cutHere = "-------------------- Result outputs -----------------------\n"
 
-writeOut "" = putStrLn
+writeOut "" = (\ x -> putStrLn $ cutHere ++ x)
 writeOut x = writeFile x
