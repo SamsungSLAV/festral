@@ -395,6 +395,36 @@ When you run `festral test` command, it will do actions:
   6. put names of new test logs to the `~/.festral/fresh_tests`
 
 ----------------
+### festral report
+
+Since version v.0.10.5 reporting functions was moved to the own command named
+report with unified interface for creating different types of reports.
+Currently only html and text reports are available.
+
+Report command expects names of the builds and tests as arguments, but if no
+arguments are given, it create report for latest performed builds and tests.
+You can specify output file for the report by -o option.
+
+For generate simple text report use command:
+```
+ $ festral report --text-report f457004fdc7326c8125936b5e600c0d330c89404_20180918161950 f457004fdc7326c8125936b5e600c0d330c89404_20180918161949 f457004fdc7326c8125936b5e600c0d330c89404_20180918161948
+```
+where hashes are names of the tests returned by festral test command.
+If you pass build name as argument, it will be ignored by simple text report.
+
+You can also generate HTML reports using own template page with your JS and
+other feathers. For put in your file HTML table with build results insert
+`##TEMPLATE_BUILD_TABLE id##` into your HTML code, and for put test results put
+`##TEMPLATE_TEST_TABLE id##`, where id is HTML element’s id of this table.
+
+Then run command:
+```
+ $ festral report --html-report -f template.html f457004fdc7326c8125936b5e600c0d330c89404_20180918161950  f457004fdc7326c8125936b5e600c0d330c89404_20180918161949 f457004fdc7326c8125936b5e600c0d330c89404_20180918161948
+```
+It will fill your html template by tables with data. If there is no template
+passed it will use default simple HTML template.
+
+----------------
 ### festral server
 This commant is used for setting up simple web server which can be used for
 sharing built files with remote Weles server of just show logs and reports in
