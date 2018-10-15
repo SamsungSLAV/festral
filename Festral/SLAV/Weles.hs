@@ -76,7 +76,7 @@ getJob id = do
                 else Just $ head job
     return res
 
-doneStatuses = ["FAILED", "COMPLETED", "CANCELLED"]
+doneStatuses = ["FAILED", "COMPLETED", "CANCELED"]
 
 -- |Wait until job with given id got status one of 'doneStatuses' or
 -- until time given limit not expared and then return this job
