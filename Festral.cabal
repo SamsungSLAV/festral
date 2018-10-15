@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.10.9
+Version:    0.10.10
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -27,7 +27,8 @@ Library
         wai, warp, http-types, blaze-builder, utf8-string,
         filesystem-trees,
         time,
-        temporary >= 1.2.1
+        temporary >= 1.2.1,
+        ansi-terminal
     Exposed-modules:
        Festral.SLAV.Weles,
        Festral.SLAV.Boruta,

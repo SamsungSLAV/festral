@@ -30,6 +30,7 @@ import Festral.Files
 import Control.Concurrent
 import System.FilePath.Posix
 import Control.Monad
+import System.Console.ANSI
 
 -- |List of pairs filename - content
 type FileContents = [(String, String)]
@@ -247,12 +248,14 @@ runTestJob _ _ _ = return StartJobFailed
 -- |Wait for job if it started successfully and return its results after finish
 waitForJob :: JobResult -> Int -> Meta -> IO JobResult
 waitForJob (JobId jobid) timeout m = do
-    putLog m $ brace (show jobid)
-        ++ "Waiting for job finished with "
+    putLogColor m Magenta (show jobid)
+    putStrLn $ "Waiting for job finished with "
         ++ show timeout ++ "sec. timeout ..."
 
     job <- getJobWhenDone jobid timeout
-    putLog m $ brace (show jobid) ++ "Finished: " ++ show (fmap WJob.status job)
+    putLogColor m Magenta (show jobid)
+    colorBoldBrace "FINISHED" Green
+    putStrLn $ show (fmap WJob.status job)
     filesFromJob job >>= outToResults
 
     where
@@ -306,10 +309,12 @@ runTest target testConf = do
 
 testResults :: JobResult -> Meta -> TestConfig -> IO TestResult
 testResults BuildFailed m c = do
-    putLog m "[NOTE]This repository build failed. Nothing to test."
+    putLogColor m Yellow "NOTE"
+    putStrColor Yellow $ "This repository build failed. Nothing to test.\n"
     return $ TestResult (BadJob BuildFailed) c
 testResults BadYaml m c = do
-    putLog m "[ERROR]No such YAML testcase file."
+    putLogColor m Red "ERROR"
+    putStrColor Red "No such YAML testcase file.\n"
     return $ TestResult (BadJob BadYaml) c
 testResults (JobLogs logs) m conf = do
     resLog <- fromWelesFiles logs "results"
@@ -317,12 +322,35 @@ testResults (JobLogs logs) m conf = do
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
 testResults err m c = do
-    putLog m $ "[ERROR]" ++ brace (show err)
+    putLogColor m Red "ERROR"
+    colorBrace (show err) Red
+    putStrLn ""
     return $ TestResult (BadJob err) c
 
-putLog m y = putStrLn $ mlog m ++ y
-    where
-        mlog m = "[" ++ repoName m ++ "][" ++ branch m ++ "]"
+putStrColor c s = do 
+    setSGR [SetColor Foreground Vivid c]
+    putStr s
+    setSGR [Reset]
+    
+putLogColor m c y = do
+    colorBrace (repoName m) Blue
+    colorBrace (branch m) Blue
+    colorBoldBrace (y) c
+
+putLog m y = do
+    colorBrace (repoName m) Blue
+    colorBrace (branch m) Blue
+    putStrLn y
+
+colorBrace x color = do
+    putStr "["
+    putStrColor color x
+    putStr "]"
+
+colorBoldBrace x color = do
+    setSGR [SetConsoleIntensity BoldIntensity]
+    colorBrace (x) color
+    setSGR [Reset]
 
 brace x = "[" ++ x ++ "]"
 

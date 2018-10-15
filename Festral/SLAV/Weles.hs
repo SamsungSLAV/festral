@@ -114,7 +114,6 @@ startJob yamlFileName = do
                       )
     outStr <- hGetContents out
     let sjob = decode (LB.fromStrict $ B.pack outStr) :: Maybe SimpleJob
-    putStrLn =<< hGetContents err
     return (s_jobid <$> sjob)
 
 testFileUrl id = do
