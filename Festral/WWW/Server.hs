@@ -33,20 +33,21 @@ fileServer req respond = do
     let opts = parseQuery $ show $ rawQueryString req
     sendRespond opts config respond $ pathInfo req
 
-sendRespond opts config r ["secosci", "download"    ] = r $ download opts config
-sendRespond opts config r ["secosci", "download.php"] = r $ download opts config
-sendRespond opts config r ["secosci", "getlog.php"  ] = sendRespond opts config
-    r ["secosci", "getlog"]
-sendRespond opts config r ["secosci", "getlog"      ] = do
+sendRespond opts config r ["download"    ] = r $ download opts config
+sendRespond opts config r ["download.php"] = r $ download opts config
+sendRespond opts config r ["getlog.php"  ] = sendRespond opts config
+    r ["getlog"]
+sendRespond opts config r ["getlog"      ] = do
     log <- readLog opts config
     r $ getlog log
-sendRespond opts config r ["secosci", "files"       ] = sendRespond opts config
-    r ["secosci", "reports"]
-sendRespond opts config r ["secosci", "reports.php" ] = sendRespond opts config
-    r ["secosci", "reports"]
-sendRespond opts config r ["secosci", "reports"     ] = do
+sendRespond opts config r ["files"       ] = sendRespond opts config
+    r ["reports"]
+sendRespond opts config r ["reports.php" ] = sendRespond opts config
+    r ["reports"]
+sendRespond opts config r ["reports"     ] = do
     reports <- listDirectory $ serverRoot config
     r $ listFiles reports config opts
+sendRespond opts config r ("secosci":x) = sendRespond opts config r x
 sendRespond a b c d = indexRespond a b c d
 
 download opts config = do

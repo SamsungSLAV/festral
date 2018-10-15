@@ -23,7 +23,7 @@ indexRespond opts config r query = r $ index query
 
 index x = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
     [ "<p><a href=\"tests\">Tests</a></p>"
-    , "<p><a href=\"secosci/reports\">Reports</a></p>"
+    , "<p><a href=\"files\">Reports</a></p>"
     , "<p><a href=\"deploys\">Deploys</a></p>"
     ]
 
