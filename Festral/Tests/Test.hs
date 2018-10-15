@@ -250,7 +250,6 @@ waitForJob (JobId jobid) timeout m = do
     putLog m $ brace (show jobid)
         ++ "Waiting for job finished with "
         ++ show timeout ++ "sec. timeout ..."
-    hFlush stdout
 
     job <- getJobWhenDone jobid timeout
     putLog m $ brace (show jobid) ++ "Finished: " ++ show (fmap WJob.status job)
@@ -302,7 +301,6 @@ runTest target testConf = do
     putLog meta $ "Starting Weles job with " ++ yamlPath ++ " ..."
     yaml <- getYaml yamlPath target
     jobId <- runTestJob (status meta) yaml target
-    putLog meta $ "Started job with id: " ++ show jobId
     jobRes <- waitForJob jobId 3600 meta
     testResults jobRes meta testConf
 
