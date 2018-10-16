@@ -36,8 +36,8 @@ function colors(x) {
         var y = x.split("/");
         var pass = parseInt(y[0]);
         var all = parseInt(y[1]);
-        return 'rgb(' + 150 - ((150/all) * pass) 
-                + "," + ((150/all) * pass)  + ',0)';
+        return ("rgb(" + (150 - ((150/all) * pass) )
+                + "," + ((150/all) * pass)  + ",0)");
     }
 }
 
@@ -65,7 +65,7 @@ function filterTable(tabName, field, value) {
 function getTable(objList) {
     extractObj = row => (acc, key, i) => acc + row[key];
     return objList.reduce(function(acc, row, i) {
-        return acc + "<tr>" + Object.keys(row).reduce(extractObj(row), "") 
+        return acc + "<tr>" + Object.keys(row).reduce(extractObj(row), "")
             + "</tr>";
     }, "");
 }
@@ -76,8 +76,8 @@ function showTable(oldTab, newTBody) {
 }
 
 function filterAllTables(field, value) {
-    return zipWith (showTable) (Object.keys(fullTables)) 
-        (Object.keys(fullTables).map(x => 
+    return zipWith (showTable) (Object.keys(fullTables))
+        (Object.keys(fullTables).map(x =>
                                      getTable(filterTable(x, field, value))));
 }
 
