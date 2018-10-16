@@ -12,6 +12,7 @@ module Festral.Builder.Meta (
     isBuild,
     isTest,
     isMeta,
+    liftMeta,
     findField
 ) where
 
@@ -52,6 +53,11 @@ data Meta = Meta
     ,testStatus :: String
     }
     | NotMeta
+
+-- |apply function from build meta the same way for build meta and for test
+-- meta.
+liftMeta x m@Meta{} = x m
+liftMeta x m@MetaTest{} = x $ metaData m
 
 buildFields =
     [ ("BOARD"          ,board)

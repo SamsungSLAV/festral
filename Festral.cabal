@@ -1,5 +1,5 @@
 Name:       Festral
-Version:    0.10.10
+Version:    0.10.11
 Cabal-Version: >= 1.2
 License:    BSD3
 Author:     Uladzislau Harbuz
@@ -28,7 +28,7 @@ Library
         filesystem-trees,
         time,
         temporary >= 1.2.1,
-        ansi-terminal
+        ansi-terminal, MissingH
     Exposed-modules:
        Festral.SLAV.Weles,
        Festral.SLAV.Boruta,

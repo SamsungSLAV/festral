@@ -1,6 +1,6 @@
 module Festral.Reporter (
     reportHTML,
-    testReportText
+    formatTextReport
 ) where
 
 import System.IO
@@ -14,6 +14,7 @@ import Data.Aeson
 import Data.List
 import Data.Time.LocalTime
 import Festral.Template
+import Data.List.Utils
 
 defaultHTML time =
               "<!DOCTYPE html>\n"
@@ -41,14 +42,56 @@ reportHTML "" dirs = show <$> getZonedTime >>=
     (\time -> reportHTML (defaultHTML time) dirs)
 reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 
--- |Generate simple text report about tests and builds given as parameters
-testReportText :: [String] -> IO [String]
-testReportText dirs = do
+-- |Make text report when every line has a format like passed in first argument.
+-- Format string has special characters:
+-- %b - board
+-- %t - build type
+-- %c - commit name
+-- %T - build time
+-- %C - toolchain
+-- %u - builder username
+-- %s - build status
+-- %h - build hash
+-- %o - build output directory
+-- %r - name of the repository
+-- %B - brunch name
+-- %l - tester login
+-- %L - tester name
+-- %e - test time
+-- %n - test name
+-- %S - test status
+-- %R - pass rating passed/all
+-- %% - insert % character
+formatTextReport :: String -> [String] -> IO [String]
+formatTextReport format dirs = do
     metas <- mapM metaByName dirs
-    let tests = fst <$> filter (\ (n,m) -> isTest m) metas
-    testSummaries <- mapM testSummary tests
-    mapM (\ (n,b,t,s,_) -> return $ unwords [n,b,t] ++  " [" ++ s ++ "]")
-        testSummaries
+    let tests = filter (\ (n,m) -> isTest m) metas
+    mapM f tests
+    where
+        f (n,m) = do
+            let str = foldl (\ s (f,o) -> replace f (o m) s) format formats
+            (_,_,_,rating,_) <- testSummary n
+            return $ replace "%R" rating str
+
+formats =
+    [("%b", liftMeta board)
+    ,("%t", liftMeta buildType)
+    ,("%c", liftMeta commit)
+    ,("%T", liftMeta buildTime)
+    ,("%C", liftMeta toolchain)
+    ,("%u", liftMeta builder)
+    ,("%s", liftMeta status)
+    ,("%h", liftMeta hash)
+    ,("%o", liftMeta outDir)
+    ,("%r", liftMeta repoName)
+    ,("%B", liftMeta branch)
+    ,("%l", tester)
+    ,("%L", testerName)
+    ,("%e", testTime)
+    ,("%n", testName)
+    ,("%S", testStatus)
+    ,("%%", (\ _ -> "%"))
+    ]
 
 makeBuildRow :: (String, String, String, String) -> String
 makeBuildRow (repo, branch, status, link)

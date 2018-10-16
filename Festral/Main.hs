@@ -97,7 +97,7 @@ data ReportType
         { htmlRep       :: Bool
         , templateHTML  :: FilePath
         }
-    | TextReport Bool
+    | TextReport Bool String
 
 -- |Options of the program called without commands (festral entery point).
 data Options
@@ -176,8 +176,20 @@ reportText :: Parser ReportType
 reportText = TextReport
     <$> switch
         (  long     "text-report"
-        <> help     "Show results of the tests as simple text. \
-        \Builds are ignored." )
+        <> help     "Show results of the tests as formatted by user text. \
+        \Builds are ignored" )
+    <*> strOption
+        (  long     "format"
+        <> short    'f'
+        <> value    "%r[%B] Build: %s Test: %R"
+        <> metavar  "FORMAT"
+        <> showDefault
+        <> help     "Format specifiers are: %b - board, %t - build type\
+        \, %c - commit name, %T - build time, %C - toolchain, %u - builder \
+        \username, %s - build status, %h - build hash, %o - build output \
+        \directory, %r - name of the repository, %B - brunch name, %l - tester\
+        \login, %L - tester name, %e - test time, %n - test name, %S - test\
+        \status, %R - pass rating passed/all, %% - insert % character." )
 
 report :: Parser Command
 report = Report
@@ -402,13 +414,13 @@ reportCmd (HTML True x) o args = do
     html <- flip reportHTML args =<< (readNotEmpty x)
     writeOut o $ html
 
-reportCmd (TextReport True) o [] = do
+reportCmd (TextReport True format) o [] = do
     testFile <- freshTests
     tests <- readFile testFile
-    reportCmd (TextReport True) o $ lines tests
+    reportCmd (TextReport True format) o $ lines tests
 
-reportCmd (TextReport True) o args =
-    writeOut o =<< unlines <$> testReportText args
+reportCmd (TextReport True format) o args =
+    writeOut o =<< unlines <$> formatTextReport format args
 
 reportCmd _ _ _ = runCmd None
 
