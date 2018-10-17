@@ -31,7 +31,7 @@ import Control.Concurrent
 import System.FilePath.Posix
 import Control.Monad
 import System.Console.ANSI
-import Control.Concurrent.STM
+import Control.Concurrent.MVar
 
 -- |List of pairs filename - content
 type FileContents = [(String, String)]
@@ -78,16 +78,24 @@ instance Show JobResult where
 performForallNewBuilds :: FilePath -> [String] -> IO [String]
 performForallNewBuilds _ [] = return []
 performForallNewBuilds conf list = do
-    concat <$> Par.mapM (performTestWithConfig conf) list
+    lock <- newMVar ()
+    concat <$> Par.mapM (performAsyncTestWithConfig conf lock) list
 
 -- |Read configuration file from first parameter and build directory from
 -- second and make test log from it
 performTestWithConfig :: FilePath -> String -> IO [String]
-performTestWithConfig confPath target = do
+performTestWithConfig confpath target = do
+    lock <- newMVar ()
+    performAsyncTestWithConfig confpath lock target
+
+-- |Perform test with config and MVar for make execution of some internal things
+-- synchronized. It is necessary for `performForallNewBuilds`
+performAsyncTestWithConfig :: FilePath -> MVar a -> String -> IO [String]
+performAsyncTestWithConfig confPath lock target = do
     confStr <- LB.readFile confPath
     let Just config = decode confStr :: Maybe [TestConfig]
     appConfig <- getAppConfig
-    tests <- runTests config target
+    tests <- runTestsAsync lock config target
     mapM (\ testRes ->
             parseTest
                 testRes
@@ -201,14 +209,17 @@ getParser "XTest" testRes = do
     return $ parseXTest p
 
 runTests :: [TestConfig] -> String -> IO [TestResult]
-runTests config target = do
+runTests x y = newMVar () >>= (\ v -> runTestsAsync v x y)
+
+runTestsAsync :: MVar a -> [TestConfig] -> String -> IO [TestResult]
+runTestsAsync lock config target = do
     appConfig <- getAppConfig
     metaStr <- readFile $
                 (buildLogDir appConfig) ++ "/" ++ target ++ "/meta.txt"
     let meta = readMeta metaStr
     let configs = filterConf config meta
 
-    sequence $ map (runTest target) configs
+    sequence $ map (runTestAsync lock target) configs
 
 buildResDir buildId = do
     config <- getAppConfig
@@ -247,16 +258,18 @@ runTestJob "SUCCEED" (Just yaml) buildId = do
 runTestJob _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish
-waitForJob :: JobResult -> Int -> Meta -> IO JobResult
-waitForJob (JobId jobid) timeout m = do
-    putLogColor m Magenta (show jobid)
-    putStrLn $ "Waiting for job finished with "
-        ++ show timeout ++ "sec. timeout ..."
+waitForJob :: MVar a -> JobResult -> Int -> Meta -> IO JobResult
+waitForJob lock (JobId jobid) timeout m = do
+    putAsyncLog lock $ do
+        putLogColor m Magenta (show jobid)
+        putStrLn $ "Waiting for job finished with "
+            ++ show timeout ++ "sec. timeout ..."
 
     job <- getJobWhenDone jobid timeout
-    putLogColor m Magenta (show jobid)
-    colorBoldBrace "FINISHED" Green
-    putStrLn $ show (fmap WJob.status job)
+    putAsyncLog lock $ do
+        putLogColor m Magenta (show jobid)
+        colorBoldBrace "FINISHED" Green
+        putStrLn $ show (fmap WJob.status job)
     filesFromJob job >>= outToResults
 
     where
@@ -265,7 +278,7 @@ waitForJob (JobId jobid) timeout m = do
         outToResults (Left x) = do
             y <- logs x jobid
             return $ JobLogs y
-waitForJob x _ _ = return x
+waitForJob _ x _ _ = return x
 
 filesFromJob :: Maybe Job -> IO (Either [String] JobResult)
 filesFromJob Nothing = return $ Right StartJobFailed
@@ -298,57 +311,66 @@ fileToFileContent jobid fname = do
 -- |Run test for the given build and return pairs (file name, contents) of files
 -- created on Weles.
 runTest :: String -> TestConfig -> IO TestResult
-runTest target testConf = do
+runTest x y = newMVar () >>= (\ v -> runTestAsync v x y)
+
+runTestAsync :: MVar a -> String -> TestConfig -> IO TestResult
+runTestAsync lock target testConf = do
     config <- getAppConfig
     meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let yamlPath = yaml testConf
-    putLog meta $ "Starting Weles job with " ++ yamlPath ++ " ..."
+    putAsyncLog lock $
+        putLog meta $ "Starting Weles job with " ++ yamlPath ++ "..."
     yaml <- getYaml yamlPath target
     jobId <- runTestJob (status meta) yaml target
-    jobRes <- waitForJob jobId 3600 meta
-    testResults jobRes meta testConf
+    jobRes <- waitForJob lock jobId 3600 meta
+    testResults lock jobRes meta testConf
 
-testResults :: JobResult -> Meta -> TestConfig -> IO TestResult
-testResults BuildFailed m c = do
-    putLogColor m Yellow "NOTE"
-    putStrColor Yellow $ "This repository build failed. Nothing to test.\n"
+testResults :: MVar a -> JobResult -> Meta -> TestConfig -> IO TestResult
+testResults lock BuildFailed m c = do
+    putAsyncLog lock $ do
+        putLogColor m Yellow "NOTE"
+        putStrColor Yellow $ "This repository build failed. Nothing to test.\n"
     return $ TestResult (BadJob BuildFailed) c
-testResults BadYaml m c = do
-    putLogColor m Red "ERROR"
-    putStrColor Red "No such YAML testcase file.\n"
+testResults lock BadYaml m c = do
+    putAsyncLog lock $ do
+        putLogColor m Red "ERROR"
+        putStrColor Red "No such YAML testcase file.\n"
     return $ TestResult (BadJob BadYaml) c
-testResults (JobLogs logs) m conf = do
+testResults _(JobLogs logs) m conf = do
     resLog <- fromWelesFiles logs "results"
     if "Segmentation fault" `isInfixOf` out resLog
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
-testResults err m c = do
-    putLogColor m Red "ERROR"
-    colorBrace (show err) Red
-    putStrLn ""
+testResults lock err m c = do
+    putAsyncLog lock $ do
+        putLogColor m Red "ERROR"
+        colorBrace (show err) Red
+        putStrLn ""
     return $ TestResult (BadJob err) c
 
-putStrColor c s = atomically $ newTMVar $ do
+putAsyncLog lock f = withMVar lock $ \_ -> f
+
+putStrColor c s = do
     setSGR [SetColor Foreground Vivid c]
     putStr s
     setSGR [Reset]
 
-putLogColor m c y = atomically $ newTMVar $ do
+putLogColor m c y = do
     colorBrace (repoName m) Blue
     colorBrace (branch m) Blue
     colorBoldBrace (y) c
 
-putLog m y = atomically $ newTMVar $ do
+putLog m y = do
     colorBrace (repoName m) Blue
     colorBrace (branch m) Blue
     putStrLn y
 
-colorBrace x color = atomically $ newTMVar $ do
+colorBrace x color = do
     putStr "["
     putStrColor color x
     putStr "]"
 
-colorBoldBrace x color = atomically $ newTMVar $ do
+colorBoldBrace x color = do
     setSGR [SetConsoleIntensity BoldIntensity]
     colorBrace (x) color
     setSGR [Reset]
