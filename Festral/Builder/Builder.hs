@@ -112,23 +112,23 @@ buildOne srcDir branch opts outdir build = do
     buildWithLog logfile (buildCmd build) srcDir
     parser <- getParser (buildResParser build) loghandle
     meta <- getMeta parser build branch
-    let outDirName = outdir ++ "/" ++ hash meta ++ "_" ++ buildTime meta
+    let outDirName = outdir ++ "/" ++ hash $>> meta ++ "_" ++ buildTime $>> meta
     createDirectoryIfMissing True outDirName
     toFile meta (outDirName ++ "/meta.txt")
 
     let getBuildOut = if noCleanRes opts then copyDirectory else renameDirectory
 
-    catch (getBuildOut (outDir meta) (outDirName ++ "/build_res")) handler
+    catch (getBuildOut (outDir $>> meta) (outDirName ++ "/build_res")) handler
     catch (renameFile logfile (outDirName ++ "/build.log"))
         (copyHandler logfile (outDirName ++ "/build.log"))
     bLogFile <- freshBuilds
-    appendFile bLogFile (hash meta ++ "_" ++ buildTime meta ++ "\n")
+    appendFile bLogFile (hash $>> meta ++ "_" ++ buildTime $>> meta ++ "\n")
 
     resFiles <- handle badDir $
         getDirectoryContents (outDirName ++ "/build_res")
     cachePath <- buildCache
     cache <- handle badFile $ readFile cachePath
-    let out = hash meta ++ "_" ++ buildTime meta
+    let out = hash $>> meta ++ "_" ++ buildTime $>> meta
     let new = foldl (updateCache out)
             cache resFiles
     when (length new > 0) $
@@ -177,18 +177,18 @@ getMeta p b branch = do
     commit <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    return $ Meta
-                (board m)
-                (buildType m)
-                commit
-                (buildTime m)
-                (toolchain m)
-                builder
-                (status m)
-                commit
-                (outDir m)
-                (buildName b)
-                branch
+    return $ Meta (MetaBase
+                    (board $>> m)
+                    (buildType $>> m)
+                    commit
+                    (buildTime $>> m)
+                    (toolchain $>> m)
+                    builder
+                    (status $>> m)
+                    commit
+                    (outDir $>> m)
+                    (buildName b)
+                    branch )
 
 -- |Resolve parser type from its name
 getParser :: String -> Handle -> IO (Parser a)

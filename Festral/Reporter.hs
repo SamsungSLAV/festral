@@ -74,17 +74,17 @@ formatTextReport format dirs = do
             return $ replace "%R" rating str
 
 formats =
-    [("%b", liftMeta board)
-    ,("%t", liftMeta buildType)
-    ,("%c", liftMeta commit)
-    ,("%T", liftMeta buildTime)
-    ,("%C", liftMeta toolchain)
-    ,("%u", liftMeta builder)
-    ,("%s", liftMeta status)
-    ,("%h", liftMeta hash)
-    ,("%o", liftMeta outDir)
-    ,("%r", liftMeta repoName)
-    ,("%B", liftMeta branch)
+    [("%b", ($>>) board)
+    ,("%t", ($>>) buildType)
+    ,("%c", ($>>) commit)
+    ,("%T", ($>>) buildTime)
+    ,("%C", ($>>) toolchain)
+    ,("%u", ($>>) builder)
+    ,("%s", ($>>) status)
+    ,("%h", ($>>) hash)
+    ,("%o", ($>>) outDir)
+    ,("%r", ($>>) repoName)
+    ,("%B", ($>>) branch)
     ,("%l", tester)
     ,("%L", testerName)
     ,("%e", testTime)
@@ -117,16 +117,15 @@ buildSummary dir = do
     meta <- fromMetaFile $ buildLogDir config ++ "/" ++ dir ++ "/meta.txt"
     let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
             ++ "/secosci/getlog?type=build&hash="
-            ++ hash meta ++ "&time=" ++ buildTime meta
-    return (repoName meta, branch meta, status meta, link)
+            ++ hash $>> meta ++ "&time=" ++ buildTime $>> meta
+    return (repoName $>> meta, branch $>> meta, status $>> meta, link)
 
 -- |Gets name of the test result (sha1_time) and returns its build data as
 -- (repository name, branch name, test name, passed tests/ all tests, log link)
 testSummary :: String -> IO (String, String, String, String, String)
 testSummary dir = do
     config <- getAppConfig
-    meta' <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
-    let meta = metaData meta'
+    meta <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
 
     let reportPath = testLogDir config ++ "/" ++ dir ++ "/report.txt"
     reportExists <- doesFileExist reportPath
@@ -139,10 +138,10 @@ testSummary dir = do
     let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $
             processReport <$> splitOn "," <$> tests
     let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
-             ++ "/secosci/getlog?type=test&hash=" ++ hash meta
-             ++ "&time=" ++ testTime meta'
-    return (repoName meta, branch meta, testName meta',
-            percents pass (testStatus meta'), link)
+             ++ "/secosci/getlog?type=test&hash=" ++ hash $>> meta
+             ++ "&time=" ++ testTime meta
+    return (repoName $>> meta, branch $>> meta, testName meta,
+            percents pass (testStatus meta), link)
 
 percents :: (Int, Int) -> String -> String
 percents (0,0) "COMPLETE" = "NO RESULTS"

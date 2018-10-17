@@ -133,11 +133,11 @@ writeWithOwn config outs outDir = do
 -- |Writes information about test to the metafile
 writeMetaTest status buildDir outDir name time meta = do
     tester <- getEffectiveUserName
-    let testMeta = MetaTest meta tester tester time name status
-    let outDirName = outDir ++ "/" ++ hash meta ++ "_" ++ time
+    let testMeta = MetaTest (id $>> meta) tester tester time name status
+    let outDirName = outDir ++ "/" ++ hash $>> meta ++ "_" ++ time
 
     latestFile <- freshTests
-    appendFile latestFile $ hash meta ++ "_" ++ time ++ "\n"
+    appendFile latestFile $ hash $>> meta ++ "_" ++ time ++ "\n"
 
     toFile testMeta (outDirName ++ "/meta.txt")
     toFile meta (outDirName ++ "/build.log")
@@ -145,13 +145,13 @@ writeMetaTest status buildDir outDir name time meta = do
 parseTest' writer (TestResult status config) buildDir outDir = do
     meta <- fromMetaFile $ buildDir ++ "/meta.txt"
     tm <- timeStamp
-    let pathPrefix = outDir ++ "/" ++ hash meta
+    let pathPrefix = outDir ++ "/" ++ hash $>> meta
     time <- catch
                 ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm)
                 (recreate_dir pathPrefix)
     writeMetaTest (show status) buildDir outDir (name config) time meta
     writeLog status time
-    return $ hash meta ++ "_" ++ time
+    return $ hash $>> meta ++ "_" ++ time
 
     where
         writeLog (SegFault outs) t = writeLog (TestSuccess outs) t
@@ -173,7 +173,7 @@ parseTest' writer (TestResult status config) buildDir outDir = do
         writeLog (BadJob x) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             writeFile ((outDirName meta t) ++ "/tf.log") $ show x
-        outDirName meta time = outDir ++ "/" ++ hash meta ++ "_" ++ time
+        outDirName meta time = outDir ++ "/" ++ hash $>> meta ++ "_" ++ time
 
 
 -- |Create directory with appended timestamp. If directory exists,
@@ -321,7 +321,7 @@ runTestAsync lock target testConf = do
     putAsyncLog lock $
         putLog meta $ "Starting Weles job with " ++ yamlPath ++ "..."
     yaml <- getYaml yamlPath target
-    jobId <- runTestJob (status meta) yaml target
+    jobId <- runTestJob (status $>> meta) yaml target
     jobRes <- waitForJob lock jobId 3600 meta
     testResults lock jobRes meta testConf
 
@@ -356,13 +356,13 @@ putStrColor c s = do
     setSGR [Reset]
 
 putLogColor m c y = do
-    colorBrace (repoName m) Blue
-    colorBrace (branch m) Blue
+    colorBrace (repoName  $>> m) Blue
+    colorBrace (branch $>> m) Blue
     colorBoldBrace (y) c
 
 putLog m y = do
-    colorBrace (repoName m) Blue
-    colorBrace (branch m) Blue
+    colorBrace (repoName $>> m) Blue
+    colorBrace (branch $>> m) Blue
     putStrLn y
 
 colorBrace x color = do
@@ -435,7 +435,7 @@ yamlTemplaterRpm  uri package =
     where
         rpmName = package ++ ".rpm"
 
-filterConf config meta = filter (\x -> repo x == (repoName meta)) config
+filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 
 dirDoesntExists :: SomeException -> IO [FilePath]
 dirDoesntExists ex = putStrLn (show ex) >> return []

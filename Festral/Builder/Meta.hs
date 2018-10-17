@@ -1,10 +1,9 @@
-{-# LANGUAGE RecordWildCards #-}
-
 -- |This module describes metafile used by web page and database for showing and
 -- extracting information about builds and how this metafile can be acquired.
 module Festral.Builder.Meta (
     Meta(..),
     MetaParser(..),
+    MetaBase(..),
     toFile,
     show,
     readMeta,
@@ -12,7 +11,7 @@ module Festral.Builder.Meta (
     isBuild,
     isTest,
     isMeta,
-    liftMeta,
+    ($>>),
     findField
 ) where
 
@@ -29,48 +28,52 @@ class MetaParser a where
     fromFile :: FilePath -> IO a
     fromHandle :: Handle -> IO a
 
+data MetaBase
+    = MetaBase
+        { board      :: String
+        , buildType  :: String
+        , commit     :: String
+        , buildTime  :: String
+        , toolchain  :: String
+        , builder    :: String
+        , status     :: String
+        , hash       :: String
+        , outDir     :: FilePath
+        , repoName   :: String
+        , branch     :: String
+        }
+
 -- |Representation of the meta.txt file which is used by database and wep page
 -- for extracting information about build results.
-data Meta = Meta
-    {board      :: String
-    ,buildType  :: String
-    ,commit     :: String
-    ,buildTime  :: String
-    ,toolchain  :: String
-    ,builder    :: String
-    ,status     :: String
-    ,hash       :: String
-    ,outDir     :: FilePath
-    ,repoName   :: String
-    ,branch     :: String
-    }
+data Meta
+    = Meta MetaBase
     | MetaTest
-    {metaData   :: Meta
-    ,tester     :: String
-    ,testerName :: String
-    ,testTime   :: String
-    ,testName   :: String
-    ,testStatus :: String
-    }
+        { metaData   :: MetaBase
+        , tester     :: String
+        , testerName :: String
+        , testTime   :: String
+        , testName   :: String
+        , testStatus :: String
+        }
     | NotMeta
 
 -- |apply function from build meta the same way for build meta and for test
 -- meta.
-liftMeta x m@Meta{} = x m
-liftMeta x m@MetaTest{} = x $ metaData m
+f $>> (Meta base) = f base
+f $>> m@MetaTest{} = f $ metaData m
 
 buildFields =
-    [ ("BOARD"          ,board)
-    , ("BUILD_TYPE"     ,buildType)
-    , ("COMMIT"         ,commit)
-    , ("BUILD_TIME"     ,buildTime)
-    , ("TOOLCHAIN"      ,toolchain)
-    , ("BUILDER"        ,builder)
-    , ("BUILD_STATUS"   ,status)
-    , ("BUILD_HASH"     ,hash)
-    , ("REPO_NAME"      ,repoName)
-    , ("BRANCH"         ,branch)
-    , ("OUT_DIR"        ,outDir)
+    [ ("BOARD"          , board)
+    , ("BUILD_TYPE"     , buildType)
+    , ("COMMIT"         , commit)
+    , ("BUILD_TIME"     , buildTime)
+    , ("TOOLCHAIN"      , toolchain)
+    , ("BUILDER"        , builder)
+    , ("BUILD_STATUS"   , status)
+    , ("BUILD_HASH"     , hash)
+    , ("REPO_NAME"      , repoName)
+    , ("BRANCH"         , branch)
+    , ("OUT_DIR"        , outDir)
     ]
 
 testFields =
@@ -81,9 +84,12 @@ testFields =
     , ("TEST_STATUS"    ,testStatus)
     ]
 
+instance Show MetaBase where
+    show m = unparse m buildFields
+
 instance Show Meta where
-    show m@Meta{..} = unparse m buildFields
-    show m@MetaTest{..} = (show $ metaData) ++ (unparse m testFields)
+    show m@Meta{} = show $>> m
+    show m@MetaTest{} = (show $>> m) ++ (unparse m testFields)
     show _ = "Invalid meta data"
 
 unparse m = foldl (\ s (name, f) -> s ++ name ++ "=" ++ f m ++ "\n") ""
@@ -100,7 +106,7 @@ readMeta str = chooseMeta filledMeta
                toolc:builder:stat:hash:
                repName:branch:outDir:t:
                tName:tTime:testName:testStatus:_) =
-        MetaTest (Meta
+        MetaTest (MetaBase
                     board bType commit
                     bTime toolc builder
                     stat hash outDir
@@ -108,11 +114,16 @@ readMeta str = chooseMeta filledMeta
 
     f x = map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 
-chooseMeta m@MetaTest{..}
-    | testName == "" || testTime == "" || testStatus == "" = chooseMeta metaData
+chooseMeta m@MetaTest{}
+    | testName m == "" || testTime m == "" || testStatus m == ""
+        = chooseMeta $ Meta $>> m
     | otherwise = m
-chooseMeta m@Meta{..}
-    | buildType == "" || status == "" || hash == "" || repoName == "" = NotMeta
+chooseMeta m@Meta{}
+    | buildType $>> m == ""
+        || status $>> m == ""
+        || hash $>> m == ""
+        || repoName $>> m == ""
+        = NotMeta
     | otherwise = m
 
 orderFields str fields = map (\ (x,_) -> findField x str) fields

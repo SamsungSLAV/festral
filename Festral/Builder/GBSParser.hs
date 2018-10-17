@@ -1,6 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
 
--- |GBSParser module implements 'MetaParser' class and parse output of usual GBS build to the 'Meta'.
+-- |GBSParser module implements 'MetaParser' class and parse output of usual
+-- GBS build to the 'Meta'.
 module Festral.Builder.GBSParser (
     GBSParser (..),
     parse,
@@ -30,17 +31,33 @@ instance MetaParser GBSParser where
         let (year:mounth:day:hour:min:secs:_) = splitOneOf " :-." time
         let time = year ++ mounth ++ day ++ hour ++ min ++ secs
 
-        let stat = map (takeWhile ((/= '<'))) $ map (!!1) $ map (splitOn "<td>") $ take 2 $ filter (isInfixOf "<td>") $ lines content
+        let stat = map (takeWhile ((/= '<'))) $ map (!!1) $ map
+                    (splitOn "<td>") $ take 2 $
+                    filter (isInfixOf "<td>") $ lines content
         let [total, succ] = parseStat $ (map read stat) :: [Int]
         let status = if total > succ || total <= 0
                      then "FAILED"
                      else "SUCCEED"
 
         let log = buildLog gbsParser
-        let arch = dropWhile isSpace $ last $ splitOn "</B>" $ head $ splitOn "</p>" $ last $  splitOn "Arch" content
+        let arch = dropWhile isSpace $ last $ splitOn "</B>" $ head $
+                    splitOn "</p>" $ last $  splitOn "Arch" content
         let arch' = if arch == "" then "unknown" else arch
-        let out = dropWhile isSpace $  head $ splitOn "\n" $ last $ splitOn "generated RPM packages can be found from local repo:\n" log
-        return $ Meta arch' "unknown" "unknown" time "GBS" "unknown" status (replicate 40 '0') out "unknown" "unknown"
+        let out = dropWhile isSpace $ head $ splitOn "\n" $ last $
+                    splitOn "generated RPM packages can be found from\
+                    \local repo:\n" log
+        return $ Meta (MetaBase
+                        arch'
+                        "unknown"
+                        "unknown"
+                        time
+                        "GBS"
+                        "unknown"
+                        status
+                        (replicate 40 '0')
+                        out
+                        "unknown"
+                        "unknown")
         where
             parseStat x@[_,_] = x
             parseStat _ = [0, -1]
