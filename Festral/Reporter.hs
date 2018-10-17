@@ -54,7 +54,7 @@ reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 -- %h - build hash
 -- %o - build output directory
 -- %r - name of the repository
--- %B - brunch name
+-- %B - branch name
 -- %l - tester login
 -- %L - tester name
 -- %e - test time

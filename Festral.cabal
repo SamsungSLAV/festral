@@ -28,7 +28,7 @@ Library
         filesystem-trees,
         time,
         temporary >= 1.2.1,
-        ansi-terminal, MissingH
+        ansi-terminal, MissingH, stm
     Exposed-modules:
        Festral.SLAV.Weles,
        Festral.SLAV.Boruta,

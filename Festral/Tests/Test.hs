@@ -31,6 +31,7 @@ import Control.Concurrent
 import System.FilePath.Posix
 import Control.Monad
 import System.Console.ANSI
+import Control.Concurrent.STM
 
 -- |List of pairs filename - content
 type FileContents = [(String, String)]
@@ -327,27 +328,27 @@ testResults err m c = do
     putStrLn ""
     return $ TestResult (BadJob err) c
 
-putStrColor c s = do 
+putStrColor c s = atomically $ newTMVar $ do
     setSGR [SetColor Foreground Vivid c]
     putStr s
     setSGR [Reset]
-    
-putLogColor m c y = do
+
+putLogColor m c y = atomically $ newTMVar $ do
     colorBrace (repoName m) Blue
     colorBrace (branch m) Blue
     colorBoldBrace (y) c
 
-putLog m y = do
+putLog m y = atomically $ newTMVar $ do
     colorBrace (repoName m) Blue
     colorBrace (branch m) Blue
     putStrLn y
 
-colorBrace x color = do
+colorBrace x color = atomically $ newTMVar $ do
     putStr "["
     putStrColor color x
     putStr "]"
 
-colorBoldBrace x color = do
+colorBoldBrace x color = atomically $ newTMVar $ do
     setSGR [SetConsoleIntensity BoldIntensity]
     colorBrace (x) color
     setSGR [Reset]
