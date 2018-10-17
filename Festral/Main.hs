@@ -63,6 +63,7 @@ data JobOpts
 data WelesSubOpts
     = AllJobs Bool
     | StartJob FilePath
+    | CloseAllJobs Bool
     | JobSubOpt
         { jobOpt :: JobOpts
         , jobId  :: Int
@@ -257,6 +258,12 @@ welesAllJobs = AllJobs
         <>short 'a'
         <>help  "List all jobs." )
 
+welesCloseAllJobs :: Parser WelesSubOpts
+welesCloseAllJobs = CloseAllJobs
+    <$> switch
+        ( long  "cancel-all"
+        <>help  "Cancel all not done jobs." )
+
 welesStartJob :: Parser WelesSubOpts
 welesStartJob = StartJob
     <$> strOption
@@ -277,7 +284,7 @@ welesJobOpt = JobSubOpt
 
 welesopts :: Parser Command
 welesopts = Weles
-    <$> (welesAllJobs <|> welesStartJob <|> welesJobOpt)
+    <$> (welesAllJobs <|> welesStartJob <|> welesJobOpt <|> welesCloseAllJobs)
 
 borutaConsoleUUID :: Parser BorutaConsole
 borutaConsoleUUID = ConsoleFromUUID
@@ -461,6 +468,7 @@ subCmd (Build config repos noClean outFile) = do
 subCmd (Server port) = runServerOnPort port
 
 welesSubCmd (AllJobs True) = show <$> curlJobs >>= putStrLn
+welesSubCmd (CloseAllJobs True) = cancelAll
 welesSubCmd (StartJob x) = show <$> startJob x >>= putStrLn
 welesSubCmd (JobSubOpt x id) = jobCmd x id
 welesSubCmd _ = runCmd None

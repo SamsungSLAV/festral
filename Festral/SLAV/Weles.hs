@@ -11,6 +11,7 @@ module Festral.SLAV.Weles (
     getFileList,
     getJobOutFile,
     getJobOut,
+    cancelAll,
     cancelJob
 ) where
 
@@ -164,3 +165,10 @@ cancelJob id = do
     (ip, port, _) <- welesAddr
     curlPost (ip ++ ":" ++ show port ++ "/api/v1/jobs/"
         ++ show id ++ "/cancel") []
+
+-- |Cancel all not done Weles jobs.
+cancelAll :: IO ()
+cancelAll = do
+    jobs <- curlJobs
+    let runningJobs = filter (\ x -> not $ (status x) `elem` doneStatuses) jobs
+    mapM_ (\ x -> cancelJob (jobid x)) runningJobs
