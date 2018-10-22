@@ -349,6 +349,8 @@ execDryad :: DryadCmd -> Maybe (BorutaAuth, Int) -> IO ()
 execDryad _ Nothing = do
     putStrLn "Use --force option to connect for existing session if you are \
     \sure you know you do."
+    putStrLn "IMPORTANT: force connecting to the running job will cause \
+    \closing it after your command done, so YOU MAY BROKE OTHER'S WORK!!!"
 execDryad f (Just (auth, id)) = do
     (addr, _) <- borutaAddr
     keyFile <- writeKey auth

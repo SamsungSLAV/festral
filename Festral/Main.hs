@@ -342,7 +342,9 @@ borutaConsole = Console <$> (borutaConsoleUUID <|> borutaConsoleDevice)
     <*> switch
         (long   "force"
         <>short 'f'
-        <>help  "Force connect device if it is already busy." )
+        <>help  "Force connect device if it is already busy. WARNING: Job \
+        \will be closed after you close console and it can broke other's \
+        \person work!" )
 
 borutaCloseRequest :: Parser BorutaSubOpt
 borutaCloseRequest = CloseRequest
@@ -367,7 +369,9 @@ borutaDryadCmd = DryadCmd
     <*> switch
         ( long  "force"
         <>short 'f'
-        <>help  "Force execute command even if target is busy." )
+        <>help  "Force execute command even if target is busy. WARNING: \
+        \Current boruta's job will be closed after command execution, so \
+        \you can broke other's work!" )
 
 borutaBoot :: Parser BorutaSubOpt
 borutaBoot = Boot
