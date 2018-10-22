@@ -44,7 +44,8 @@ data Worker = Worker
 -- |Caps part of the worker
 data Caps = Caps
     { addr          :: String
-    , deviceType    :: String
+    , deviceType    :: String -- ^Field for back compatibility with older Weles
+    , device_type   :: String
     , uuid          :: String
     } deriving (Generic)
 
@@ -113,21 +114,26 @@ instance Show BorutaRequest where
 instance Show Caps where
     show x = "  {\n"
            ++"    \"Addr\":"          ++ show (addr x)        ++ ",\n"
-           ++"    \"device_type\":"   ++ show (deviceType x)  ++ ",\n"
+           ++"    \"device_type\":"   ++
+                if (device_type x == "")
+                    then deviceType x
+                    else device_type x
+           ++ ",\n"
            ++"    \"UUID\":"          ++ show (uuid x)        ++ "\n"
            ++"  }"
 
 instance FromJSON Caps where
     parseJSON = withObject "Caps" $ \o -> do
         addr        <- o .:? "Addr"         .!= ""
-        deviceType  <- o .:? "device_type"  .!= ""
+        deviceType  <- o .:? "DeviceType"   .!= ""
+        device_type  <- o .:? "device_type" .!= ""
         uuid        <- o .:? "UUID"         .!= ""
         return Caps{..}
 
 instance ToJSON Caps where
-    toJSON (Caps a d u) = object $ catMaybes
+    toJSON (Caps a old_d d u) = object $ catMaybes
         [ "Addr"        .=. a
-        , "device_type" .=. d
+        , "device_type" .=. if d == "" then old_d else d
         , "UUID"        .=. u
         ]
 
@@ -214,73 +220,99 @@ allRequests = do
             [CurlFollowLocation True]
     return $ fromMaybe [] (decode (BL.pack str) :: Maybe [BorutaRequest])
 
--- |Return ssh key for session for given by name target. If this target has
--- running session it returns key for it, othervise it opens new request
-getTargetAuth :: (BorutaRequest -> Bool) -> Caps -> IO (Maybe BorutaAuth)
+-- |Return ssh key for session for given by name target and request ID.
+-- If this target has running session it returns key for it,
+-- othervise it opens new request
+getTargetAuth :: (BorutaRequest -> Bool) -> Caps -> IO (Maybe (BorutaAuth, Int))
 getTargetAuth selector caps = do
     requests <- allRequests
-    let active = filter selector requests
+    let active = filter (\ x@(BorutaRequestIn _ state _) ->
+                (selector x) && (state `elem` ["IN PROGRESS", "WAITING"]))
+                requests
+    id <- if length active == 0
+        then createRequest caps
+        else do
+            putStrLn $ "Target is busy by request with ID "
+                ++ show (reqID $ head active)
+            return Nothing
+    maybe (return Nothing) getKey id
+
+-- |The same as "getTargetAuth" but connect busy session instead of reject
+-- request such request.
+getBusyTargetAuth :: (BorutaRequest -> Bool) -> Caps
+    -> IO (Maybe (BorutaAuth, Int))
+getBusyTargetAuth selector caps = do
+    requests <- allRequests
+    let active = filter (\ x@(BorutaRequestIn _ state _) ->
+                (selector x) && state == "IN PROGRESS") requests
     id <- if length active == 0
         then createRequest caps
         else return $ Just $ reqID $ head active
     maybe (return Nothing) getKey id
 
-getSpecifiedTargetAuth targetUUID = do
-    let caps = Caps "" "" targetUUID
+
+getSpecifiedTargetAuth targetUUID f = do
+    let caps = Caps "" "" "" targetUUID
     let selector = (\(BorutaRequestIn _ state caps) ->
-            ((uuid caps) == targetUUID)
-            && (state == "IN PROGRESS"))
-    getTargetAuth selector caps
+            (uuid caps) == targetUUID)
+    f selector caps
 
 -- |Get any accessible device of given device_type
-getDeviceTypeAuth device = do
-    let caps = Caps "" device ""
+getDeviceTypeAuth device f = do
+    let caps = Caps ""  "" device ""
     let selector = (\(BorutaRequestIn _ state caps) ->
-            (state == "IN PROGRESS")
-            && (deviceType caps == device))
-    getTargetAuth selector caps
+            (device_type caps == device))
+    f selector caps
 
-getKey :: Int -> IO (Maybe BorutaAuth)
+getKey :: Int -> IO (Maybe (BorutaAuth, Int))
 getKey id = do
     (addr, port) <- borutaAddr
-    handle curlHandler $ Just <$> curlAeson
+    auth <- handle curlHandler $ Just <$> curlAeson
         parseJSON
         "POST"
-        (addr ++ ":" ++ show port ++ "/api/v1/reqs/" 
+        (addr ++ ":" ++ show port ++ "/api/v1/reqs/"
             ++ show id ++ "/acquire_worker")
         [CurlFollowLocation True]
         (Nothing :: Maybe Caps)
+    maybe (return Nothing) (\ x -> return $ Just (x,id)) auth
 
 curlHandler :: CurlAesonException -> IO (Maybe BorutaAuth)
 curlHandler e = putStrLn ("All targets are busy and no one can be requested"
     ++ " immediately. Try later.") >> return Nothing
 
--- |Exec ssh session for any device which matches specified device_type
-execAnyDryadConsole :: String -> IO ()
-execAnyDryadConsole x = execDryad (sshCmd "") =<< getDeviceTypeAuth x
+authMethod True = getBusyTargetAuth
+authMethod _ = getTargetAuth
+
+-- |Exec ssh session for any device which matches specified device_type. Second
+-- parameter decide if connect forcely if device is busy.
+execAnyDryadConsole :: String -> Bool -> IO ()
+execAnyDryadConsole x f = execDryad (sshCmd "")
+    =<< getDeviceTypeAuth x (authMethod f)
 
 -- |Exec ssh session for device specified by its UUID
-execSpecifiedDryadConsole :: String -> IO ()
-execSpecifiedDryadConsole x = execDryad (sshCmd "") =<< getSpecifiedTargetAuth x
+execSpecifiedDryadConsole :: String -> Bool -> IO ()
+execSpecifiedDryadConsole x f = execDryad (sshCmd "")
+    =<< getSpecifiedTargetAuth x (authMethod f)
 
 -- |Execute command on MuxPi
-execMuxPi :: String -> String -> IO ()
-execMuxPi uid cmd = execDryad (sshCmd cmd) =<< getSpecifiedTargetAuth uid
+execMuxPi :: String -> String -> Bool -> IO ()
+execMuxPi uid cmd f = execDryad (sshCmd cmd)
+    =<< getSpecifiedTargetAuth uid (authMethod f)
 
 -- |Execute command on the device under test of the Dryad specified by UUID
-execDUT :: String -> String -> IO ()
-execDUT uid cmd = execDryad (sshCmd ./"dut_exec.sh " ++ cmd)
-    =<<  getSpecifiedTargetAuth uid
+execDUT :: String -> String -> Bool -> IO ()
+execDUT uid cmd f = execDryad (sshCmd ./"dut_exec.sh " ++ cmd)
+    =<<  getSpecifiedTargetAuth uid (authMethod f)
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
-pushMuxPi :: String -> FilePath -> FilePath -> IO ()
-pushMuxPi uid from to = execDryad (scpCmd from to)
-    =<< getSpecifiedTargetAuth uid
+pushMuxPi :: String -> FilePath -> FilePath -> Bool -> IO ()
+pushMuxPi uid from to f = execDryad (scpCmd from to)
+    =<< getSpecifiedTargetAuth uid (authMethod f)
 
 -- |Push file from host to the device under test identified by UUID
-pushDUT :: String -> FilePath -> FilePath -> IO ()
-pushDUT uid from to = do
-    auth <- getSpecifiedTargetAuth uid
+pushDUT :: String -> FilePath -> FilePath -> Bool -> IO ()
+pushDUT uid from to f = do
+    auth <- getSpecifiedTargetAuth uid (authMethod f)
     execDryad (scpCmd from tmpfile) auth
     execDryad (sshCmd ./ "dut_copyto.sh " ++ tmpfile ++ " " ++ to)
         auth
@@ -288,7 +320,7 @@ pushDUT uid from to = do
     where
         tmpfile = "/tmp/festral_copied_file"
 
-sshCmd cmd x = "ssh "
+sshCmd cmd x = "ssh -oStrictHostKeyChecking=no "
     ++ dsUser x ++ "@" ++ dsIp x ++ " -p " ++ show (dsPort x)
     ++ " -i " ++ idFile x ++ " " ++ cmd
 scpCmd fname out x = "scp "
@@ -300,14 +332,17 @@ type DryadCmd = (DryadSSH -> String)
 
 -- |This function takes function converting dryad connection data to the command
 -- and this function's argument and executes this command.
-execDryad :: DryadCmd -> Maybe BorutaAuth -> IO ()
-execDryad f auth = do
+execDryad :: DryadCmd -> Maybe (BorutaAuth, Int) -> IO ()
+execDryad _ Nothing = do
+    putStrLn "Use --force option to connect for existing session if you are\
+    \sure you know you do."
+execDryad f (Just (auth, id)) = do
     (addr, _) <- borutaAddr
-    keyFile <- maybe (return "") writeKey auth
-    maybe (return ()) (\ auth ->
-        let creds = DryadSSH
-                (username auth) addr (port $ authAddr auth) keyFile in
-        callCommand $ f creds) auth
+    keyFile <- writeKey auth
+    let creds = DryadSSH
+                (username auth) addr (port $ authAddr auth) keyFile
+    callCommand $ f creds
+    closeRequest id
 
 writeKey auth = writeSystemTempFile "boruta-key" (sshKey auth)
 
@@ -326,8 +361,8 @@ closeRequest id = do
         h _ = putStrLn "Cant access requesteed ID" >> return ()
 
 -- |Boot up device under test specified by UUID
-dutBoot uid = execMuxPi uid ./"dut_boot.sh"
-            >>execMuxPi uid ./"dut_login.sh root"
+dutBoot uid = (execMuxPi uid ./"dut_boot.sh") False
+            >>(execMuxPi uid ./"dut_login.sh root") False
 
 -- |Prepend executable path to the string and execute function
 infixr 4 ./

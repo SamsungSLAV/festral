@@ -43,12 +43,13 @@ data DryadAction
 data BorutaSubOpt
     = Workers Bool
     | AllRequests Bool
-    | Console BorutaConsole
+    | Console BorutaConsole Bool
     | CloseRequest Int
     | DryadCmd
         { action :: DryadAction
         , dut    :: Bool
         , dryadId:: String
+        , force  :: Bool
         }
     | Boot String
 
@@ -338,6 +339,10 @@ borutaAllRequests = AllRequests
 
 borutaConsole :: Parser BorutaSubOpt
 borutaConsole = Console <$> (borutaConsoleUUID <|> borutaConsoleDevice)
+    <*> switch
+        (long   "force"
+        <>short 'f'
+        <>help  "Force connect device if it is already busy." )
 
 borutaCloseRequest :: Parser BorutaSubOpt
 borutaCloseRequest = CloseRequest
@@ -359,6 +364,10 @@ borutaDryadCmd = DryadCmd
         <>short 'u'
         <>metavar "DRYAD_UUID"
         <>help  "UUID of the dryad." )
+    <*> switch
+        ( long  "force"
+        <>short 'f'
+        <>help  "Force execute command even if target is busy." )
 
 borutaBoot :: Parser BorutaSubOpt
 borutaBoot = Boot
@@ -483,19 +492,19 @@ jobCmd _ _ = runCmd None
 
 borutaSubCmd (Workers True) = show <$> curlWorkers >>= putStrLn
 borutaSubCmd (AllRequests True) = show <$> allRequests >>= putStrLn
-borutaSubCmd (Console x) = borutaConsoleCall x
+borutaSubCmd (Console x force) = borutaConsoleCall x force
 borutaSubCmd (CloseRequest x) = closeRequest x
-borutaSubCmd (DryadCmd a dut id) = dryadCmdCall a dut id
+borutaSubCmd (DryadCmd a dut id f) = dryadCmdCall a dut id f
 borutaSubCmd (Boot id) = dutBoot id
 borutaSubCmd _ = runCmd None
 
-dryadCmdCall (DryadExec cmd) True id = execDUT id cmd
-dryadCmdCall (DryadExec cmd) _ id = execMuxPi id cmd
-dryadCmdCall (DryadPush from to) True id = pushDUT id from to
-dryadCmdCall (DryadPush from to) _ id = pushMuxPi id from to
+dryadCmdCall (DryadExec cmd) True id f= execDUT id cmd f
+dryadCmdCall (DryadExec cmd) _ id f = execMuxPi id cmd f
+dryadCmdCall (DryadPush from to) True id f = pushDUT id from to f
+dryadCmdCall (DryadPush from to) _ id f = pushMuxPi id from to f
 
-borutaConsoleCall (ConsoleFromType x) = execAnyDryadConsole x
-borutaConsoleCall (ConsoleFromUUID x) = execSpecifiedDryadConsole x
+borutaConsoleCall (ConsoleFromType x) f = execAnyDryadConsole x f
+borutaConsoleCall (ConsoleFromUUID x) f = execSpecifiedDryadConsole x f
 
 justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
 justPutStrLn errMsg x
