@@ -1,10 +1,7 @@
 # Festral
 
-This package is developed and adopted for usage with existing extended secos CI
-system (http://127.0.0.1:81/u.harbuz/secosci) which consists of PHP page,
-MySQL database and set of scripts for importing
-data to the database from the formatted in some way files. This package uses set
-of configuration files for management of repositories building and testing.
+This package provides client for SLAV testing ramework and more abstract layer
+for performing building and testing repositories by user.
 
 Festral consists of some small utilities:
 
@@ -69,7 +66,7 @@ from previous versions**.
     "festralIP" : "your machine IP",
     "festralPort" : 8888,
     "serverRoot" : "/root/directory/for/your/fileserver",
-    "borutaIP" : "127.0.0.1",
+    "borutaIP" : "boruta IP",
     "borutaPort" : 6666
 }
 ```
@@ -103,11 +100,11 @@ It has format described below (see example of this file in
     {
         # Name of the repository, remote repository will be cloned to the
         #directory with this name under <repositories location>
-        "buildName" : "tct-test-ta",
+        "buildName" : "test",
         # Command to be used for build this repository
-        "buildCmd" : "gbs build -A armv7l -P tizen_vd",
+        "buildCmd" : "gbs build -A armv7l",
         # remote address of the repository to build.
-        "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
+        "buildRepo" : "git@127.0.0.1/test.git",
         # Name of the parser of the build results. See description below.
         "buildResParser" : "GBS",
         # List of the branches to be built. Every one from these will be built
@@ -308,9 +305,9 @@ fields as follow:
             "parser" : "name or path to the binary of the parser of tests output"
         },
         {
-            "repo" : "gpapi-tests",
-            "yaml" : "/home/tf.yml - example",
-            "parser" : "cat"
+            "repo" : "tests",
+            "yaml" : "/home/tests.yml",
+            "parser" : "~/test_parser.sh"
         }
 ]
 ```
@@ -440,8 +437,12 @@ Web pages of this server have API as follow:
 
   * `/secosci/reports[.php]` - page with listed reports files
   * `/secosci/reports[.php]?file=filename` - show specified by filename report
-  * `/secosci/getlog[.php]?type=type&hash=hash&time=time` - show log specified by type: it can be `build` for build log and `test` for test log.Log also must be specified by hash and time of the build/test.
-  * `/secosci/download[.php]?file=filename&build=build_dir` - link for downloading of the file with `filename` from the build directory specified by `build_dir` parameter
+  * `/secosci/getlog[.php]?type=type&hash=hash&time=time` - show log specified
+  by type: it can be `build` for build log and `test` for test log.Log also
+  must be specified by hash and time of the build/test.
+  * `/secosci/download[.php]?file=filename&build=build_dir` - link for
+  downloading of the file with `filename` from the build directory specified
+  by `build_dir` parameter
 
 -----------------
 ### Test cases description

@@ -5,17 +5,11 @@ priority: medium
 actions:
   - deploy:
       images:
-        - uri: 'http://127.0.0.1/secosci/latest_images/rpi3/latest.tar.gz'
+        - uri: 'http://image/uri'
           compression: 'gz'
       partition_layout:
         - id: 2
           image_name: rootfs.img
-        - id: 3
-          image_name: system-data.img
-        - id: 5
-          image_name: user.img
-        - id: 7
-          image_name: ramdisk.img
   - boot:
       login: root
       password: tizen
@@ -35,4 +29,3 @@ actions:
               - pull:
                   src: '/tmp/xtest.log'
                   alias: 'xtest.log'
-

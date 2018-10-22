@@ -1,13 +1,13 @@
 [
         {
-            "repo" : "tct-test-ta",
-            "name" : "TCT TA test",
-            "yaml" : "~/haskell/festral/Examples/tct.yml",
-            "parser" : "TCT"
+            "repo" : "test1",
+            "name" : "test1",
+            "yaml" : "~/haskell/festral/Examples/test1.yml",
+            "parser" : "~/test1_parser.sh"
         },
         {
-            "repo" : "gpapi-tests",
-            "yaml" : "~/haskell/festral/Examples/tf.yml",
-            "parser" : "cat"
+            "repo" : "tests2",
+            "yaml" : "~/haskell/festral/Examples/tests2.yml",
+            "parser" : "~/test2_parser.sh"
         }
 ]

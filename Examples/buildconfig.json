@@ -2,14 +2,14 @@
     {
         "buildName" : "tct-test-ta",
         "buildCmd" : "gbs build -A armv7l -P tizen_vd --overwrite",
-        "buildRepo" : "git@127.0.0.1:l.kostyra/tct-test-ta.git",
+        "buildRepo" : "git@127.0.0.1/tct-test-ta.git",
         "buildResParser" : "GBS",
         "branches" : ["arm", "master", "optee"]
     },
     {
         "buildName" : "festral",
         "buildCmd" : "runhaskell Setup.hs configure --user; runhaskell Setup.hs build",
-        "buildRepo" : "git@127.0.0.1:u.harbuz/festral.git",
+        "buildRepo" : "git@127.0.0.1/festral.git",
         "buildResParser" : "Examples/hs_build_parser.sh",
         "branches" : ["master"]
     }

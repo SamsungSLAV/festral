@@ -11,21 +11,12 @@
         test_cases:
     - case_name: libteec-test
         test_actions:
-            - push:
-                ##TEMPLATE_URL tef-libteec##
-                dest: '/tmp'
-                alias: 'tef-libteec.rpm'
-            - run:
-                name: "'rpm -i /tmp/tef-libteec.rpm --force | tee /tmp/install.log'"
+            ##TEMPLATE_RPM_INSTALL_CURRENT tef-libteec##
             - pull:
                 src: '/tmp/install.log'
                 alias: 'install.log'
-            - push:
-                ##TEMPLATE_LATEST tf##
-                dest: '/tmp'
-                alias: 'gpapi_tests.rpm'
             - run:
-                name: "'gpapi_test | tee /tmp/gpapi_test.log'"
+                name: "'runtest | tee /tmp/test.log'"
             - pull:
-                src: '/tmp/gpapi_test.log'
-                alias: 'libteec_gpapi_test.log'
+                src: '/tmp/test.log'
+                alias: 'test.log'
