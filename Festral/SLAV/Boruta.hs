@@ -261,7 +261,7 @@ getSpecifiedTargetAuth targetUUID f = do
 getDeviceTypeAuth device f = do
     let caps = Caps ""  "" device ""
     let selector = (\(BorutaRequestIn _ state caps) ->
-            (device_type caps == device))
+            (device_type caps == device) || deviceType caps == device)
     f selector caps
 
 getKey :: Int -> IO (Maybe (BorutaAuth, Int))
