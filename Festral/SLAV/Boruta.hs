@@ -336,7 +336,7 @@ pushDUT uid from to f = do
 sshCmd cmd x = "ssh -oStrictHostKeyChecking=no "
     ++ dsUser x ++ "@" ++ dsIp x ++ " -p " ++ show (dsPort x)
     ++ " -i " ++ idFile x ++ " " ++ cmd
-scpCmd fname out x = "scp "
+scpCmd fname out x = "scp -oStrictHostKeyChecking=no "
     ++ "-i " ++ idFile x ++ " -P " ++ show (dsPort x) ++ " "
     ++ fname ++ " " ++ dsUser x
     ++ "@" ++ dsIp x ++ ":" ++ out
