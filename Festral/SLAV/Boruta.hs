@@ -277,37 +277,49 @@ getKey id = do
     maybe (return Nothing) (\ x -> return $ Just (x,id)) auth
 
 curlHandler :: CurlAesonException -> IO (Maybe BorutaAuth)
-curlHandler e = putStrLn ("All targets are busy and no one can be requested"
-    ++ " immediately. Try later.") >> return Nothing
+curlHandler e = putStrLn "All targets are busy and no one can be requested \
+    \immediately. Try later." >> return Nothing
 
 authMethod True = getBusyTargetAuth
 authMethod _ = getTargetAuth
 
+closeAuth auth = maybe (return ()) (\ (_,x) -> closeRequest x) auth
+
 -- |Exec ssh session for any device which matches specified device_type. Second
 -- parameter decide if connect forcely if device is busy.
 execAnyDryadConsole :: String -> Bool -> IO ()
-execAnyDryadConsole x f = execDryad (sshCmd "")
-    =<< getDeviceTypeAuth x (authMethod f)
+execAnyDryadConsole x f = do
+    auth <- getDeviceTypeAuth x (authMethod f)
+    execDryad (sshCmd "") auth
+    closeAuth auth
 
 -- |Exec ssh session for device specified by its UUID
 execSpecifiedDryadConsole :: String -> Bool -> IO ()
-execSpecifiedDryadConsole x f = execDryad (sshCmd "")
-    =<< getSpecifiedTargetAuth x (authMethod f)
+execSpecifiedDryadConsole x f = do
+    auth <- getSpecifiedTargetAuth x (authMethod f)
+    execDryad (sshCmd "") auth
+    closeAuth auth
 
 -- |Execute command on MuxPi
 execMuxPi :: String -> String -> Bool -> IO ()
-execMuxPi uid cmd f = execDryad (sshCmd cmd)
-    =<< getSpecifiedTargetAuth uid (authMethod f)
+execMuxPi uid cmd f = do
+    auth <- getSpecifiedTargetAuth uid (authMethod f)
+    execDryad (sshCmd cmd) auth
+    closeAuth auth
 
 -- |Execute command on the device under test of the Dryad specified by UUID
 execDUT :: String -> String -> Bool -> IO ()
-execDUT uid cmd f = execDryad (sshCmd ./"dut_exec.sh " ++ cmd)
-    =<<  getSpecifiedTargetAuth uid (authMethod f)
+execDUT uid cmd f = do
+    auth <-  getSpecifiedTargetAuth uid (authMethod f)
+    execDryad (sshCmd ./"dut_exec.sh " ++ cmd) auth
+    closeAuth auth
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
 pushMuxPi :: String -> FilePath -> FilePath -> Bool -> IO ()
-pushMuxPi uid from to f = execDryad (scpCmd from to)
-    =<< getSpecifiedTargetAuth uid (authMethod f)
+pushMuxPi uid from to f = do
+    auth <- getSpecifiedTargetAuth uid (authMethod f)
+    execDryad (scpCmd from to) auth
+    closeAuth auth
 
 -- |Push file from host to the device under test identified by UUID
 pushDUT :: String -> FilePath -> FilePath -> Bool -> IO ()
@@ -317,6 +329,7 @@ pushDUT uid from to f = do
     execDryad (sshCmd ./ "dut_copyto.sh " ++ tmpfile ++ " " ++ to)
         auth
     execDryad (sshCmd $ "rm " ++ tmpfile) auth
+    closeAuth auth
     where
         tmpfile = "/tmp/festral_copied_file"
 
@@ -334,7 +347,7 @@ type DryadCmd = (DryadSSH -> String)
 -- and this function's argument and executes this command.
 execDryad :: DryadCmd -> Maybe (BorutaAuth, Int) -> IO ()
 execDryad _ Nothing = do
-    putStrLn "Use --force option to connect for existing session if you are\
+    putStrLn "Use --force option to connect for existing session if you are \
     \sure you know you do."
 execDryad f (Just (auth, id)) = do
     (addr, _) <- borutaAddr
@@ -342,7 +355,6 @@ execDryad f (Just (auth, id)) = do
     let creds = DryadSSH
                 (username auth) addr (port $ authAddr auth) keyFile
     callCommand $ f creds
-    closeRequest id
 
 writeKey auth = writeSystemTempFile "boruta-key" (sshKey auth)
 
@@ -361,8 +373,11 @@ closeRequest id = do
         h _ = putStrLn "Cant access requesteed ID" >> return ()
 
 -- |Boot up device under test specified by UUID
-dutBoot uid = (execMuxPi uid ./"dut_boot.sh") False
-            >>(execMuxPi uid ./"dut_login.sh root") False
+dutBoot uid = do
+    auth <- getSpecifiedTargetAuth uid (authMethod False)
+    execDryad (sshCmd ./"dut_boot.sh") auth
+    execDryad (sshCmd ./"dut_login.sh root") auth
+    closeAuth auth
 
 -- |Prepend executable path to the string and execute function
 infixr 4 ./
