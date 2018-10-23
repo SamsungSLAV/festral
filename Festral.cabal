@@ -1,12 +1,14 @@
-Name:       Festral
-Version:    0.10.16
-Cabal-Version: >= 1.2
-License:    BSD3
-Author:     Uladzislau Harbuz
+Name:               Festral
+Version:            0.10.16
+Cabal-Version:      >= 1.2
+License:            Apache-2.0
+License-file:       LICENSE
+Copyright:          (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+Author:             Uladzislau Harbuz
 Homepage:
-Category:   Testing
-Synopsis:   Manage jobs and tests of Weles server
-Build-Type: Simple
+Category:           Testing
+Synopsis:           Manage jobs and tests of Weles server
+Build-Type:         Simple
 
 Library
     Build-Depends:
