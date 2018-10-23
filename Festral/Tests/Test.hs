@@ -121,7 +121,8 @@ performAsyncTestWithConfig confPath lock target = do
                 (testLogDir appConfig))
         tests
 
-builtInParsers = ["TCT", "XTest"]
+builtInParsers = ["Default", "XTest"]
+testFileName = "test.log"
 
 -- |Get result of test, build directory and out root directory
 -- and creates directory with test logs. Returns name of out directory.
@@ -140,7 +141,11 @@ writeWithOwn config outs outDir = do
         fileExists <- doesFileExist $ parser config
         when fileExists $ do
             (inp, out, err, _) <- runInteractiveCommand $ parser config
-            forkIO $ hPutStr inp $ concat $ map (\(n,c) -> c) outs
+            forkIO $
+                hPutStr inp $
+                concat $ map snd $
+                filter (\ (n,c) -> n `isInfixOf` testFileName)
+                outs
             log <- hGetContents out
             writeFile (outDir ++ "/report.txt") log
 
@@ -217,14 +222,15 @@ timeStamp = do
     let (year:mounth:day:hour:min:secs:_) = splitOneOf " :-." time
     return $ year ++ mounth ++ day ++ hour ++ min ++ secs
 
+parserFromName "Default" = parseDefault
+parserFromName "XTest" = parseXTest
+parserFromName _ = parseDefault
+
 -- |Converts string name of parser from config JSON to the test parser.
 getParser :: String -> [(String, String)] -> IO [TestData]
-getParser "TCT" testRes = do
-    p <- fromWelesFiles testRes "tct-test-ta.log"
-    return $ parseTCT p
-getParser "XTest" testRes = do
-    p <- fromWelesFiles testRes "xtest.log"
-    return $ parseXTest p
+getParser x testRes = do
+    p <- fromWelesFiles testRes testFileName
+    return $ (parserFromName x) p
 
 runTests :: [TestConfig] -> String -> IO [TestResult]
 runTests x y = newMVar () >>= (\ v -> runTestsAsync v x y)

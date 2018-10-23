@@ -312,7 +312,7 @@ fields as follow:
 ]
 ```
 
-Supported built-in test parsers currently are only "TCT" - for tct-test-ta
+Supported built-in test parsers currently are only "Default" - for tct-test-ta
 and "XTest" - for xtest made by OPTEE.
 
 You can create own parser scripts for festral-weles. Such script
@@ -373,8 +373,8 @@ When you run `festral test` command, it will do actions:
   finishes, if not, cancel this mjob and run next test
   4. if test finished, pass output of test to the specified in config parser.
 
-  **If it is built-in parser,** only `tct-test-ta.log` is passed
-  for **TCT** parser
+  **If it is built-in parser,** only `test.log` is passed
+  for **Default** parser
   and only `xtest.log` is passed for **XTest** parser,
   So **YOU MUST REDIRECT THESE TEST OUTPUTS TO THE RIGHT FILES
   IN YOUR YAML FILE**.
