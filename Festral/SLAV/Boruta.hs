@@ -356,7 +356,10 @@ execDryad f (Just (auth, id)) = do
     keyFile <- writeKey auth
     let creds = DryadSSH
                 (username auth) addr (port $ authAddr auth) keyFile
-    callCommand $ f creds
+    handle h $ callCommand $ f creds
+    where
+        h :: SomeException -> IO ()
+        h _ = return ()
 
 writeKey auth = writeSystemTempFile "boruta-key" (sshKey auth)
 
