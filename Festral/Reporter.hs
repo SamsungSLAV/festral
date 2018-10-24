@@ -83,13 +83,16 @@ reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 formatTextReport :: String -> [String] -> IO [String]
 formatTextReport format dirs = do
     metas <- mapM metaByName dirs
-    let tests = filter (\ (n,m) -> isTest m) metas
+    let tests = filter (\ (n,m) -> isMeta m) metas
     mapM f tests
     where
         f (n,m) = do
             let str = foldl (\ s (f,o) -> replace f (o m) s) format formats
             (_,_,_,rating,_) <- testSummary n
             return $ replace "%R" rating str
+
+testOnly f m@MetaTest{} = f m
+testOnly _ _ = ""
 
 formats =
     [("%b", ($>>) board)
@@ -103,11 +106,11 @@ formats =
     ,("%o", ($>>) outDir)
     ,("%r", ($>>) repoName)
     ,("%B", ($>>) branch)
-    ,("%l", tester)
-    ,("%L", testerName)
-    ,("%e", testTime)
-    ,("%n", testName)
-    ,("%S", testStatus)
+    ,("%l", testOnly tester)
+    ,("%L", testOnly testerName)
+    ,("%e", testOnly testTime)
+    ,("%n", testOnly testName)
+    ,("%S", testOnly testStatus)
     ,("%%", (\ _ -> "%"))
     ]
 

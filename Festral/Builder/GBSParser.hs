@@ -62,7 +62,7 @@ instance MetaParser GBSParser where
                     splitOn "</p>" $ last $  splitOn "Arch" content
         let arch' = if arch == "" then "unknown" else arch
         let out = dropWhile isSpace $ head $ splitOn "\n" $ last $
-                    splitOn "generated RPM packages can be found from\
+                    splitOn "generated RPM packages can be found from \
                     \local repo:\n" log
         return $ Meta (MetaBase
                         arch'
@@ -89,7 +89,8 @@ instance MetaParser GBSParser where
     fromHandle :: Handle -> IO GBSParser
     fromHandle flog = do
         log <- hGetContents flog
-        let fhtml = last $ splitOneOf " " $ head $ lines $ last $ splitOn "generated html format report:\n" log
+        let fhtml = last $ splitOneOf " " $ head $ lines $ last $
+                    splitOn "generated html format report:\n" log
         html <- catch (readFile fhtml) handler
         return $ GBSParser html log
         where
@@ -99,6 +100,7 @@ instance MetaParser GBSParser where
 fromFile' :: FilePath -> IO GBSParser
 fromFile' flog = do
     log <- readFile flog
-    let fhtml = last $ splitOneOf " " $ head $ lines $ last $ splitOn "generated html format report:\n" log
+    let fhtml = last $ splitOneOf " " $ head $ lines $ last $
+                splitOn "generated html format report:\n" log
     html <- readFile fhtml
     return $ GBSParser html log

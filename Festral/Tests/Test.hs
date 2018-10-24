@@ -447,6 +447,12 @@ yamlTemplater outDir (RPMInstallLatest pkg) = do
 yamlTemplater _ (FileContent fname) = do
     content <- handle fileNotExists $ readFile fname
     return content
+yamlTemplater _ (ExecLog cmd logfile) = return $
+    "- run:\n\
+    \    name: \"'" ++ cmd ++ " 2>&1 >> " ++ logfile ++ "'\""
+yamlTemplater _ (Exec cmd) = return $
+    "- run:\n\
+    \    name: \"'" ++ cmd ++ "'\""
 
 yamlTemplaterRpm  uri package =
         "- push:\n"

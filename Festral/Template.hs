@@ -34,18 +34,30 @@ data TemplateType
     | FileContent FilePath      -- ^Put in this place content of the specified file
     | BuildTable String         -- ^Insert into this place HTML build report table with given id
     | TestTable String          -- ^Insert into this place HTML test report table with given id
+    | Exec String               -- ^Execute command
+    | ExecLog String String     -- ^Execute command and write to the log file
 
--- |Generate yaml file from template using function given as second parameter for resolve templated fields
+-- |Generate yaml file from template using function given as second parameter
+-- for resolve templated fields
 generateFromTemplate :: String -> (TemplateType -> IO String) -> IO String
 generateFromTemplate yaml extractor = do
-    fmap concat $ sequence $ map (\str -> if isInfixOf "TEMPLATE" str then extract extractor (words str) else return str) $ splitOn "##" yaml
+    fmap concat $ sequence $ map (\str -> if isInfixOf "TEMPLATE" str
+                                            then extract extractor (words str)
+                                            else return str) $ splitOn "##" yaml
 
 extract :: (TemplateType -> IO String) -> [String] -> IO String
 extract extractor ("TEMPLATE_URL":url:_) = extractor (URI url)
 extract extractor ("TEMPLATE_LATEST":url:_) = extractor (Latest_URI url)
-extract extractor ("TEMPLATE_RPM_INSTALL_CURRENT":packagename:_) = extractor (RPMInstallCurrent packagename)
-extract extractor ("TEMPLATE_RPM_INSTALL_LATEST":packagename:_) = extractor (RPMInstallLatest packagename)
-extract extractor ("TEMPLATE_FILE":filename:_) = extractor (FileContent filename)
+extract extractor ("TEMPLATE_RPM_INSTALL_CURRENT":packagename:_)
+    = extractor (RPMInstallCurrent packagename)
+extract extractor ("TEMPLATE_RPM_INSTALL_LATEST":packagename:_)
+    = extractor (RPMInstallLatest packagename)
+extract extractor ("TEMPLATE_FILE":filename:_)
+    = extractor (FileContent filename)
 extract extractor ("TEMPLATE_BUILD_TABLE":id:_) = extractor (BuildTable id)
 extract extractor ("TEMPLATE_TEST_TABLE":id:_) = extractor (TestTable id)
+extract extractor ("TEMPLATE_RUN_TEST":cmd)
+    = extractor (ExecLog (unwords cmd) "/tmp/test.log")
+extract extractor ("TEMPLATE_RUN":cmd)
+    = extractor (Exec $ unwords cmd)
 extract _ _ = return ""
