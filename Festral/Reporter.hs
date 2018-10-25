@@ -88,8 +88,12 @@ formatTextReport format dirs = do
     where
         f (n,m) = do
             let str = foldl (\ s (f,o) -> replace f (o m) s) format formats
-            (_,_,_,rating,_) <- testSummary n
-            return $ replace "%R" rating str
+            r <- if isTest m
+                then do
+                    (_,_,_,rating,_) <- testSummary n
+                    return rating
+                else return ""
+            return $ replace "%R" r str
 
 testOnly f m@MetaTest{} = f m
 testOnly _ _ = ""
