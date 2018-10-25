@@ -449,10 +449,10 @@ yamlTemplater _ (FileContent fname) = do
     return content
 yamlTemplater _ (ExecLog cmd logfile) = return $
     "- run:\n\
-    \    name: \"'" ++ cmd ++ " 2>&1 >> " ++ logfile ++ "'\""
+    \                  name: \"'" ++ cmd ++ " 2>&1 >> " ++ logfile ++ "'\""
 yamlTemplater _ (Exec cmd) = return $
     "- run:\n\
-    \    name: \"'" ++ cmd ++ "'\""
+    \                  name: \"'" ++ cmd ++ "'\""
 
 yamlTemplaterRpm  uri package =
         "- push:\n"

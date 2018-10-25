@@ -196,8 +196,7 @@ reportText :: Parser ReportType
 reportText = TextReport
     <$> switch
         (  long     "text-report"
-        <> help     "Show results of the tests as formatted by user text. \
-        \Builds are ignored" )
+        <> help     "Show results of the tests as formatted by user text." )
     <*> strOption
         (  long     "format"
         <> short    'f'
