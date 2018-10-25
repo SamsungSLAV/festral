@@ -454,7 +454,9 @@ reportCmd (HTML True x) o args = do
 reportCmd (TextReport True format) o [] = do
     testFile <- freshTests
     tests <- readFile testFile
-    reportCmd (TextReport True format) o $ lines tests
+    buildFile <- freshBuilds
+    builds <- readFile buildFile
+    reportCmd (TextReport True format) o $ lines (builds ++ "\n" ++ tests)
 
 reportCmd (TextReport True format) o args =
     writeOut o =<< unlines <$> formatTextReport format args
