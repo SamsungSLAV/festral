@@ -144,7 +144,7 @@ writeWithOwn config outs outDir = do
             forkIO $
                 hPutStr inp $
                 concat $ map snd $
-                filter (\ (n,c) -> n `isInfixOf` testFileName)
+                filter (\ (n,c) -> testFileName `isInfixOf` n)
                 outs
             log <- hGetContents out
             writeFile (outDir ++ "/report.txt") log
