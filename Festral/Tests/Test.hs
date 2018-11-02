@@ -16,13 +16,17 @@
  - limitations under the License
  -}
 
--- |Module for running tests using config file and "Festral.Weles.API".
+-- |Module for running tests using configuration file from "Festral.Config"
+-- and "Festral.SLAV.Weles".
 module Festral.Tests.Test (
     runTest,
     runTests,
     parseTest,
-    performTestWithConfig,
-    performForallNewBuilds
+    performForallNewBuilds,
+    TestResult(..),
+    TestStatus(..),
+    FileContents,
+    JobResult(..)
 ) where
 
 import Data.Aeson
@@ -62,8 +66,13 @@ data TestResult
     deriving Show
 
 data TestStatus
+    -- |Appears when segmantation fault detected during testing process.
+    -- Contains test execution logs.
     = SegFault FileContents
+    -- |Appears when job finished with error
     | BadJob JobResult
+    -- |If test job finished withowt errors, it returns 'TestSuccess'.
+    -- It doesn't mean that tests was passed. Contains test logs.
     | TestSuccess FileContents
 
 instance Show TestStatus where
@@ -71,14 +80,28 @@ instance Show TestStatus where
     show (BadJob x) = show x
     show (TestSuccess _) = "COMPLETE"
 
+-- |Status of test job starting/execution.
 data JobResult
+    -- |Job was not started because repository under test failed to build
     = BuildFailed
+    -- |YAML file passed to the Weles does not exist
     | BadYaml
+    -- |Job was not able to start by some reason
     | StartJobFailed
+    -- |If job was started successfully, its id is returned.
+    -- Contains usual job's ID
     | JobId Int
+    -- |After successfull completion of testing logs are returned by this
+    -- constructor
     | JobLogs FileContents
+    -- |Job execution failed because Dryad failed with error. It usually means
+    -- some hardware error (connection between MuxPi and DUT were lost | some
+    -- commands executed on DUT failed | DUT was flashed with bad OS image etc.)
     | DryadError
+    -- |Weles failed to download some files specified in YAML file (maybe link
+    -- is invalid or server has no free space)
     | DownloadError
+    -- |Other unexpected error. Contains error message.
     | UnknownError String
 
 instance Show JobResult where
@@ -92,8 +115,10 @@ instance Show JobResult where
     show (UnknownError x) = "WELES ERROR"
 
 -- |Run tests from config for all build directories listed in given string.
--- Returns list of names of test results directories
-performForallNewBuilds :: FilePath -> [String] -> IO [String]
+-- Returns list of names of test results directories.
+performForallNewBuilds :: FilePath      -- ^ Tests configuration file
+                       -> [String]      -- ^ List of the build names for test
+                       -> IO [String]   -- ^ List of names of performed tests
 performForallNewBuilds _ [] = return []
 performForallNewBuilds conf list = do
     lock <- newMVar ()
@@ -124,9 +149,13 @@ performAsyncTestWithConfig confPath lock target = do
 builtInParsers = ["Default", "XTest"]
 testFileName = "test.log"
 
--- |Get result of test, build directory and out root directory
--- and creates directory with test logs. Returns name of out directory.
-parseTest :: TestResult -> FilePath -> FilePath -> IO String
+-- |Get result of the test, its build directory and output root directory
+-- and creates directory with test logs. Returns name of created subdirectory
+-- (name of the test).
+parseTest :: TestResult -- ^ Test result
+          -> FilePath   -- ^ Directory of the tested build
+          -> FilePath   -- ^ Root directory where put test logs
+          -> IO String  -- ^ Name of the test's directory under given root
 parseTest res@(TestResult _ config) buildDir outDir
     | (parser config) `elem` builtInParsers
         = parseTest' writeWithParser res buildDir outDir
@@ -232,7 +261,11 @@ getParser x testRes = do
     p <- fromWelesFiles testRes testFileName
     return $ (parserFromName x) p
 
-runTests :: [TestConfig] -> String -> IO [TestResult]
+-- |Run tests for each given configuration for target 'Build' result.
+-- Returns list of test results.
+runTests :: [TestConfig]    -- ^ List of test configurations
+         -> String          -- ^ Build name to be tested
+         -> IO [TestResult] -- ^ List of the results of testing
 runTests x y = newMVar () >>= (\ v -> runTestsAsync v x y)
 
 runTestsAsync :: MVar a -> [TestConfig] -> String -> IO [TestResult]
@@ -401,82 +434,10 @@ colorBoldBrace x color = do
 
 brace x = "[" ++ x ++ "]"
 
-yamlTemplater :: String -> TemplateType -> IO String
-yamlTemplater outDir (URI url) = do
-    config <- getAppConfig
-    rpms <- catch (getDirectoryContents outDir) dirDoesntExists
-    let rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $
-            filter(isInfixOf url) $ rpms
-    return $ "uri: 'http://"
-        ++ webPageIP config ++ ":"
-        ++ show (webPagePort config)
-        ++ "/secosci/download.php?file="
-        ++ resolvedName rpmname
-        ++ "&build="
-        ++ hash
-        ++ "/"
-        ++ dir ++ "'"
-    where
-        (dir:hash:_) = reverse $ splitOn "/" outDir
-
-yamlTemplater outDir (Latest_URI url) = do
-    config <- getAppConfig
-    cachePath <- buildCache
-    cache <- catch (readFile cachePath) fileNotExists
-    let (cachedName,cachedHash) = resolvePkg $ splitOn "#" $ resolvedName $
-            sortBy (\a b -> length a `compare` length b)
-            $ filter (isInfixOf url) $ splitOn "\n" cache
-    return $ "uri: 'http://"
-        ++ webPageIP config ++ ":"
-        ++ show (webPagePort config)
-        ++ "/secosci/download.php?file="
-        ++ cachedName
-        ++ "&build="
-        ++ cachedHash
-        ++ "/build_res'"
-    where
-        resolvePkg (x:y:_) = (x,y)
-        resolvePkg _ = ("","")
-
-yamlTemplater outDir (RPMInstallCurrent pkg) = do
-    uri <- yamlTemplater outDir (URI pkg)
-    return $ yamlTemplaterRpm uri pkg
-yamlTemplater outDir (RPMInstallLatest pkg) = do
-    uri <- yamlTemplater outDir (Latest_URI pkg)
-    return $ yamlTemplaterRpm uri pkg
-yamlTemplater _ (FileContent fname) = do
-    content <- handle fileNotExists $ readFile fname
-    return content
-yamlTemplater _ (ExecLog cmd logfile) = return $
-    "- run:\n\
-    \                  name: \"'" ++ cmd ++ " 2>&1 >> " ++ logfile ++ "'\""
-yamlTemplater _ (Exec cmd) = return $
-    "- run:\n\
-    \                  name: \"'" ++ cmd ++ "'\""
-
-yamlTemplaterRpm  uri package =
-        "- push:\n"
-    ++ "                  " ++ uri ++ "\n"
-    ++ "                  dest: '/tmp/" ++ rpmName ++ "'\n"
-    ++ "                  alias: '" ++ rpmName ++ "'\n"
-    ++ "              - run:\n"
-    ++ "                  name: \"'rpm -i /tmp/"
-    ++ rpmName ++ " --force 2>&1 >> /tmp/install.log'\""
-    where
-        rpmName = package ++ ".rpm"
-
 filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
-
-dirDoesntExists :: SomeException -> IO [FilePath]
-dirDoesntExists ex = putStrLn (show ex) >> return []
-
-fileNotExists :: SomeException -> IO String
-fileNotExists ex = putStrLn (show ex) >> return ""
 
 emptyFileNotExists :: SomeException -> IO ()
 emptyFileNotExists ex = putStrLn $ show ex
 
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
-
-resolvedName x = if x == [] then "" else head x

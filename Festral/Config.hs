@@ -22,7 +22,7 @@
 
 -- |This module describes Festral's configuration file structure and
 -- serialization methods.
--- Configuration file is just JSON file with fields as in 'TestRunnerConfig'.
+-- Configuration file is just JSON file with fields as in "AppConfig".
 module Festral.Config (
     TestConfig (..),
     AppConfig (..)
@@ -53,18 +53,19 @@ instance FromJSON TestConfig where
 
 instance ToJSON TestConfig
 
--- |Describes basic festral application configuration.
+-- |Describes basic festral application configuration. There are default values
+-- of "AppConfig" read from JSON listed below:
 data AppConfig = AppConfig
-    { buildLogDir   :: FilePath
-    , testLogDir    :: FilePath
-    , welesIP       :: String
-    , welesPort     :: Int
-    , welesFilePort :: Int
-    , webPageIP     :: String
-    , webPagePort   :: Int
-    , serverRoot    :: FilePath
-    , borutaIP      :: String
-    , borutaPort    :: Int
+    { buildLogDir   :: FilePath -- ^Default: \/tmp\/builds
+    , testLogDir    :: FilePath -- ^Default: \/tmp\/tests
+    , welesIP       :: String   -- ^Default: 127.0.0.1
+    , welesPort     :: Int      -- ^Default: 8888
+    , welesFilePort :: Int      -- ^Default: 8888
+    , webPageIP     :: String   -- ^Default: 127.0.0.1
+    , webPagePort   :: Int      -- ^Default: 8888
+    , serverRoot    :: FilePath -- ^Default: \/tmp\/festral_server
+    , borutaIP      :: String   -- ^Default: 127.0.0.1
+    , borutaPort    :: Int      -- ^Default: 6666
     } deriving (Show, Generic)
 
 instance FromJSON AppConfig where

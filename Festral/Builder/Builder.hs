@@ -23,13 +23,16 @@
 -- from given .json file formatted as follow:
 --
 -- @
--- [{"buildName": "name of the project to build",
+-- [
+--  {"buildName": "name of the project to build",
 --   "buildCmd" : "command used to build, e.g. gbs build -A armv7l ...",
 --   "buildRepo": "origin repusitory address of the project",
---   "buildResParser" : "name of the built-in parsers ("GBS") or path to the
+--   "buildResParser" : "name of the built-in parsers (\"GBS\") or path to the
 --   own binary parser, see below",
 --   "branch":["master", "other branch", "etc"]
---   }, another build targets ... ]
+--   },
+--   another build targets ...
+-- ]
 -- @
 --
 -- Parser is some script or binary which generates meta.txt file from output of
@@ -47,6 +50,18 @@
 --  BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there
 --  are other ones)
 --  BUILD_HASH=hash of the build
+--  REPO_NAME=name of the built repository
+--  BRANCH=name of the built branch
+--  OUT_DIR=directory where build command put output files
+--
+--  #In the tests directories meta.txt has additional fields:
+--  TESTER=login of the tester
+--  TESTER_NAME=name of the tester
+--  TEST_STATUS=Exit status of the test executing. If test was performed and
+--  logs was made, it contains COMPLETE, but it does not mean that test was
+--  passed.
+--  TEST_TIME=time where test was performed
+--  TEST_NAME=Name of the test
 -- @
 --
 -- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes
@@ -54,7 +69,8 @@
 module Festral.Builder.Builder (
     builderFromFile,
     build,
-    BuildOptions (..)
+    BuildOptions (..),
+    Build(..)
 ) where
 
 import Festral.Builder.Meta
@@ -78,11 +94,11 @@ import System.File.Tree (getDirectory', copyTo_)
 
 -- |Build structure which represents config json format.
 data Build = Build
-    { buildName         :: String -- ^ Name of the project to be built, it must be name of the root directory containing project
-    , buildCmd          :: String -- ^ Command used for building
-    , buildRepo         :: String -- ^ Remote adress of the repository, used for first cloning project
-    , buildResParser    :: String -- ^ Parser of the 'buildCmd' output, it can be "GBS" for using standard GBS parser or name of uour own binary
-    , branches          :: [String] -- ^ List of branch names to be built
+    { buildName         :: String
+    , buildCmd          :: String
+    , buildRepo         :: String
+    , buildResParser    :: String
+    , branches          :: [String]
     } deriving (Show, G.Generic)
 
 instance FromJSON Build
@@ -110,11 +126,15 @@ builderFromFile fname = do
     file <- LB.readFile fname
     return $ decode file
 
--- |Build target located in the first path + build name and put meta file to
--- the directory tree with given in seconf path root directory
--- build buildObject rood_dir_of_project root_dir_of_output_files.
+-- |Build target located at the given path and put meta file to
+-- the directory tree given from "Festral.Config" from 'buildLogDir' field of
+-- the configuration file.
 -- Returns list of names of built directories.
-build :: Build -> BuildOptions -> FilePath -> FilePath -> IO [String]
+build :: Build          -- ^ Build configuration
+      -> BuildOptions   -- ^ Build options
+      -> FilePath       -- ^ Root directory of cloned repositories
+      -> FilePath       -- ^ Output directory ('buildLogDir' usually)
+      -> IO [String]    -- ^ List of the names of the performed builds
 build build opts wdir outdir = do
     cloneRepo wdir build
     let srcDir = wdir ++ "/" ++ buildName build

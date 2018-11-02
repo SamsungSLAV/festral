@@ -16,8 +16,9 @@
  - limitations under the License
  -}
 
--- |This module describes metafile used by web page and database for showing and
--- extracting information about builds and how this metafile can be acquired.
+-- |This module describes metafile used for storage build and test information.
+-- See "Festral.Builder.Builder" module description for more meta
+-- format details.
 module Festral.Builder.Meta (
     Meta(..),
     MetaParser(..),
@@ -75,8 +76,7 @@ data Meta
         }
     | NotMeta
 
--- |apply function from build meta the same way for build meta and for test
--- meta.
+-- |Apply function from "MetaBase" the same way for "Meta" and for "MetaTest".
 f $>> (Meta base) = f base
 f $>> m@MetaTest{} = f $ metaData m
 
@@ -146,19 +146,24 @@ chooseMeta m@Meta{}
 
 orderFields str fields = map (\ (x,_) -> findField x str) fields
 
-findField :: String -> [[String]] -> String
+-- |Finds field with given name in the given list of [name,value] pairs
+-- presented as two element lists.
+-- If there is no such field, returns empty "String".
+findField :: String     -- ^ Field name
+          -> [[String]] -- ^ Fields list
+          -> String     -- ^ Value of the searched field
 findField "" _ = ""
 findField name (x:xs)
     | head x == name = last x
     | otherwise = findField name xs
 findField name [] = ""
 
--- |Write 'Meta' to the file at given path
+-- |Write "Meta" to the given file
 toFile :: Meta -> FilePath -> IO ()
 toFile m fname = do
     writeFile fname $ show m
 
--- |Read 'Meta' from file.
+-- |Read "Meta" from file.
 fromMetaFile :: FilePath -> IO Meta
 fromMetaFile fname = do
     mdata <- catch (readFile fname) handler
@@ -168,13 +173,13 @@ fromMetaFile fname = do
         handler :: SomeException -> IO String
         handler e = return ""
 
--- |Check if given meta is Meta
+-- |Check if given meta is "Meta" constructor
 isBuild Meta{} = True
 isBuild _ = False
 
--- |Check if given meta is MetaTest
+-- |Check if given meta is "MetaTest" constructor
 isTest MetaTest{} = True
 isTest _ = False
 
--- |Check if given meta is valid meta type
+-- |Check if given meta is valid "Meta" type
 isMeta x = isBuild x || isTest x

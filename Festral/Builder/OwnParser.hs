@@ -58,9 +58,9 @@ instance MetaParser OwnParser where
         return $ OwnParser file "exit"
 
 -- |Set own parser executable for the 'OwnParser' object.
--- Executable or script provided by user MUST get standard output of the build
--- command on its standard input after running
--- and MUST write to the standard output parsed meta file (see
+-- Executable or script provided by user __MUST__ get standard output of the
+-- build command on its standard input after running
+-- and __MUST__ write to the standard output parsed meta file (see
 -- "Festral.Builder.Builder" for file format).
 setExec :: FilePath -> OwnParser -> OwnParser
 setExec binary parser = OwnParser (buildLog parser) binary

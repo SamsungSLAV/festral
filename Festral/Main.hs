@@ -29,7 +29,7 @@ import Data.Semigroup ((<>))
 import Festral.Tests.Test
 import Festral.Files
 import Festral.Reporter
-import Festral.Builder.Builder
+import Festral.Builder.Builder (builderFromFile, build, BuildOptions(..))
 import Data.Maybe
 import Paths_Festral (version)
 import Data.Version (showVersion)

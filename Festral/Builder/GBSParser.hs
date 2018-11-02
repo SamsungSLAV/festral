@@ -35,10 +35,10 @@ import Data.Time
 import System.IO
 
 -- |This data represents parser and contains files needed for parser.
-data GBSParser = GBSParser {
-    buildHtml    :: String -- ^Html file with some additional build outputs. Path to the file is automatically extracted from 'buildLog'.
-    ,buildLog    :: String -- ^File with stdout of gbs build command.
-} deriving Show
+data GBSParser = GBSParser
+    { buildHtml :: String -- ^Html file with some additional build outputs. Path to the file is automatically extracted from 'buildLog'.
+    , buildLog  :: String -- ^File with stdout of gbs build command.
+    } deriving Show
 
 instance MetaParser GBSParser where
 

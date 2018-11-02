@@ -19,7 +19,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
--- |Simple library for test management using Weles as testing server.
+-- |Simple library implementing SLAV Weles API, which allows low level test
+-- management using Weles as testing server. It allows creating, cancelling,
+-- waiting Weles jobs and processing it in different ways.
+--
+-- This library use module "Festral.Config" and "Festral.Files" for get server
+-- IP, port etc.
 module Festral.SLAV.Weles (
     Job(..),
     curlJobs,
@@ -97,10 +102,11 @@ getJob id = do
 
 doneStatuses = ["FAILED", "COMPLETED", "CANCELED"]
 
--- |Wait until job with given id got status one of 'doneStatuses' or
--- until time given limit not expared and then return this job
--- `getJobWhenDone` `job id` `seconds for waiting`
-getJobWhenDone :: Int -> Int -> IO (Maybe Job)
+-- |Wait until job with given id got status one of FAILED | COMPLETED | CANCELED
+-- or until time limit not expared and then return this job.
+getJobWhenDone :: Int -- ^ Job ID
+               -> Int -- ^ Time to wait in seconds
+               -> IO (Maybe Job)
 getJobWhenDone id timeLimit = do
     job <- getJob id
     f job
@@ -117,9 +123,9 @@ data SimpleJob = SimpleJob {s_jobid :: Int}
 instance FromJSON SimpleJob where
     parseJSON = withObject "SimpleJob" $ \v -> SimpleJob <$> v.: "jobid"
 
--- |Send new job defined in the YAML file with name given as parameter to server
--- Returns id of new task
-startJob :: String -> IO (Maybe Int)
+-- |Send new job defined in the YAML file defined as parameter to server.
+-- Returns id of new job.
+startJob :: FilePath -> IO (Maybe Int)
 startJob yamlFileName = do
     (ip, port, _) <- welesAddr
     (_, out, err, _) <- runInteractiveCommand (

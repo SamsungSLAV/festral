@@ -19,11 +19,17 @@
 -- |Module for generating yaml configs for Weles from templated yamls
 module Festral.Template (
     generateFromTemplate,
+    yamlTemplater,
+    fileNotExists,
     TemplateType(..)
 ) where
 
 import Data.List.Split
 import Data.List
+import Festral.Config
+import Festral.Files
+import Control.Exception
+import System.Directory
 
 -- |Type represents types of templated fields of the yaml
 data TemplateType
@@ -61,3 +67,81 @@ extract extractor ("TEMPLATE_RUN_TEST":cmd)
 extract extractor ("TEMPLATE_RUN":cmd)
     = extractor (Exec $ unwords cmd)
 extract _ _ = return ""
+
+-- |Default template resolver which implements specification of Festral
+-- templates. It accepts additional output directory as first parameter.
+yamlTemplater :: String         -- ^ Output directory
+              -> TemplateType   -- ^ Resolved 'TemplateType' from part of text
+              -> IO String      -- ^ Templated part of text
+yamlTemplater outDir (URI url) = do
+    config <- getAppConfig
+    rpms <- catch (getDirectoryContents outDir) dirDoesntExists
+    let rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $
+            filter(isInfixOf url) $ rpms
+    return $ "uri: 'http://"
+        ++ webPageIP config ++ ":"
+        ++ show (webPagePort config)
+        ++ "/secosci/download.php?file="
+        ++ resolvedName rpmname
+        ++ "&build="
+        ++ hash
+        ++ "/"
+        ++ dir ++ "'"
+    where
+        (dir:hash:_) = reverse $ splitOn "/" outDir
+
+yamlTemplater outDir (Latest_URI url) = do
+    config <- getAppConfig
+    cachePath <- buildCache
+    cache <- catch (readFile cachePath) fileNotExists
+    let (cachedName,cachedHash) = resolvePkg $ splitOn "#" $ resolvedName $
+            sortBy (\a b -> length a `compare` length b)
+            $ filter (isInfixOf url) $ splitOn "\n" cache
+    return $ "uri: 'http://"
+        ++ webPageIP config ++ ":"
+        ++ show (webPagePort config)
+        ++ "/secosci/download.php?file="
+        ++ cachedName
+        ++ "&build="
+        ++ cachedHash
+        ++ "/build_res'"
+    where
+        resolvePkg (x:y:_) = (x,y)
+        resolvePkg _ = ("","")
+
+yamlTemplater outDir (RPMInstallCurrent pkg) = do
+    uri <- yamlTemplater outDir (URI pkg)
+    return $ yamlTemplaterRpm uri pkg
+yamlTemplater outDir (RPMInstallLatest pkg) = do
+    uri <- yamlTemplater outDir (Latest_URI pkg)
+    return $ yamlTemplaterRpm uri pkg
+yamlTemplater _ (FileContent fname) = do
+    content <- handle fileNotExists $ readFile fname
+    return content
+yamlTemplater _ (ExecLog cmd logfile) = return $
+    "- run:\n\
+    \                  name: \"'" ++ cmd ++ " 2>&1 >> " ++ logfile ++ "'\""
+yamlTemplater _ (Exec cmd) = return $
+    "- run:\n\
+    \                  name: \"'" ++ cmd ++ "'\""
+
+yamlTemplaterRpm  uri package =
+        "- push:\n"
+    ++ "                  " ++ uri ++ "\n"
+    ++ "                  dest: '/tmp/" ++ rpmName ++ "'\n"
+    ++ "                  alias: '" ++ rpmName ++ "'\n"
+    ++ "              - run:\n"
+    ++ "                  name: \"'rpm -i /tmp/"
+    ++ rpmName ++ " --force 2>&1 >> /tmp/install.log'\""
+    where
+        rpmName = package ++ ".rpm"
+
+dirDoesntExists :: SomeException -> IO [FilePath]
+dirDoesntExists ex = putStrLn (show ex) >> return []
+
+resolvedName x = if x == [] then "" else head x
+
+-- |Simple exception handler which only prints exception and returns
+-- empty String.
+fileNotExists :: SomeException -> IO String
+fileNotExists ex = putStrLn (show ex) >> return ""

@@ -18,6 +18,33 @@
 
 -- |Module which describes API for parsing and exporting tests results to the
 -- special report format.
+--
+-- You can create own parser scripts for festral test. Such script __MUST__
+-- get log with test result as its stdin and put parsed statistics to the
+-- stdout.
+--
+-- Parsed data has format:
+--
+-- @
+-- ######################################
+-- Test name,test id, testcase name,result of preparing for test,result of
+-- test,result of cleaning after test,spent time
+-- ...
+-- ######################################
+-- @
+--
+-- Result of test can be TEST_PASS or TEST_FAIL.
+--
+-- Example of such output:
+--
+-- @
+-- ###########################################################
+-- Xtest,0,regression_1001,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+-- Xtest,1,regression_1002,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+-- Xtest,2,regression_1003,TEST_FAIL,TEST_FAIL,TEST_FAIL,0.0
+-- Xtest,21,regression_1010.1,TEST_PASS,TEST_PASS,TEST_PASS,0.0
+-- ###########################################################
+-- @
 module Festral.Tests.TestParser (
     TestData (..),
     TestParser (..),
@@ -34,7 +61,7 @@ import Data.Char
 import Data.List
 
 -- |This data structure stores information needed by database for importing
--- tests results
+-- tests results.
 data TestData = TestData
     { testGroup :: String   -- ^Group of the test, e.g. regression21015
     , testIdx   :: Int      -- ^Index of the test in the group
@@ -46,7 +73,7 @@ data TestData = TestData
     } deriving Show
 
 data TestParser = TestParser
-    { out   :: String
+    { out   :: String   -- ^ Test output
     } deriving Show
 
 fromFile :: FilePath -> IO TestParser
@@ -65,6 +92,9 @@ fromWelesFiles files logname = do
         getParser ((fname, content):_) = TestParser content
         getParser _ = TestParser ""
 
+-- |Simple test results parser. If line contains \"OK\" it increment passed
+-- tests number, otherwise increments only all tests count. It means that this
+-- parser counts tests like one line = one test result.
 parseDefault :: TestParser -> [TestData]
 parseDefault parser = zipWith (\[name,res] i ->
                         TestData
@@ -81,6 +111,7 @@ parseDefault parser = zipWith (\[name,res] i ->
         tr "OK" = "TEST_PASS"
         tr _ = "TEST_FAIL"
 
+-- |Parser for the output of the XTest - official test suit of OPTEE.
 parseXTest :: TestParser -> [TestData]
 parseXTest parser = zipWith (\[name,res] i ->
                         TestData "Xtest" i name res res res "0.5") res [1 ..]
