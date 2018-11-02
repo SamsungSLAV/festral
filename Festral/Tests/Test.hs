@@ -287,7 +287,7 @@ waitForJob lock (JobId jobid) timeout m = do
     putAsyncLog lock $ do
         putLogColor m Magenta (show jobid)
         putStrLn $ "Waiting for job finished with "
-            ++ show timeout ++ "sec. timeout ..."
+            ++ show timeout ++ " seconds timeout ..."
 
     job <- getJobWhenDone jobid timeout
     putAsyncLog lock $ do
@@ -346,7 +346,7 @@ runTestAsync lock target testConf = do
         putLog meta $ "Starting Weles job with " ++ yamlPath ++ "..."
     yaml <- getYaml yamlPath target
     jobId <- runTestJob (status $>> meta) yaml target
-    jobRes <- waitForJob lock jobId 3600 meta
+    jobRes <- waitForJob lock jobId (timeout testConf) meta
     testResults lock jobRes meta testConf
 
 testResults :: MVar a -> JobResult -> Meta -> TestConfig -> IO TestResult

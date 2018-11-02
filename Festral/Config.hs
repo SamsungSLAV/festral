@@ -35,10 +35,11 @@ import Control.Applicative
 -- |This data structure describes test configuration for one repository
 --specified by name.
 data TestConfig = TestConfig
-    { repo  :: String
-    , yaml  :: FilePath
-    , parser:: String
-    , name  :: String
+    { repo      :: String
+    , yaml      :: FilePath
+    , parser    :: String
+    , name      :: String
+    , timeout   :: Int
     } deriving (Show, Generic)
 
 instance FromJSON TestConfig where
@@ -47,6 +48,7 @@ instance FromJSON TestConfig where
         yaml    <- o .: "yaml"
         parser  <- o .: "parser"
         name    <- o .:? "name" .!= "unknown"
+        timeout <- o .:? "timeout" .!= 3600
         return TestConfig{..}
 
 instance ToJSON TestConfig
