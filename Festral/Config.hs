@@ -50,7 +50,7 @@ instance FromJSON TestConfig where
         parser  <- o .:? "parser"   .!= "Default"
         name    <- o .:? "name"     .!= "unknown"
         timeout <- o .:? "timeout"  .!= 3600
-        runTTL  <- o .:? "runTTL"   .!= 3600
+        runTTL  <- o .:? "runTTL"   .!= 1200
         return TestConfig{..}
 
 instance ToJSON TestConfig
