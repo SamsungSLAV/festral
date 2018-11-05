@@ -22,7 +22,7 @@
 
 -- |This module describes Festral's configuration file structure and
 -- serialization methods.
--- Configuration file is just JSON file with fields as in "AppConfig".
+-- Configuration file is just JSON file with fields as in 'AppConfig'.
 module Festral.Config (
     TestConfig (..),
     AppConfig (..)
@@ -35,11 +35,28 @@ import Control.Applicative
 -- |This data structure describes test configuration for one repository
 --specified by name.
 data TestConfig = TestConfig
-    { repo      :: String
+    {
+    -- |Repository name. Required.
+      repo      :: String
+    -- |Path to the YAML file with test description. Required.
     , yaml      :: FilePath
+    -- |Name of built-in parser or path to the own test parser executable.
+    -- Default valie: \"Default\"
     , parser    :: String
+    -- |Test name which will be displayed in the reports. Default value:
+    -- \"unknown\"
     , name      :: String
+    -- |Time to live of test job from the moment it was created in seconds.
+    -- After this limit expired job will be cancelled even if it was just
+    -- waiting in queue and has not started execution. This limit is needed for
+    -- force cancellation of jobs if execution time of all jobs is larger then
+    -- running next tests iteration starts. See 'runTTL' to limit execution
+    -- time.
     , timeout   :: Int
+    -- |Time to live of test job from its execution on the target started
+    -- in seconds. This option is needed for limiting of execution time
+    -- of test. Test job will be cancelled after one of the 'timeout' or
+    -- 'runTTL' will expired.
     , runTTL    :: Int
     } deriving (Show, Generic)
 

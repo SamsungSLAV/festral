@@ -76,7 +76,7 @@ data Meta
         }
     | NotMeta
 
--- |Apply function from "MetaBase" the same way for "Meta" and for "MetaTest".
+-- |Apply function from 'MetaBase' the same way for 'Meta' and for 'MetaTest'.
 f $>> (Meta base) = f base
 f $>> m@MetaTest{} = f $ metaData m
 
@@ -148,7 +148,7 @@ orderFields str fields = map (\ (x,_) -> findField x str) fields
 
 -- |Finds field with given name in the given list of [name,value] pairs
 -- presented as two element lists.
--- If there is no such field, returns empty "String".
+-- If there is no such field, returns empty 'String'.
 findField :: String     -- ^ Field name
           -> [[String]] -- ^ Fields list
           -> String     -- ^ Value of the searched field
@@ -158,12 +158,12 @@ findField name (x:xs)
     | otherwise = findField name xs
 findField name [] = ""
 
--- |Write "Meta" to the given file
+-- |Write 'Meta' to the given file
 toFile :: Meta -> FilePath -> IO ()
 toFile m fname = do
     writeFile fname $ show m
 
--- |Read "Meta" from file.
+-- |Read 'Meta' from file.
 fromMetaFile :: FilePath -> IO Meta
 fromMetaFile fname = do
     mdata <- catch (readFile fname) handler
@@ -173,13 +173,13 @@ fromMetaFile fname = do
         handler :: SomeException -> IO String
         handler e = return ""
 
--- |Check if given meta is "Meta" constructor
+-- |Check if given meta is 'Meta' constructor
 isBuild Meta{} = True
 isBuild _ = False
 
--- |Check if given meta is "MetaTest" constructor
+-- |Check if given meta is 'MetaTest' constructor
 isTest MetaTest{} = True
 isTest _ = False
 
--- |Check if given meta is valid "Meta" type
+-- |Check if given meta is valid 'Meta' type
 isMeta x = isBuild x || isTest x

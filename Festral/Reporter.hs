@@ -16,6 +16,7 @@
  - limitations under the License
  -}
 
+-- | Module for generating reports from build and test results.
 module Festral.Reporter (
     reportHTML,
     formatTextReport
@@ -55,32 +56,64 @@ defaultHTML time =
            ++ "</html>\n"
 
 -- |Generate HTML report file with results given by second parameter
-reportHTML :: String -> [String] -> IO String
+reportHTML :: String    -- ^ Template HTML file to be filled with report data.
+                        -- If it is empty, generate default simpliest HTML page.
+           -> [String]  -- ^ List of names of builds and tests in format
+                        -- returned by 'build' and 'performForallNewBuilds'
+                        -- commands.
+           -> IO String -- ^ Generated HTML report.
 reportHTML "" dirs = show <$> getZonedTime >>=
     (\time -> reportHTML (defaultHTML time) dirs)
 reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 
 -- |Make text report when every line has a format like passed in first argument.
 -- Format string has special characters:
--- %b - board
--- %t - build type
--- %c - commit name
--- %T - build time
--- %C - toolchain
--- %u - builder username
--- %s - build status
--- %h - build hash
--- %o - build output directory
--- %r - name of the repository
--- %B - branch name
--- %l - tester login
--- %L - tester name
--- %e - test time
--- %n - test name
--- %S - test status
--- %R - pass rating passed/all
--- %% - insert % character
-formatTextReport :: String -> [String] -> IO [String]
+-- +---------+-----------------------+-----------------------------------------+
+-- |Specifier|    Output             |    Example                              |
+-- +=========+=======================+=========================================+
+-- | %b      | board                 | armv7l                                  |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %t      | build type            | debug                                   |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %c      | commit name           | 60fbeee6f89e2a61417033a854b3d2fdfc9f1a58|
+-- +---------+-----------------------+-----------------------------------------+
+-- | %T      | build time            | 20181009112502                          |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %C      | toolchain             | GBS                                     |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %u      | builder username      | test.user                               |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %s      | build status          | SUCCEED                                 |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %h      | build hash            | 60fbeee6f89e2a61417033a854b3d2fdfc9f1a58|
+-- +---------+-----------------------+-----------------------------------------+
+-- | %o      | build output directory| /GBS-ROOT/local/tizen_arm/armv7l/RPMS   |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %r      | name of the repository| some-test                               |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %B      | branch name           | master                                  |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %l      | tester login          | tester.login                            |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %L      | tester name           | Kowalski                                |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %e      | test time             | 20181009112502                          |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %n      | test name             | SOME TEST                               |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %S      | test status           | COMPLETE                                |
+-- +---------+-----------------------+-----------------------------------------+
+-- | %R      | pass rating passed/all| 55/210                                  |
+-- +---------+-----------------------+-----------------------------------------+
+-- |%%       | insert % character    | %                                       |
+-- +---------+-----------------------+-----------------------------------------+
+--
+-- Default format is \"%r[%B] Build: %s Test: %R\".
+formatTextReport :: String      -- ^ Format string.
+                 -> [String]    -- ^ List of names of builds and tests in format
+                                --  returned by 'build' and
+                                --  'performForallNewBuilds'
+                 -> IO [String] -- ^ Generated textual report.
 formatTextReport format dirs = do
     metas <- mapM metaByName dirs
     let tests = filter (\ (n,m) -> isMeta m) metas
