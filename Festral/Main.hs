@@ -506,7 +506,8 @@ welesSubCmd (JobSubOpt x id) = jobCmd x id
 welesSubCmd _ = runCmd None
 
 jobCmd (WaitJob 0) id = show <$> getJob id >>= putStrLn
-jobCmd (WaitJob x) id = show <$> getJobWhenDone id x >>= putStrLn
+jobCmd (WaitJob x) id = show <$> getJobWhenDone id (JobParameters x x)
+    >>= putStrLn
 jobCmd (JobSTDOut True) id = getJobOut id >>= putStrLn
 jobCmd (ListFiles True "") id = show <$> getFileList id >>= putStrLn
 jobCmd (ListFiles True x) id = getJobOutFile id x >>=justPutStrLn "No such job."

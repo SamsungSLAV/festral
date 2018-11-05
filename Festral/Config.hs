@@ -40,6 +40,7 @@ data TestConfig = TestConfig
     , parser    :: String
     , name      :: String
     , timeout   :: Int
+    , runTTL    :: Int
     } deriving (Show, Generic)
 
 instance FromJSON TestConfig where
@@ -49,6 +50,7 @@ instance FromJSON TestConfig where
         parser  <- o .:? "parser"   .!= "Default"
         name    <- o .:? "name"     .!= "unknown"
         timeout <- o .:? "timeout"  .!= 3600
+        runTTL  <- o .:? "runTTL"   .!= 3600
         return TestConfig{..}
 
 instance ToJSON TestConfig

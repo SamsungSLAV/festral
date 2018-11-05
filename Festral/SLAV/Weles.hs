@@ -27,6 +27,7 @@
 -- IP, port etc.
 module Festral.SLAV.Weles (
     Job(..),
+    JobParameters(..),
     curlJobs,
     getJob,
     getJobWhenDone,
@@ -67,6 +68,22 @@ data Job = Job
     ,info       :: String
 } deriving (Generic)
 
+-- |Datatype incapsulating parameters of the job
+data JobParameters
+    = JobParameters {
+    -- |Timeout of job from it was created. Job will be closed after it expired
+    -- even if it just waiting all the time. It is in seconds.
+      absoluteTimeout   :: Int
+    -- |Timeout which starts from job finished waiting and started running. It
+    -- has no sence to be longer than 'absoluteTimeout' value because
+    -- 'absoluteTimeout' has higher priority. It is in seconds.
+    , afterRunTimeout   :: Int
+    }
+
+instance Show JobParameters where
+    show x =  "TTL: " ++ show (absoluteTimeout x)
+           ++ " RunTTL: " ++ show (afterRunTimeout x)
+
 instance FromJSON Job
 instance ToJSON Job
 instance Show Job where
@@ -101,21 +118,29 @@ getJob id = do
     return res
 
 doneStatuses = ["FAILED", "COMPLETED", "CANCELED"]
+activeStatuses = ["RUNNING"]
 
 -- |Wait until job with given id got status one of FAILED | COMPLETED | CANCELED
 -- or until time limit not expared and then return this job.
 getJobWhenDone :: Int -- ^ Job ID
-               -> Int -- ^ Time to wait in seconds
+               -> JobParameters -- ^ Timeouts to wait in seconds
                -> IO (Maybe Job)
-getJobWhenDone id timeLimit = do
+getJobWhenDone id parameters = do
     job <- getJob id
     f job
-    where f job
+    where
+        f job
             | isNothing job || (status <$> job) `elem` (map Just doneStatuses)
                 = return job
-            | timeLimit <= 0 = cancelJob id >> return job
+            | timeout <= 0 || runTTL <= 0 = cancelJob id >> return job
             | otherwise = threadDelay 1000000 >>
-                getJobWhenDone id (timeLimit - 1)
+                getJobWhenDone id (JobParameters (timeout - 1) newRunTTL)
+            where
+                newRunTTL = if (status <$> job) `elem` (map Just activeStatuses)
+                                then runTTL - 1
+                                else runTTL
+        timeout = absoluteTimeout parameters
+        runTTL = afterRunTimeout parameters
 
 data SimpleJob = SimpleJob {s_jobid :: Int}
     deriving (Show)

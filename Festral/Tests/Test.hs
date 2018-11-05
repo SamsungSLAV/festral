@@ -315,12 +315,11 @@ runTestJob "SUCCEED" (Just yaml) buildId = do
 runTestJob _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish
-waitForJob :: MVar a -> JobResult -> Int -> Meta -> IO JobResult
+waitForJob :: MVar a -> JobResult -> JobParameters -> Meta -> IO JobResult
 waitForJob lock (JobId jobid) timeout m = do
     putAsyncLog lock $ do
         putLogColor m Magenta (show jobid)
-        putStrLn $ "Waiting for job finished with "
-            ++ show timeout ++ " seconds timeout ..."
+        putStrLn $ "Waiting for job finished with " ++ show timeout
 
     job <- getJobWhenDone jobid timeout
     putAsyncLog lock $ do
@@ -379,7 +378,8 @@ runTestAsync lock target testConf = do
         putLog meta $ "Starting Weles job with " ++ yamlPath ++ "..."
     yaml <- getYaml yamlPath target
     jobId <- runTestJob (status $>> meta) yaml target
-    jobRes <- waitForJob lock jobId (timeout testConf) meta
+    let jobOpts = JobParameters (timeout testConf) (runTTL testConf)
+    jobRes <- waitForJob lock jobId jobOpts meta
     testResults lock jobRes meta testConf
 
 testResults :: MVar a -> JobResult -> Meta -> TestConfig -> IO TestResult
