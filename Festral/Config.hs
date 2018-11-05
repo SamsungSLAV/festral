@@ -46,9 +46,9 @@ instance FromJSON TestConfig where
     parseJSON = withObject "TestConfig" $ \o -> do
         repo    <- o .: "repo"
         yaml    <- o .: "yaml"
-        parser  <- o .: "parser"
-        name    <- o .:? "name" .!= "unknown"
-        timeout <- o .:? "timeout" .!= 3600
+        parser  <- o .:? "parser"   .!= "Default"
+        name    <- o .:? "name"     .!= "unknown"
+        timeout <- o .:? "timeout"  .!= 3600
         return TestConfig{..}
 
 instance ToJSON TestConfig
