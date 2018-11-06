@@ -41,7 +41,8 @@ import Control.Concurrent
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion)
      (progDesc "Festral - unified application for automating of building and \
-     \testing process")
+     \testing process.  Copyright (c) 2018 Samsung Electronics Co., Ltd All \
+     \Rights Reserved.")
     )
 
 -- |Helper type for segregate opening console by type or by UUID.
