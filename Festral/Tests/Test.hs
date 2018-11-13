@@ -16,6 +16,8 @@
  - limitations under the License
  -}
 
+{-# LANGUAGE BangPatterns #-}
+
 -- |Module for running tests using configuration file from "Festral.Config"
 -- and "Festral.SLAV.Weles".
 module Festral.Tests.Test (
@@ -54,6 +56,7 @@ import System.FilePath.Posix
 import Control.Monad
 import System.Console.ANSI
 import Control.Concurrent.MVar
+import System.IO.Temp
 
 -- |List of pairs filename - content
 type FileContents = [(String, String)]
@@ -276,7 +279,7 @@ runTestsAsync lock config target = do
     let meta = readMeta metaStr
     let configs = filterConf config meta
 
-    sequence $ map (runTestAsync lock target) configs
+    Par.mapM (runTestAsync lock target) configs
 
 buildResDir buildId = do
     config <- getAppConfig
@@ -302,16 +305,17 @@ runTestJob "FAILED" _ _ = return BuildFailed
 runTestJob "SUCCEED" (Just yaml) buildId = do
     config <- getAppConfig
     buildOutDir <- buildResDir buildId
-    handle emptyFileNotExists $ writeFile (buildOutDir ++ "/test.yml") yaml
-    jobId <- handle badJob $
-                withCurrentDirectory buildOutDir $
-                startJob (buildOutDir ++ "/test.yml")
-    return $ getJobId jobId
+    withTempFile buildOutDir ".yml" $ \ yamlFileName yamlFileHandle -> do
+        handle fileError $ hPutStr yamlFileHandle yaml
+        -- Force write data to the file by forsing read it
+        !forceFileWrite <- hGetContents yamlFileHandle
+        !jobId <- handle badJob $
+                    startJob yamlFileName
+        return $ maybe StartJobFailed JobId jobId
 
     where
-        getJobId :: Maybe Int -> JobResult
-        getJobId Nothing = StartJobFailed
-        getJobId (Just id) = JobId id
+        fileError :: SomeException -> IO ()
+        fileError x = putStrLn $ show x
 runTestJob _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish
@@ -435,9 +439,6 @@ colorBoldBrace x color = do
 brace x = "[" ++ x ++ "]"
 
 filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
-
-emptyFileNotExists :: SomeException -> IO ()
-emptyFileNotExists ex = putStrLn $ show ex
 
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
