@@ -44,17 +44,13 @@ If build finished with success, you will find festral executable in the
 -----------
 ### festral
 
-Since **v.0.6.0** version all subutilities was unified in subcommands in one
-`festral` command. You can get information about it by typing `festral --help`.
+You can get information about it by typing `festral --help`.
 Avaible commands are: `build`, `weles`, `boruta`, `test`, `server`, `report`.
 
 ### configuration
 
-Also since **v0.6.0** version whole program is configured by file
+Whole program is configured by file
 `~/.festral.conf` formatted as below (see example at `Examples/config.json`):
-Since **v.0.8.0** field `reportsDir` was renamed to `serverRoot`
-so **YOU MUST CHANGE YOUR CONFIG after update to the v.0.8
-from previous versions**.
 
 ```
 {
@@ -70,10 +66,7 @@ from previous versions**.
     "borutaPort" : 6666
 }
 ```
-This configuration file was separated from tests descriptions
-(see `festral test` section).
-
-Other commands are described below:
+Subcommands are described below:
 
 ### festral build
 
@@ -86,8 +79,7 @@ option is specified.
 The `festral build` utility has simple command format:
 
 ```
- $ festral build (-c <config json>) (-r <repositories location>)
-(-o <output directory>)
+ $ festral build (-c <config json>) (-r <repositories location>) (-o <output directory>)
 ```
 
 The main part of these arguments is `config json` which contains description
@@ -148,7 +140,7 @@ and writes meta file to the `stdout`.
 targets projects will be put.
 
 `output directory` is directory where builds results will be put in format
-'commithash_buildtime'
+`commithash_buildtime`
 
 After running this command program will do:
 
@@ -189,7 +181,8 @@ Currently possible statuses for `TEST_STATUS`:
 --------------
 ### festral weles
 
-The `festral weles` is utility for communication with remote Weles server.
+The `festral weles` is low-level utility for communication with remote Weles
+server.
 
 You can get help about this program by calling:
 
@@ -236,16 +229,18 @@ festral boruta -w
 ```
 
 Now devices are identified by its `device_type` field of the output JSON,
-so if you are want to have onsole for e.g. some `kantM1` board, you can
+so if you are want to have onsole for e.g. some `rpi3` board, you can
 get it by command
 ```
- $ festral boruta --console-device kantM1
+ $ festral boruta --console-device rpi3
 ```
 This command will open ssh session which will be **valid not more than 1 hour**
-for one of the running boards of that type. If no running boards are present,
-this command will send
-new request for start this target. This method is bad because you couldn't use
-this device by UUID during this session.
+for one of the free boards of that type. If all devices of this type are busy
+boards are present, this command will not allow to connect existing session
+without `--force` option (force connection to the opened session may broke
+other's work, use it only if you are know you are doing).
+This method is bad because you couldn't use this device by UUID during
+this session.
 
 list all requests and statuses of Boruta:
 ```
@@ -256,11 +251,11 @@ workers, see festral boruta -w):
 ```
  $ festral boruta --console-uuid 355e0604-7832-4c21-948c-86c55989118f
 ```
-Push file ~/file_from from host to the MuxPi as /tmp/test.json with UUID:
+Push file `~/file_from` from host to the MuxPi as /tmp/test.json with UUID:
 ```
  $ festral boruta -u 355e0604-7832-4c21-948c-86c55989118f --push ~/file_from -o /tmp/test.json
 ```
-Push file ~/file_from from host to the device under test directly
+Push file `~/file_from` from host to the device under test directly
 (e.g. for Raspberry Pi3 connected to this MuxPi) as /tmp/test.json with UUID:
 ```
  $ festral boruta -u 355e0604-7832-4c21-948c-86c55989118f --push ~/file_from -o /tmp/test.json --dut
@@ -302,7 +297,9 @@ fields as follow:
             "repo" : "name of the repository",
             "yaml" : "path to the yaml file to use with this repository",
             "name" : "Test name (this is optional field, defoult value is 'undefined')",
-            "parser" : "name or path to the binary of the parser of tests output"
+            "parser" : "name or path to the binary of the parser of tests output",
+            "runTTL" : 3600 - time to live of the test job after start of execution,
+            "timeput": 18000 - time to live of test job from it was created even it was waiting only
         },
         {
             "repo" : "tests",
@@ -356,51 +353,43 @@ Example of the bash script for parsing XTest is at
 
 When you run `festral test` command, it will do actions:
 
-  1. read every record in `TEST_CONFIG_FILE` and go to the properly build
+  * read every record in `TEST_CONFIG_FILE` and go to the properly build
   directory
-  2. read YAML template specified in config for this test and make really YAML
+  * read YAML template specified in config for this test and make really YAML
   file from it: find existing packages listed in `~/.festral/build.cache`
   and replace templated names with it, get field `webPageIP` form
   `~/.festral.conf` file and create uri for downloading packages from
   this IP using format:
 
-  http://`festralIP`/secosci/download.php?file=`resolved_package_name`&build=`resolved_build_dir_name`/build_res
+  http://`festralIP`:`festralPort`/download.php?file=`resolved_package_name`&build=`resolved_build_dir_name`/build_res
 
-  so there is `download.php` script must exists under `festralIP` adress and
-  it must accept parameters `file` and `build`.
-
-  3. send this yaml for the Weles server and wait for an 1 hour for test
+  * send this yaml for the Weles server and wait for an 1 hour for test
   finishes, if not, cancel this mjob and run next test
   4. if test finished, pass output of test to the specified in config parser.
 
-  **If it is built-in parser,** only `test.log` is passed
-  for **Default** parser
-  and only `xtest.log` is passed for **XTest** parser,
-  So **YOU MUST REDIRECT THESE TEST OUTPUTS TO THE RIGHT FILES
+  **Only** `test.log` **file is passed to the test parser**
+  so **YOU MUST REDIRECT THESE TEST OUTPUTS TO THE RIGHT FILE
   IN YOUR YAML FILE**.
 
-  If you yse your own parser, all output files from server will
-  be passed to the test results parser
-
-  5. create directory named as `buildCommitSha1Hash_testTime` in the directory
+  * create directory named as `buildCommitSha1Hash_testTime` in the directory
   specified in `testLogDir` field of the `~/.festral.conf` file
   and put here files: `build.log` - meta file from tested build;
   `meta.txt` - extended meta file with additional informations about testing
   `report.txt` - parsed test results; `tf.log` - whole output of the
   test process
 
-  6. put names of new test logs to the `~/.festral/fresh_tests`
+  * put names of new test logs to the `~/.festral/fresh_tests`
 
 ----------------
 ### festral report
 
-Since version v.0.10.5 reporting functions was moved to the own command named
-report with unified interface for creating different types of reports.
-Currently only html and text reports are available.
+There are HTLM and formatted by user text reports are available.
 
 Report command expects names of the builds and tests as arguments, but if no
 arguments are given, it create report for latest performed builds and tests.
 You can specify output file for the report by -o option.
+
+#### Text report
 
 For generate simple text report use command:
 ```
@@ -408,6 +397,64 @@ For generate simple text report use command:
 ```
 where hashes are names of the tests returned by festral test command.
 If you pass build name as argument, it will be ignored by simple text report.
+
+There is option `-f` for text report which can set format string for the report.
+It supports specifiers like below:
+
+
+Make text report when every line has a format like passed in first argument.
+Format string has special characters:
+
+|Specifier|    Output             |    Example                              |
+|---------|-----------------------|-----------------------------------------|
+| %b      | board                 | armv7l                                  |
+| %t      | build type            | debug                                   |
+| %c      | commit name           | 60fbeee6f89e2a61417033a854b3d2fdfc9f1a58|
+| %T      | build time            | 20181009112502                          |
+| %C      | toolchain             | GBS                                     |
+| %u      | builder username      | test.user                               |
+| %s      | build status          | SUCCEED                                 |
+| %h      | build hash            | 60fbeee6f89e2a61417033a854b3d2fdfc9f1a58|
+| %o      | build output directory| /GBS-ROOT/local/tizen_arm/armv7l/RPMS   |
+| %r      | name of the repository| some-test                               |
+| %B      | branch name           | master                                  |
+| %l      | tester login          | tester.login                            |
+| %L      | tester name           | Kowalski                                |
+| %e      | test time             | 20181009112502                          |
+| %n      | test name             | SOME TEST                               |
+| %S      | test status           | COMPLETE                                |
+| %R      | pass rating passed/all| 55/210                                  |
+|%%       | insert % character    | %                                       |
+
+Default format is \"%r[%B] Build: %s Test: %R\".
+
+Some examples:
+
+```
+$ festral report --text-report
+-------------------- Result outputs -----------------------
+my_prog[optee] Build: FAILED Test: BUILD FAILED
+my_prog[arm] Build: SUCCEED Test: DOWNLOAD FILES ERROR
+my_prog[master] Build: SUCCEED Test: DOWNLOAD FILES ERROR
+my_prog[optee] Build: FAILED Test: BUILD FAILED
+```
+```
+$ festral report --text-report -f "Repo %r built with %s status"
+-------------------- Result outputs -----------------------
+Repo my_prog built with FAILED status
+Repo my_prog built with SUCCEED status
+Repo my_prog built with SUCCEED status
+Repo my_prog built with FAILED status
+```
+```
+$ festral report --text-report -f "commit %c on branch %B"
+-------------------- Result outputs -----------------------
+commit db8f9abd26c0be5cc171c319d0072c880cb95abe on branch optee
+commit 75c2a4d605c16e5d4375e4d672df8e22cb6ded41 on branch arm
+commit 3fa921584376c5ca64f282c833597bff5b72c8cc on branch master
+commit db8f9abd26c0be5cc171c319d0072c880cb95abe on branch optee
+```
+#### HTML report
 
 You can also generate HTML reports using own template page with your JS and
 other feathers. For put in your file HTML table with build results insert
@@ -435,12 +482,12 @@ where PORT_NUMBER is just number of port where server will listen to.
 
 Web pages of this server have API as follow:
 
-  * `/secosci/reports[.php]` - page with listed reports files
-  * `/secosci/reports[.php]?file=filename` - show specified by filename report
-  * `/secosci/getlog[.php]?type=type&hash=hash&time=time` - show log specified
+  * `/files[.php]` - page with listed files in root of the server
+  * `/files[.php]?file=filename` - show specified by filename file (download it if it's not `html` or `css`)
+  * `/getlog[.php]?type=type&hash=hash&time=time` - show log specified
   by type: it can be `build` for build log and `test` for test log.Log also
   must be specified by hash and time of the build/test.
-  * `/secosci/download[.php]?file=filename&build=build_dir` - link for
+  * `/download[.php]?file=filename&build=build_dir` - link for
   downloading of the file with `filename` from the build directory specified
   by `build_dir` parameter
 
@@ -460,13 +507,13 @@ real filename)
     this link can be invalid.
 
     Example: `##TEMPLATE_URL tef-libteec##` can be replaced by row
-    `uri: 'http://127.0.0.1/secosci/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
+    `uri: 'http://127.0.0.1/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
     and `Weles` will can download this package by generated link.
 * `##TEMPLATE_LATEST packagename##` - replace given filename with uri to the
 latest built version of the specified package if it ever been built by
 the `Festral`.
 
-    Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/secosci/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
+    Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
     You can push packages from other repositories built by `festral-build`
     to the `Weles` using this template.
 * `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` - install package specified
@@ -495,9 +542,9 @@ files for ommiting repeating of code.
 The typical usage example for automated running tests with `cron`:
 
 ```
-0 21 * * * ./bin/festral build -c /home/secosci/bin/festral-build.config.json -r /home/secosci/secos-repo/
-0 0 * * * ./bin/festral test -r /home/secosci/bin/festral-test.config.json
-0 2 * * * ./bin/festral --html-report -o /home/secosci/www/reports/$(date +\%Y\%m\%d\%H\%M).html -f /home/secosci/www/template.html
+0 21 * * * ./bin/festral build -c /home/bin/festral-build.config.json -r /home/secos-repo/
+0 0 * * * ./bin/festral test -r /home/bin/festral-test.config.json
+0 2 * * * ./bin/festral --html-report -o /home/www/reports/$(date +\%Y\%m\%d\%H\%M).html -f /home/www/template.html
 ```
 
 Steps which are executed:

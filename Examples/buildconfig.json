@@ -1,8 +1,8 @@
 [
     {
-        "buildName" : "tct-test-ta",
-        "buildCmd" : "gbs build -A armv7l -P tizen_vd --overwrite",
-        "buildRepo" : "git@127.0.0.1/tct-test-ta.git",
+        "buildName" : "gbs_test",
+        "buildCmd" : "gbs build -A armv7l --overwrite",
+        "buildRepo" : "git@127.0.0.1/gbs_test.git",
         "buildResParser" : "GBS",
         "branches" : ["arm", "master", "optee"]
     },

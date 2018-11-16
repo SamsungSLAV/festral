@@ -81,7 +81,7 @@ yamlTemplater outDir (URI url) = do
     return $ "uri: 'http://"
         ++ webPageIP config ++ ":"
         ++ show (webPagePort config)
-        ++ "/secosci/download.php?file="
+        ++ "/download.php?file="
         ++ resolvedName rpmname
         ++ "&build="
         ++ hash
@@ -100,7 +100,7 @@ yamlTemplater outDir (Latest_URI url) = do
     return $ "uri: 'http://"
         ++ webPageIP config ++ ":"
         ++ show (webPagePort config)
-        ++ "/secosci/download.php?file="
+        ++ "/download.php?file="
         ++ cachedName
         ++ "&build="
         ++ cachedHash
