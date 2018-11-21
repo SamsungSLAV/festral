@@ -361,7 +361,7 @@ When you run `festral test` command, it will do actions:
   `~/.festral.conf` file and create uri for downloading packages from
   this IP using format:
 
-  http://`festralIP`:`festralPort`/download.php?file=`resolved_package_name`&build=`resolved_build_dir_name`/build_res
+  http://`festralIP`:`festralPort`/download?file=`resolved_package_name`&build=`resolved_build_dir_name`/build_res
 
   * send this yaml for the Weles server and wait for an 1 hour for test
   finishes, if not, cancel this mjob and run next test
@@ -395,8 +395,8 @@ For generate simple text report use command:
 ```
  $ festral report --text-report f457004fdc7326c8125936b5e600c0d330c89404_20180918161950 f457004fdc7326c8125936b5e600c0d330c89404_20180918161949 f457004fdc7326c8125936b5e600c0d330c89404_20180918161948
 ```
-where hashes are names of the tests returned by festral test command.
-If you pass build name as argument, it will be ignored by simple text report.
+where hashes are names of the tests returned by festral test command or
+builds returned by festral build command.
 
 There is option `-f` for text report which can set format string for the report.
 It supports specifiers like below:
@@ -482,8 +482,8 @@ where PORT_NUMBER is just number of port where server will listen to.
 
 Web pages of this server have API as follow:
 
-  * `/files[.php]` - page with listed files in root of the server
-  * `/files[.php]?file=filename` - show specified by filename file (download it if it's not `html` or `css`)
+  * `/files` - page with listed files in root of the server
+  * `/files?file=filename` - show specified by filename file (download it if it's not `html` or `css`)
   * `/getlog[.php]?type=type&hash=hash&time=time` - show log specified
   by type: it can be `build` for build log and `test` for test log.Log also
   must be specified by hash and time of the build/test.
@@ -507,13 +507,13 @@ real filename)
     this link can be invalid.
 
     Example: `##TEMPLATE_URL tef-libteec##` can be replaced by row
-    `uri: 'http://127.0.0.1/download.php?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
+    `uri: 'http://127.0.0.1/download?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
     and `Weles` will can download this package by generated link.
 * `##TEMPLATE_LATEST packagename##` - replace given filename with uri to the
 latest built version of the specified package if it ever been built by
 the `Festral`.
 
-    Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/download.php?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
+    Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/download?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
     You can push packages from other repositories built by `festral-build`
     to the `Weles` using this template.
 * `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` - install package specified
