@@ -115,9 +115,10 @@ yamlTemplater outDir (RPMInstallCurrent pkg) = do
 yamlTemplater outDir (RPMInstallLatest pkg) = do
     uri <- yamlTemplater outDir (Latest_URI pkg)
     return $ yamlTemplaterRpm uri pkg
-yamlTemplater _ (FileContent fname) = do
+yamlTemplater outDir (FileContent fname) = do
     content <- handle fileNotExists $ readFile fname
-    return content
+    parsedFile <- generateFromTemplate content $ yamlTemplater outDir
+    return parsedFile
 yamlTemplater _ (ExecLog cmd logfile) = return $
     "- run:\n\
     \                  name: \"'" ++ cmd ++ " 2>&1 >> " ++ logfile ++ "'\""
