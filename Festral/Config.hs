@@ -25,7 +25,8 @@
 -- Configuration file is just JSON file with fields as in 'AppConfig'.
 module Festral.Config (
     TestConfig (..),
-    AppConfig (..)
+    AppConfig (..),
+    TestUnit (..)
 ) where
 
 import Data.Aeson
@@ -58,7 +59,15 @@ data TestConfig = TestConfig
     -- of test. Test job will be cancelled after one of the 'timeout' or
     -- 'runTTL' will expired.
     , runTTL    :: Int
+    -- |List of target device types which this test need to be executed on.
+    , targets   :: [String]
     } deriving (Show, Generic)
+
+-- |Single test description created for each target device for specified test.
+data TestUnit = TestUnit
+    { tConfig   :: TestConfig
+    , target    :: String
+    } deriving Show
 
 instance FromJSON TestConfig where
     parseJSON = withObject "TestConfig" $ \o -> do
@@ -68,6 +77,7 @@ instance FromJSON TestConfig where
         name    <- o .:? "name"     .!= "unknown"
         timeout <- o .:? "timeout"  .!= 3600
         runTTL  <- o .:? "runTTL"   .!= 1200
+        targets <- o .:? "targets"  .!= []
         return TestConfig{..}
 
 instance ToJSON TestConfig

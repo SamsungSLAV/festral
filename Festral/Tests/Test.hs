@@ -279,23 +279,27 @@ runTestsAsync lock config target = do
     let meta = readMeta metaStr
     let configs = filterConf config meta
 
-    Par.mapM (runTestAsync lock target) configs
+    concat <$> Par.mapM (runTestsForRepoAsync lock target) configs
+
+runTestsForRepoAsync :: MVar a -> String -> TestConfig -> IO [TestResult]
+runTestsForRepoAsync lock target config = do
+    Par.mapM (runTestAsync lock target) $ map (TestUnit config) $ targets config
 
 buildResDir buildId = do
     config <- getAppConfig
     return $ (buildLogDir config) ++ "/" ++ buildId ++ "/build_res"
 
 -- |Get parsed yaml from given path to the template and build id
-getYaml :: FilePath -> String -> IO (Maybe String)
-getYaml templatePath buildID = do
+getYaml :: FilePath -> String -> TestUnit -> IO (Maybe String)
+getYaml templatePath buildID test = do
     config <- getAppConfig
     buildOutDir <- buildResDir buildID
     yamlTemplate <- catch (readFile templatePath) fileNotExists
     if yamlTemplate == ""
         then return Nothing
         else fmap Just $
-                generateFromTemplate yamlTemplate $
-                yamlTemplater buildOutDir
+                generateFromTemplate (preprocess test yamlTemplate) $
+                    yamlTemplater $ TemplaterOpts buildOutDir test
 
 -- |Helper function for use pattern matching for resolve different errors
 -- before test start. RunTestJob buildStatus (Maybe parsedYaml) buildId
@@ -370,17 +374,18 @@ fileToFileContent jobid fname = do
 
 -- |Run test for the given build and return pairs (file name, contents) of files
 -- created on Weles.
-runTest :: String -> TestConfig -> IO TestResult
+runTest :: String -> TestUnit -> IO TestResult
 runTest x y = newMVar () >>= (\ v -> runTestAsync v x y)
 
-runTestAsync :: MVar a -> String -> TestConfig -> IO TestResult
-runTestAsync lock target testConf = do
+runTestAsync :: MVar a -> String -> TestUnit -> IO TestResult
+runTestAsync lock target test = do
     config <- getAppConfig
+    let testConf = tConfig test
     meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
     let yamlPath = yaml testConf
     putAsyncLog lock $
         putLog meta $ "Starting Weles job with " ++ yamlPath ++ "..."
-    yaml <- getYaml yamlPath target
+    yaml <- getYaml yamlPath target test
     jobId <- runTestJob (status $>> meta) yaml target
     let jobOpts = JobParameters (timeout testConf) (runTTL testConf)
     jobRes <- waitForJob lock jobId jobOpts meta

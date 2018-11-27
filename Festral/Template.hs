@@ -21,15 +21,19 @@ module Festral.Template (
     generateFromTemplate,
     yamlTemplater,
     fileNotExists,
+    preprocess,
+    TemplaterOpts(..),
     TemplateType(..)
 ) where
 
 import Data.List.Split
 import Data.List
+import qualified Data.String.Utils as U
 import Festral.Config
 import Festral.Files
 import Control.Exception
 import System.Directory
+import Data.Char
 
 -- |Type represents types of templated fields of the yaml
 data TemplateType
@@ -42,6 +46,68 @@ data TemplateType
     | TestTable String          -- ^Insert into this place HTML test report table with given id
     | Exec String               -- ^Execute command
     | ExecLog String String     -- ^Execute command and write to the log file
+    | Logic PreprocessUnit      -- ^Send logic command to the preprocessor
+
+-- |Type represents preprocessor commands tree
+data PreprocessUnit
+    =
+    -- | IF_EQ_INSERT(config_field) (value) (string)
+    PreprocessIf
+        { ifField       :: String
+        , ifValue       :: String
+        , ifInsert      :: String
+        }
+    -- | IF_EQ_INSERT_ELSE(config_field) (value) (if true value) (else value)
+    | PreprocessIfElse
+        { ifField       :: String
+        , ifValue       :: String
+        , ifInsert      :: String
+        , elseInsert    :: String
+        }
+    -- | INCLUDE(filepath)
+    | PreprocessInclude String
+    -- | INSERT(TestUnit_field)
+    | PreprocessInsert  [String]
+    | NotPreprocess String
+    deriving Show
+
+data TemplaterOpts = TemplaterOpts
+    { _outDir    :: String
+    , _testData  :: TestUnit
+    }
+
+extractArgs x = filter (not . isBlank) $
+                split (dropDelims . dropBlanks $ oneOf  "()") x
+
+isBlank :: String -> Bool
+isBlank = all isSpace
+
+processRow :: String -> PreprocessUnit
+processRow = processRow' . extractArgs
+
+processRow' :: [String] -> PreprocessUnit
+processRow' ("IF_EQ_INSERT_ELSE":f:v:i:e:_) = PreprocessIfElse f v i e
+processRow' ("IF_EQ_INSERT":f:v:i:_) = PreprocessIf f v i
+processRow' ("INCLUDE":f:_) = PreprocessInclude f
+processRow' ("INSERT":xs) = PreprocessInsert xs
+processRow' x = NotPreprocess $ concat x
+
+preprocess' :: TestUnit -> PreprocessUnit -> String
+preprocess' t (PreprocessIf f v i) = preprocess' t (PreprocessIfElse f v i "")
+preprocess' t (PreprocessIfElse f v i e) = if (t <-| f) == v then i else e
+preprocess' t (PreprocessInclude x) = "##TEMPLATE_FILE " ++ x ++ "##"
+preprocess' t (PreprocessInsert x) = concat $ map ((<-|) t) x
+preprocess' _ (NotPreprocess x) = x
+
+preprocess :: TestUnit -> String -> String
+preprocess test str = unlines $ preprocess' test <$> processRow <$> lines str
+
+x <-| "repo"    = repo $ tConfig x
+x <-| "parser"  = parser $ tConfig x
+x <-| "name"    = name $ tConfig x
+x <-| "target"  = target x
+x <-| "yaml"    = yaml $ tConfig x
+x <-| s         = s
 
 -- |Generate yaml file from template using function given as second parameter
 -- for resolve templated fields
@@ -70,12 +136,12 @@ extract _ _ = return ""
 
 -- |Default template resolver which implements specification of Festral
 -- templates. It accepts additional output directory as first parameter.
-yamlTemplater :: String         -- ^ Output directory
+yamlTemplater :: TemplaterOpts  -- ^ Options for parser
               -> TemplateType   -- ^ Resolved 'TemplateType' from part of text
               -> IO String      -- ^ Templated part of text
-yamlTemplater outDir (URI url) = do
+yamlTemplater opts (URI url) = do
     config <- getAppConfig
-    rpms <- catch (getDirectoryContents outDir) dirDoesntExists
+    rpms <- catch (getDirectoryContents $ _outDir opts) dirDoesntExists
     let rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $
             filter(isInfixOf url) $ rpms
     return $ "uri: 'http://"
@@ -88,9 +154,10 @@ yamlTemplater outDir (URI url) = do
         ++ "/"
         ++ dir ++ "'"
     where
-        (dir:hash:_) = reverse $ splitOn "/" outDir
+        (dir:hash:_) = reverse $ splitOn "/" (_outDir opts)
 
-yamlTemplater outDir (Latest_URI url) = do
+yamlTemplater opts (Latest_URI url) = do
+    let outDir = _outDir opts
     config <- getAppConfig
     cachePath <- buildCache
     cache <- catch (readFile cachePath) fileNotExists
@@ -109,15 +176,16 @@ yamlTemplater outDir (Latest_URI url) = do
         resolvePkg (x:y:_) = (x,y)
         resolvePkg _ = ("","")
 
-yamlTemplater outDir (RPMInstallCurrent pkg) = do
-    uri <- yamlTemplater outDir (URI pkg)
+yamlTemplater opts (RPMInstallCurrent pkg) = do
+    uri <- yamlTemplater opts (URI pkg)
     return $ yamlTemplaterRpm uri pkg
-yamlTemplater outDir (RPMInstallLatest pkg) = do
-    uri <- yamlTemplater outDir (Latest_URI pkg)
+yamlTemplater opts (RPMInstallLatest pkg) = do
+    uri <- yamlTemplater opts (Latest_URI pkg)
     return $ yamlTemplaterRpm uri pkg
-yamlTemplater outDir (FileContent fname) = do
+yamlTemplater opts (FileContent fname) = do
     content <- handle fileNotExists $ readFile fname
-    parsedFile <- generateFromTemplate content $ yamlTemplater outDir
+    parsedFile <- generateFromTemplate (preprocess (_testData opts) content)
+        $ yamlTemplater opts
     return parsedFile
 yamlTemplater _ (ExecLog cmd logfile) = return $
     "- run:\n\
