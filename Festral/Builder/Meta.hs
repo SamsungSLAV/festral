@@ -73,6 +73,7 @@ data Meta
         , testTime   :: String
         , testName   :: String
         , testStatus :: String
+        , testDevice :: String
         }
     | NotMeta
 
@@ -100,6 +101,7 @@ testFields =
     , ("TEST_TIME"      ,testTime)
     , ("TEST_NAME"      ,testName)
     , ("TEST_STATUS"    ,testStatus)
+    , ("TEST_DEVICE"    ,testDevice)
     ]
 
 instance Show MetaBase where
@@ -123,12 +125,12 @@ readMeta str = chooseMeta filledMeta
     readMeta' (board:bType:commit:bTime:
                toolc:builder:stat:hash:
                repName:branch:outDir:t:
-               tName:tTime:testName:testStatus:_) =
+               tName:tTime:testName:testStatus:testDevice:_) =
         MetaTest (MetaBase
                     board bType commit
                     bTime toolc builder
                     stat hash outDir
-                    repName branch) t tName tTime testName testStatus
+                    repName branch) t tName tTime testName testStatus testDevice
 
     f x = map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 

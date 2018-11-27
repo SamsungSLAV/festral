@@ -64,7 +64,7 @@ type FileContents = [(String, String)]
 data TestResult
     = TestResult
         { testStatus :: TestStatus
-        , testConfig :: TestConfig
+        , testConfig :: TestUnit
         }
     deriving Show
 
@@ -160,17 +160,17 @@ parseTest :: TestResult -- ^ Test result
           -> FilePath   -- ^ Root directory where put test logs
           -> IO String  -- ^ Name of the test's directory under given root
 parseTest res@(TestResult _ config) buildDir outDir
-    | (parser config) `elem` builtInParsers
+    | (parser $ tConfig config) `elem` builtInParsers
         = parseTest' writeWithParser res buildDir outDir
     | otherwise = parseTest' writeWithOwn res buildDir outDir
 
 writeWithParser config outs outDir = do
-    par <- getParser (parser config) outs
+    par <- getParser (parser $ tConfig config) outs
     writeReportFile par (outDir ++ "/report.txt")
 
-writeWithOwn config outs outDir = do
+writeWithOwn test outs outDir = do
     handle err $ do
-        fileExists <- doesFileExist $ parser config
+        fileExists <- doesFileExist $ parser $ config
         when fileExists $ do
             (inp, out, err, _) <- runInteractiveCommand $ parser config
             forkIO $
@@ -184,11 +184,12 @@ writeWithOwn config outs outDir = do
     where
         err :: SomeException -> IO ()
         err ex = putStrLn (show ex) >> return ()
+        config = tConfig test
 
 -- |Writes information about test to the metafile
 writeMetaTest status buildDir outDir name time meta = do
     tester <- getEffectiveUserName
-    let testMeta = MetaTest (id $>> meta) tester tester time name status
+    let testMeta = MetaTest (id $>> meta) tester tester time name status ""
     let outDirName = outDir ++ "/" ++ hash $>> meta ++ "_" ++ time
 
     latestFile <- freshTests
@@ -197,7 +198,7 @@ writeMetaTest status buildDir outDir name time meta = do
     toFile testMeta (outDirName ++ "/meta.txt")
     toFile meta (outDirName ++ "/build.log")
 
-parseTest' writer (TestResult status config) buildDir outDir = do
+parseTest' writer (TestResult status test) buildDir outDir = do
     meta <- fromMetaFile $ buildDir ++ "/meta.txt"
     tm <- timeStamp
     let pathPrefix = outDir ++ "/" ++ hash $>> meta
@@ -209,10 +210,11 @@ parseTest' writer (TestResult status config) buildDir outDir = do
     return $ hash $>> meta ++ "_" ++ time
 
     where
+        config = tConfig test
         writeLog (SegFault outs) t = writeLog (TestSuccess outs) t
         writeLog (TestSuccess outs) time = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
-            writer config outs (outDirName meta time)
+            writer test outs (outDirName meta time)
             writeFile
                 ((outDirName meta time) ++ "/tf.log")
                 (concat $ map (\(n,c) ->
@@ -325,10 +327,6 @@ runTestJob _ _ _ = return StartJobFailed
 -- |Wait for job if it started successfully and return its results after finish
 waitForJob :: MVar a -> JobResult -> JobParameters -> Meta -> IO JobResult
 waitForJob lock (JobId jobid) timeout m = do
-    putAsyncLog lock $ do
-        putLogColor m Magenta (show jobid)
-        putStrLn $ "Waiting for job finished with " ++ show timeout
-
     job <- getJobWhenDone jobid timeout
     putAsyncLog lock $ do
         putLogColor m Magenta (show jobid)
@@ -378,28 +376,37 @@ runTest :: String -> TestUnit -> IO TestResult
 runTest x y = newMVar () >>= (\ v -> runTestAsync v x y)
 
 runTestAsync :: MVar a -> String -> TestUnit -> IO TestResult
-runTestAsync lock target test = do
+runTestAsync lock build test = do
     config <- getAppConfig
     let testConf = tConfig test
-    meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ target ++ "/meta.txt"
+    meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ build ++ "/meta.txt"
     let yamlPath = yaml testConf
-    putAsyncLog lock $
-        putLog meta $ "Starting Weles job with " ++ yamlPath ++ "..."
-    yaml <- getYaml yamlPath target test
-    jobId <- runTestJob (status $>> meta) yaml target
+    putAsyncLog lock $ do
+        putLogColor meta Yellow (target test)
+        putStrLn $ "Starting Weles job with " ++ yamlPath ++ "..."
+    yaml <- getYaml yamlPath build test
+    jobId <- runTestJob (status $>> meta) yaml build
     let jobOpts = JobParameters (timeout testConf) (runTTL testConf)
-    jobRes <- waitForJob lock jobId jobOpts meta
-    testResults lock jobRes meta testConf
 
-testResults :: MVar a -> JobResult -> Meta -> TestConfig -> IO TestResult
+    putAsyncLog lock $ do
+        putLogColor meta Yellow (target test)
+        colorBoldBrace (show jobId) Magenta
+        putStrLn $ "Waiting for job finished with " ++ show jobOpts
+
+    jobRes <- waitForJob lock jobId jobOpts meta
+    testResults lock jobRes meta test
+
+testResults :: MVar a -> JobResult -> Meta -> TestUnit -> IO TestResult
 testResults lock BuildFailed m c = do
     putAsyncLog lock $ do
-        putLogColor m Yellow "NOTE"
+        putLogColor m Yellow (target c)
+        colorBoldBrace "NOTE" Yellow
         putStrColor Yellow $ "This repository build failed. Nothing to test.\n"
     return $ TestResult (BadJob BuildFailed) c
 testResults lock BadYaml m c = do
     putAsyncLog lock $ do
-        putLogColor m Red "ERROR"
+        putLogColor m Yellow (target c)
+        colorBoldBrace "ERROR" Red
         putStrColor Red "No such YAML testcase file.\n"
     return $ TestResult (BadJob BadYaml) c
 testResults _(JobLogs logs) m conf = do
@@ -409,7 +416,8 @@ testResults _(JobLogs logs) m conf = do
         else return $ TestResult (TestSuccess logs) conf
 testResults lock err m c = do
     putAsyncLog lock $ do
-        putLogColor m Red "ERROR"
+        putLogColor m Yellow (target c)
+        colorBoldBrace "ERROR" Red
         colorBrace (show err) Red
         putStrLn ""
     return $ TestResult (BadJob err) c
@@ -424,7 +432,7 @@ putStrColor c s = do
 putLogColor m c y = do
     colorBrace (repoName  $>> m) Blue
     colorBrace (branch $>> m) Blue
-    colorBoldBrace (y) c
+    colorBoldBrace y c
 
 putLog m y = do
     colorBrace (repoName $>> m) Blue
@@ -438,7 +446,7 @@ colorBrace x color = do
 
 colorBoldBrace x color = do
     setSGR [SetConsoleIntensity BoldIntensity]
-    colorBrace (x) color
+    colorBrace x color
     setSGR [Reset]
 
 brace x = "[" ++ x ++ "]"
