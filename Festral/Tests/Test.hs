@@ -188,9 +188,9 @@ writeWithOwn test outs outDir = do
         config = tConfig test
 
 -- |Writes information about test to the metafile
-writeMetaTest status buildDir outDir name time meta = do
+writeMetaTest status buildDir outDir name time meta device = do
     tester <- getEffectiveUserName
-    let testMeta = MetaTest (id $>> meta) tester tester time name status ""
+    let testMeta = MetaTest (id $>> meta) tester tester time name status device
     let outDirName = outDir ++ "/" ++ hash $>> meta ++ "_" ++ time
 
     latestFile <- freshTests
@@ -206,7 +206,14 @@ parseTest' writer (TestResult status test) buildDir outDir = do
     time <- catch
                 ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm)
                 (recreate_dir pathPrefix)
-    writeMetaTest (show status) buildDir outDir (name config) time meta
+    writeMetaTest
+        (show status)
+        buildDir
+        outDir
+        (name config)
+        time
+        meta
+        (target test)
     writeLog status time
     return $ hash $>> meta ++ "_" ++ time
 

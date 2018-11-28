@@ -209,7 +209,8 @@ reportText = TextReport
         \username, %s - build status, %h - build hash, %o - build output \
         \directory, %r - name of the repository, %B - brunch name, %l - tester\
         \login, %L - tester name, %e - test time, %n - test name, %S - test\
-        \status, %R - pass rating passed/all, %% - insert % character." )
+        \status, %d - device name, %R - pass rating passed/all, \
+        \% or %% - insert % character." )
 
 report :: Parser Command
 report = Report
