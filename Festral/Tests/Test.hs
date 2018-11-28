@@ -95,30 +95,28 @@ data JobResult
     -- Contains usual job's ID
     | JobId Int
     -- |After successfull completion of testing logs are returned by this
-    -- constructor
-    | JobLogs 
-        { jobOutput :: FileContents
-        , jobId     :: Int
-        }
+    -- constructor. Contains logs and jobId.
+    | JobLogs FileContents Int
     -- |Job execution failed because Dryad failed with error. It usually means
     -- some hardware error (connection between MuxPi and DUT were lost | some
     -- commands executed on DUT failed | DUT was flashed with bad OS image etc.)
-    | DryadError
+    -- Contains jobId.
+    | DryadError Int
     -- |Weles failed to download some files specified in YAML file (maybe link
-    -- is invalid or server has no free space)
-    | DownloadError
-    -- |Other unexpected error. Contains error message.
-    | UnknownError String
+    -- is invalid or server has no free space). Contains jobId
+    | DownloadError Int
+    -- |Other unexpected error. Contains error message and jobId.
+    | UnknownError String Int
 
 instance Show JobResult where
-    show BuildFailed    = "BUILD FAILED"
-    show BadYaml        = "YAML NOT FOUND"
-    show StartJobFailed = "NO JOB STARTED"
-    show (JobId x)      = show x
-    show (JobLogs x _)  = show x
-    show DryadError     = "DEVICE FAILED"
-    show DownloadError  = "DOWNLOAD FILES ERROR"
-    show (UnknownError x) = "WELES ERROR"
+    show BuildFailed        = "BUILD FAILED"
+    show BadYaml            = "YAML NOT FOUND"
+    show StartJobFailed     = "NO JOB STARTED"
+    show (JobId x)          = show x
+    show (JobLogs x _)      = show x
+    show (DryadError _)     = "DEVICE FAILED"
+    show (DownloadError _)  = "DOWNLOAD FILES ERROR"
+    show (UnknownError _ _) = "WELES ERROR"
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
@@ -227,7 +225,7 @@ parseTest' writer (TestResult status test) buildDir outDir = do
                     ++ "------------------ End of "
                     ++ n ++ "   ------------------\n")
                 outs)
-        writeLog (BadJob (UnknownError x)) t = do
+        writeLog (BadJob (UnknownError x _)) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             writeFile ((outDirName meta t) ++ "/tf.log") $ x
         writeLog (BadJob x) t = do
@@ -328,8 +326,8 @@ runTestJob "SUCCEED" (Just yaml) buildId = do
 runTestJob _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish
-waitForJob :: MVar a -> JobResult -> JobParameters -> IO JobResult
-waitForJob lock (JobId jobid) timeout = do
+waitForJob :: JobResult -> JobParameters -> IO JobResult
+waitForJob (JobId jobid) timeout = do
     job <- getJobWhenDone jobid timeout
     filesFromJob job >>= outToResults
 
@@ -339,7 +337,7 @@ waitForJob lock (JobId jobid) timeout = do
         outToResults (Left x) = do
             y <- logs x jobid
             return $ JobLogs y jobid
-waitForJob _ x _ = return x
+waitForJob x _ = return x
 
 filesFromJob :: Maybe Job -> IO (Either [String] JobResult)
 filesFromJob Nothing = return $ Right StartJobFailed
@@ -358,9 +356,10 @@ logs :: [String] -> Int -> IO FileContents
 logs files jobid = mapM (fileToFileContent jobid) files
 
 dryadErr job
-    | info job == "Failed to download all artifacts for the Job" = DownloadError
-    | info job == "Failed to execute test on Dryad." = DryadError
-    | otherwise = UnknownError $ info job
+    | info job == "Failed to download all artifacts for the Job"
+        = DownloadError $ jobid job
+    | info job == "Failed to execute test on Dryad." = DryadError $ jobid job
+    | otherwise = UnknownError (info job) (jobid job)
 
 -- |Converts filename from Weles to pair (filename, contents)
 fileToFileContent :: Int -> String -> IO (String, String)
@@ -391,7 +390,7 @@ runTestAsync lock build test = do
         putLogColor meta Magenta [(target test), (show jobId)]
         putStrLn $ "Waiting for job finished with " ++ show jobOpts
 
-    jobRes <- waitForJob lock jobId jobOpts
+    jobRes <- waitForJob jobId jobOpts
     testResults lock jobRes meta test
 
 testResults :: MVar a -> JobResult -> Meta -> TestUnit -> IO TestResult
@@ -412,12 +411,13 @@ testResults lock (JobLogs logs jobid) m conf = do
     putAsyncLog lock $ do
         putLogColor m Magenta [(target conf), (show jobid)]
         colorBoldBrace "FINISHED" Green
+        putStrLn ""
     if "Segmentation fault" `isInfixOf` out resLog
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
 testResults lock err m c = do
     putAsyncLog lock $ do
-        putLogColor m Magenta [(target c)]
+        putLogColor m Magenta [(target c), (showJobResultId err)]
         colorBoldBrace "ERROR" Red
         colorBrace (show err) Red
         putStrLn ""
@@ -456,3 +456,12 @@ filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
+
+showJobResultId (BuildFailed) = "Nothing"
+showJobResultId (BadYaml) = "Nothing"
+showJobResultId (StartJobFailed) = "Nothing"
+showJobResultId (JobId i) = show i
+showJobResultId (JobLogs _ i) = show i
+showJobResultId (DryadError i) = show i
+showJobResultId (DownloadError i) = show i
+showJobResultId (UnknownError _ i) = show i

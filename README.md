@@ -1,6 +1,6 @@
 # Festral
 
-This package provides client for SLAV testing ramework and more abstract layer
+This package provides client for SLAV testing framework and more abstract layer
 for performing building and testing repositories by user.
 
 Festral consists of some small utilities:
