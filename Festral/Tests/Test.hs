@@ -96,7 +96,10 @@ data JobResult
     | JobId Int
     -- |After successfull completion of testing logs are returned by this
     -- constructor
-    | JobLogs FileContents
+    | JobLogs 
+        { jobOutput :: FileContents
+        , jobId     :: Int
+        }
     -- |Job execution failed because Dryad failed with error. It usually means
     -- some hardware error (connection between MuxPi and DUT were lost | some
     -- commands executed on DUT failed | DUT was flashed with bad OS image etc.)
@@ -112,7 +115,7 @@ instance Show JobResult where
     show BadYaml        = "YAML NOT FOUND"
     show StartJobFailed = "NO JOB STARTED"
     show (JobId x)      = show x
-    show (JobLogs x)    = show x
+    show (JobLogs x _)  = show x
     show DryadError     = "DEVICE FAILED"
     show DownloadError  = "DOWNLOAD FILES ERROR"
     show (UnknownError x) = "WELES ERROR"
@@ -325,13 +328,9 @@ runTestJob "SUCCEED" (Just yaml) buildId = do
 runTestJob _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish
-waitForJob :: MVar a -> JobResult -> JobParameters -> Meta -> IO JobResult
-waitForJob lock (JobId jobid) timeout m = do
+waitForJob :: MVar a -> JobResult -> JobParameters -> IO JobResult
+waitForJob lock (JobId jobid) timeout = do
     job <- getJobWhenDone jobid timeout
-    putAsyncLog lock $ do
-        putLogColor m Magenta (show jobid)
-        colorBoldBrace "FINISHED" Green
-        putStrLn $ show (fmap WJob.status job)
     filesFromJob job >>= outToResults
 
     where
@@ -339,8 +338,8 @@ waitForJob lock (JobId jobid) timeout m = do
         outToResults (Right x) = return x
         outToResults (Left x) = do
             y <- logs x jobid
-            return $ JobLogs y
-waitForJob _ x _ _ = return x
+            return $ JobLogs y jobid
+waitForJob _ x _ = return x
 
 filesFromJob :: Maybe Job -> IO (Either [String] JobResult)
 filesFromJob Nothing = return $ Right StartJobFailed
@@ -382,41 +381,43 @@ runTestAsync lock build test = do
     meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ build ++ "/meta.txt"
     let yamlPath = yaml testConf
     putAsyncLog lock $ do
-        putLogColor meta Yellow (target test)
+        putLogColor meta Magenta [(target test)]
         putStrLn $ "Starting Weles job with " ++ yamlPath ++ "..."
     yaml <- getYaml yamlPath build test
     jobId <- runTestJob (status $>> meta) yaml build
     let jobOpts = JobParameters (timeout testConf) (runTTL testConf)
 
     putAsyncLog lock $ do
-        putLogColor meta Yellow (target test)
-        colorBoldBrace (show jobId) Magenta
+        putLogColor meta Magenta [(target test), (show jobId)]
         putStrLn $ "Waiting for job finished with " ++ show jobOpts
 
-    jobRes <- waitForJob lock jobId jobOpts meta
+    jobRes <- waitForJob lock jobId jobOpts
     testResults lock jobRes meta test
 
 testResults :: MVar a -> JobResult -> Meta -> TestUnit -> IO TestResult
 testResults lock BuildFailed m c = do
     putAsyncLog lock $ do
-        putLogColor m Yellow (target c)
+        putLogColor m Magenta [(target c)]
         colorBoldBrace "NOTE" Yellow
-        putStrColor Yellow $ "This repository build failed. Nothing to test.\n"
+        putStrColor Magenta $ "This repository build failed. Nothing to test.\n"
     return $ TestResult (BadJob BuildFailed) c
 testResults lock BadYaml m c = do
     putAsyncLog lock $ do
-        putLogColor m Yellow (target c)
+        putLogColor m Magenta [(target c)]
         colorBoldBrace "ERROR" Red
         putStrColor Red "No such YAML testcase file.\n"
     return $ TestResult (BadJob BadYaml) c
-testResults _(JobLogs logs) m conf = do
+testResults lock (JobLogs logs jobid) m conf = do
     resLog <- fromWelesFiles logs "results"
+    putAsyncLog lock $ do
+        putLogColor m Magenta [(target conf), (show jobid)]
+        colorBoldBrace "FINISHED" Green
     if "Segmentation fault" `isInfixOf` out resLog
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
 testResults lock err m c = do
     putAsyncLog lock $ do
-        putLogColor m Yellow (target c)
+        putLogColor m Magenta [(target c)]
         colorBoldBrace "ERROR" Red
         colorBrace (show err) Red
         putStrLn ""
@@ -432,7 +433,7 @@ putStrColor c s = do
 putLogColor m c y = do
     colorBrace (repoName  $>> m) Blue
     colorBrace (branch $>> m) Blue
-    colorBoldBrace y c
+    mapM_ (flip colorBoldBrace c) y
 
 putLog m y = do
     colorBrace (repoName $>> m) Blue
