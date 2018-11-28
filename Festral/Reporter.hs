@@ -103,6 +103,8 @@ reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 -- +---------+-----------------------+-----------------------------------------+
 -- | %S      | test status           | COMPLETE                                |
 -- +---------+-----------------------+-----------------------------------------+
+-- | %d      | test device           | rpi3                                    |
+-- +---------+-----------------------+-----------------------------------------+
 -- | %R      | pass rating passed/all| 55/210                                  |
 -- +---------+-----------------------+-----------------------------------------+
 -- |%%       | insert % character    | %                                       |
@@ -148,6 +150,7 @@ formats =
     ,("%e", testOnly testTime)
     ,("%n", testOnly testName)
     ,("%S", testOnly testStatus)
+    ,("%d", testOnly testDevice)
     ,("%%", (\ _ -> "%"))
     ]
 

@@ -131,6 +131,7 @@ of your `buildCmd` command.
  TEST_TIME=#time where test was performed
  TEST_NAME=#name of the test
  TEST_STATUS=#Status of the executed tests. See below for possible values.
+ TEST_DEVICE=#Name of the device which test was performed on.
 ```
 
 Parser script MUST gets output of the `buildCmd` from its `stdin` after start
@@ -299,12 +300,14 @@ fields as follow:
             "name" : "Test name (this is optional field, defoult value is 'undefined')",
             "parser" : "name or path to the binary of the parser of tests output",
             "runTTL" : 3600 - time to live of the test job after start of execution,
-            "timeput": 18000 - time to live of test job from it was created even it was waiting only
+            "timeout": 18000 - time to live of test job from it was created even it was waiting only,
+            "targets" : ["rpi3", "PC"] - list of targetw to run this test on
         },
         {
             "repo" : "tests",
             "yaml" : "/home/tests.yml",
-            "parser" : "~/test_parser.sh"
+            "parser" : "~/test_parser.sh",
+            "targets" : ["rpi3"]
         }
 ]
 ```
@@ -423,6 +426,7 @@ Format string has special characters:
 | %e      | test time             | 20181009112502                          |
 | %n      | test name             | SOME TEST                               |
 | %S      | test status           | COMPLETE                                |
+| %d      | test device           | rpi3                                    |
 | %R      | pass rating passed/all| 55/210                                  |
 |%%       | insert % character    | %                                       |
 

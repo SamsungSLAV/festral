@@ -1,5 +1,5 @@
 Name:               Festral
-Version:            1.1.0
+Version:            1.0.0
 Cabal-Version:      >= 1.2
 License:            Apache-2.0
 License-file:       LICENSE
@@ -7,7 +7,7 @@ Copyright:          (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
 Author:             Uladzislau Harbuz
 Homepage:
 Category:           Testing
-Synopsis:           Manage jobs and tests of Weles server
+Synopsis:           System for automation of building and testing software repositories
 Build-Type:         Simple
 
 Library
