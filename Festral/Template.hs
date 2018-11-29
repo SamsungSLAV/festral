@@ -99,6 +99,37 @@ preprocess' t (PreprocessInclude x) = "##TEMPLATE_FILE " ++ x ++ "##"
 preprocess' t (PreprocessInsert x) = concat $ map ((<-|) t) x
 preprocess' _ (NotPreprocess x) = x
 
+-- |Preprocess given string wiht data from given test unit. Preprocessor
+-- available commands are:
+--
+-- @
+--   IF_EQ_INSERT(config_field) (value) (string)
+-- @
+-- This command check if __config_field__ equals for __value__, and if yes,
+-- insert into this place __string__. The first argument can be name of the
+-- 'TestUnit' field.
+--
+-- @
+--   IF_EQ_INSERT_ELSE(config_field) (value) (if true value) (else value)
+-- @
+-- The same as IF_EQ_INSERT, but if first two arguments are not equal, insert
+-- __else value__ into this place. The first argument can be name of the
+-- 'TestUnit' field.
+--
+-- @
+--   INCLUDE(filepath)
+-- @
+-- Insert into this place preprocessed and untemplated contents of the given
+-- filepath.
+--
+-- @
+--   INSERT(TestUnit field)
+-- @
+-- Insert into this place content of the field of the 'TestUnit' with given name
+-- or if there is no such field, just insert argument as string.
+--
+-- Fields of 'TestUnit' understandable by preprocessor are: 'repo', 'parser',
+-- 'name', 'target', 'yaml'.
 preprocess :: TestUnit -> String -> String
 preprocess test str = unlines $ preprocess' test <$> processRow <$> lines str
 

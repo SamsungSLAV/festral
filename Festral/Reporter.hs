@@ -68,6 +68,7 @@ reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 
 -- |Make text report when every line has a format like passed in first argument.
 -- Format string has special characters:
+--
 -- +---------+-----------------------+-----------------------------------------+
 -- |Specifier|    Output             |    Example                              |
 -- +=========+=======================+=========================================+
