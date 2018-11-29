@@ -26,7 +26,7 @@ import System.IO
 import System.Directory
 import Data.List.Split
 import Festral.Files
-import Festral.Builder.Meta
+import Festral.Meta
 import Festral.Config
 import qualified Data.ByteString.Lazy as LB
 import Data.Aeson

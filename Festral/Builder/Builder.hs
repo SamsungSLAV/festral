@@ -73,7 +73,7 @@ module Festral.Builder.Builder (
     Build(..)
 ) where
 
-import Festral.Builder.Meta
+import Festral.Meta
 import Festral.Builder.OwnParser
 import Festral.Builder.GBSParser
 import Data.Aeson
@@ -212,21 +212,16 @@ cloneRepo wdir (Build name _ remote _ _) = do
 -- data with actual
 getMeta :: Parser a -> Build -> String -> IO Meta
 getMeta p b branch = do
-    commit <- getCommitHash
+    c <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    return $ Meta (MetaBase
-                    (board $>> m)
-                    (buildType $>> m)
-                    commit
-                    (buildTime $>> m)
-                    (toolchain $>> m)
-                    builder
-                    (status $>> m)
-                    commit
-                    (outDir $>> m)
-                    (buildName b)
-                    branch )
+    return $ Meta $ (buildData m)
+        { commit=c
+        , hash=c
+        , builder=builder
+        , branch=branch
+        , repoName=(buildName b)
+        }
 
 -- |Resolve parser type from its name
 getParser :: String -> Handle -> IO (Parser a)

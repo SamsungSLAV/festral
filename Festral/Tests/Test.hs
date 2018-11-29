@@ -36,7 +36,7 @@ import qualified Data.ByteString.Lazy as LB
 import Festral.SLAV.Weles hiding (status, name)
 import qualified Festral.SLAV.Weles as WJob (status, name)
 import Data.Maybe
-import Festral.Builder.Meta hiding (parse, fromFile)
+import Festral.Meta hiding (parse, fromFile)
 import System.Directory
 import Festral.Tests.TestParser
 import Data.Time
@@ -284,9 +284,8 @@ runTests x y = newMVar () >>= (\ v -> runTestsAsync v x y)
 runTestsAsync :: MVar a -> [TestConfig] -> String -> IO [TestResult]
 runTestsAsync lock config target = do
     appConfig <- getAppConfig
-    metaStr <- readFile $
+    meta <- fromMetaFile $
                 (buildLogDir appConfig) ++ "/" ++ target ++ "/meta.txt"
-    let meta = readMeta metaStr
     let configs = filterConf config meta
 
     concat <$> Par.mapM (runTestsForRepoAsync lock target) configs

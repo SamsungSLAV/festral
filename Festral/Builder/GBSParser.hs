@@ -26,7 +26,7 @@ module Festral.Builder.GBSParser (
     fromFile
 ) where
 
-import Festral.Builder.Meta
+import Festral.Meta
 import Data.List.Split
 import Data.List
 import Control.Exception

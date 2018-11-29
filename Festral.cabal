@@ -1,5 +1,5 @@
 Name:               Festral
-Version:            1.0.0
+Version:            1.0.1
 Cabal-Version:      >= 1.2
 License:            Apache-2.0
 License-file:       LICENSE
@@ -36,7 +36,7 @@ Library
        Festral.SLAV.Boruta,
        Festral.Template,
        Festral.Builder.Builder,
-       Festral.Builder.Meta,
+       Festral.Meta,
        Festral.Builder.GBSParser,
        Festral.Builder.OwnParser,
        Festral.Tests.TestParser,

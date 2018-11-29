@@ -27,11 +27,12 @@ module Festral.Builder.OwnParser (
     setExec
 ) where
 
-import Festral.Builder.Meta
+import Festral.Meta
 import System.Process
 import Data.List.Split
 import System.IO
 import Control.Concurrent
+import Data.Maybe
 
 -- |This data contains parts needed by 'OwnParser'
 data OwnParser = OwnParser
@@ -45,7 +46,7 @@ instance MetaParser OwnParser where
         (inp, out, err, _) <- runInteractiveCommand $ parserExec parser
         forkIO $ hPutStr inp $ buildLog parser
         log <- hGetContents out
-        return $ readMeta log
+        return $ fromMaybe emptyMeta (readMeta log)
 
     fromFile :: FilePath -> IO OwnParser
     fromFile fname = do

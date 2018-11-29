@@ -28,7 +28,6 @@ import Network.Wai.Handler.Warp
 import Network.HTTP.Types (status200, status404)
 import Blaze.ByteString.Builder (copyByteString)
 import Data.Monoid
-import Festral.Builder.Meta
 import Festral.Files
 import Festral.Config
 import Data.List.Split
@@ -41,6 +40,7 @@ import Festral.WWW.TestGUI
 import Control.Exception
 import Network.HTTP.Types.Header
 import System.FilePath
+import Festral.Meta
 
 runServerOnPort port = do
     putStrLn $ "Listening on port " ++ show port
