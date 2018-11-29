@@ -8,13 +8,13 @@ Festral consists of some small utilities:
 * `festral build` - utility for building repositories. It takes simple json file
 with information about what to build, how to build and what branches to build
 and just do it.
-* `festral weles` - utility for communication with Weles tests server.
-* `festral boruta` - utility for connecting devices of the farm directly.
 * `festral test` - utility for performing tests described by yaml files on
 remote Weles server and recieving results of the tests.
+* `festral report` - generate reports in various formats
+* `festral weles` - utility for communication with Weles tests server.
+* `festral boruta` - utility for connecting devices of the farm directly.
 * `festral server` - simple built-in web server for sharing built files and
 logs.
-* `festral report` - generate reports in various formats
 
 ----------
 ### How to build
@@ -376,6 +376,7 @@ Then run command:
 ```
 It will fill your html template by tables with data. If there is no template
 passed it will use default simple HTML template.
+
 --------------
 ### festral weles
 
