@@ -33,6 +33,7 @@ import Data.List.Split
 import System.IO
 import Control.Concurrent
 import Data.Maybe
+import Festral.Files
 
 -- |This data contains parts needed by 'OwnParser'
 data OwnParser = OwnParser
@@ -50,7 +51,7 @@ instance MetaParser OwnParser where
 
     fromFile :: FilePath -> IO OwnParser
     fromFile fname = do
-        file <- readFile fname
+        file <- safeReadFile fname
         return $ OwnParser file "exit"
 
     fromHandle :: Handle -> IO OwnParser

@@ -33,6 +33,7 @@ import Control.Exception
 import Data.Char
 import Data.Time
 import System.IO
+import Festral.Files
 
 -- |This data represents parser and contains files needed for parser.
 data GBSParser = GBSParser
@@ -81,26 +82,20 @@ instance MetaParser GBSParser where
             parseStat _ = [0, -1]
 
     fromFile :: FilePath -> IO GBSParser
-    fromFile flog = catch (fromFile' flog) (handler flog)
-        where
-            handler :: FilePath -> SomeException -> IO GBSParser
-            handler f e = putStrLn (show e) >> return (GBSParser "" "")
+    fromFile flog = fromFile' flog
 
     fromHandle :: Handle -> IO GBSParser
     fromHandle flog = do
         log <- hGetContents flog
         let fhtml = last $ splitOneOf " " $ head $ lines $ last $
                     splitOn "generated html format report:\n" log
-        html <- catch (readFile fhtml) handler
+        html <- safeReadFile fhtml
         return $ GBSParser html log
-        where
-            handler :: SomeException -> IO String
-            handler e = return ""
 
 fromFile' :: FilePath -> IO GBSParser
 fromFile' flog = do
-    log <- readFile flog
+    log <- safeReadFile flog
     let fhtml = last $ splitOneOf " " $ head $ lines $ last $
                 splitOn "generated html format report:\n" log
-    html <- readFile fhtml
+    html <- safeReadFile fhtml
     return $ GBSParser html log

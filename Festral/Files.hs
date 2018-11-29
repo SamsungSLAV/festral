@@ -22,7 +22,8 @@ module Festral.Files (
     freshBuilds,
     freshTests,
     buildCache,
-    configFile,
+    badFile,
+    safeReadFile,
     getAppConfig
 ) where
 
@@ -31,6 +32,8 @@ import qualified Data.ByteString.Lazy as LB
 import Data.Aeson
 import Festral.Config
 import Control.Monad
+import Data.Maybe
+import Control.Exception
 
 freshBuilds = do
     x <- getHomeDirectory
@@ -56,5 +59,17 @@ getAppConfig = do
     exists <- doesFileExist confPath
     when (not exists) $ LB.writeFile confPath "{\n}"
     confStr <- LB.readFile confPath
-    let Just config = decode confStr :: Maybe AppConfig
-    return config
+    let config = decode confStr :: Maybe AppConfig
+    maybe (badConfig confPath) return config
+    where
+        badConfig confPath = do
+            putStrLn $ confPath ++ " has invalid JSON format. \
+            \Use default values."
+            return $ fromJust $ (decode "{}" :: Maybe AppConfig)
+
+-- |Simple handler for bad file opening.
+badFile :: SomeException -> IO String
+badFile _ = return ""
+
+-- |Just do 'reafFile' with handled by 'badFile' exceprions.
+safeReadFile = handle badFile . readFile

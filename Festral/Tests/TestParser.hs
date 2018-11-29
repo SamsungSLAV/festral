@@ -59,6 +59,7 @@ import System.IO
 import Data.List.Split
 import Data.Char
 import Data.List
+import Festral.Files
 
 -- |This data structure stores information needed by database for importing
 -- tests results.
@@ -78,7 +79,7 @@ data TestParser = TestParser
 
 fromFile :: FilePath -> IO TestParser
 fromFile fname = do
-    log <- readFile fname
+    log <- safeReadFile fname
     return $ TestParser log
 
 -- |Get parser for specified Weles file. Arguments are [(Filename, content)] -

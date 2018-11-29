@@ -20,7 +20,6 @@
 module Festral.Template (
     generateFromTemplate,
     yamlTemplater,
-    fileNotExists,
     preprocess,
     TemplaterOpts(..),
     TemplateType(..)
@@ -31,9 +30,9 @@ import Data.List
 import qualified Data.String.Utils as U
 import Festral.Config
 import Festral.Files
-import Control.Exception
 import System.Directory
 import Data.Char
+import Control.Exception
 
 -- |Type represents types of templated fields of the yaml
 data TemplateType
@@ -191,7 +190,7 @@ yamlTemplater opts (Latest_URI url) = do
     let outDir = _outDir opts
     config <- getAppConfig
     cachePath <- buildCache
-    cache <- catch (readFile cachePath) fileNotExists
+    cache <- safeReadFile cachePath
     let (cachedName,cachedHash) = resolvePkg $ splitOn "#" $ resolvedName $
             sortBy (\a b -> length a `compare` length b)
             $ filter (isInfixOf url) $ splitOn "\n" cache
@@ -214,7 +213,7 @@ yamlTemplater opts (RPMInstallLatest pkg) = do
     uri <- yamlTemplater opts (Latest_URI pkg)
     return $ yamlTemplaterRpm uri pkg
 yamlTemplater opts (FileContent fname) = do
-    content <- handle fileNotExists $ readFile fname
+    content <- safeReadFile fname
     parsedFile <- generateFromTemplate (preprocess (_testData opts) content)
         $ yamlTemplater opts
     return parsedFile
@@ -240,8 +239,3 @@ dirDoesntExists :: SomeException -> IO [FilePath]
 dirDoesntExists ex = putStrLn (show ex) >> return []
 
 resolvedName x = if x == [] then "" else head x
-
--- |Simple exception handler which only prints exception and returns
--- empty String.
-fileNotExists :: SomeException -> IO String
-fileNotExists ex = putStrLn (show ex) >> return ""

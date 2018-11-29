@@ -443,9 +443,9 @@ runCmd _ = putStrLn "Some parameter missed. Run program with --help option \
 
 reportCmd (HTML True x) o [] = do
     testFile <- freshTests
-    tests <- readFile testFile
+    tests <- safeReadFile testFile
     buildFile <- freshBuilds
-    builds <- readFile buildFile
+    builds <- safeReadFile buildFile
     let all = builds ++ "\n" ++ tests
     reportCmd (HTML True x) o $ lines all
 
@@ -455,9 +455,9 @@ reportCmd (HTML True x) o args = do
 
 reportCmd (TextReport True format) o [] = do
     testFile <- freshTests
-    tests <- readFile testFile
+    tests <- safeReadFile testFile
     buildFile <- freshBuilds
-    builds <- readFile buildFile
+    builds <- safeReadFile buildFile
     reportCmd (TextReport True format) o $ lines (builds ++ "\n" ++ tests)
 
 reportCmd (TextReport True format) o args =
@@ -476,7 +476,7 @@ subCmd (TestControl conf out []) = do
     writeFile lastTestFile ""
 
     listFile <- freshBuilds
-    list <- readFile listFile
+    list <- safeReadFile listFile
     outs <- performForallNewBuilds conf $ lines list
     writeOut out $ unlines outs
 
@@ -538,7 +538,7 @@ justPutStrLn errMsg x
     | otherwise = let Just y = x in putStrLn $ (read $ show y :: String)
 
 readNotEmpty "" = return ""
-readNotEmpty x = readFile x
+readNotEmpty x = safeReadFile x
 
 cutHere = "-------------------- Result outputs -----------------------\n"
 

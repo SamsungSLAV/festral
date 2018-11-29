@@ -32,7 +32,7 @@ module Festral.Tests.Test (
 ) where
 
 import Data.Aeson
-import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.UTF8 as LBU
 import Festral.SLAV.Weles hiding (status, name)
 import qualified Festral.SLAV.Weles as WJob (status, name)
 import Data.Maybe
@@ -139,8 +139,8 @@ performTestWithConfig confpath target = do
 -- synchronized. It is necessary for `performForallNewBuilds`
 performAsyncTestWithConfig :: FilePath -> MVar a -> String -> IO [String]
 performAsyncTestWithConfig confPath lock target = do
-    confStr <- LB.readFile confPath
-    let Just config = decode confStr :: Maybe [TestConfig]
+    confStr <- safeReadFile confPath
+    let Just config = decode (LBU.fromString confStr) :: Maybe [TestConfig]
     appConfig <- getAppConfig
     tests <- runTestsAsync lock config target
     mapM (\ testRes ->
@@ -303,7 +303,7 @@ getYaml :: FilePath -> String -> TestUnit -> IO (Maybe String)
 getYaml templatePath buildID test = do
     config <- getAppConfig
     buildOutDir <- buildResDir buildID
-    yamlTemplate <- catch (readFile templatePath) fileNotExists
+    yamlTemplate <- safeReadFile templatePath
     if yamlTemplate == ""
         then return Nothing
         else fmap Just $

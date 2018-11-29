@@ -190,11 +190,8 @@ testSummary dir = do
     meta <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
 
     let reportPath = testLogDir config ++ "/" ++ dir ++ "/report.txt"
-    reportExists <- doesFileExist reportPath
+    report <- safeReadFile reportPath
 
-    report <- if reportExists
-                then readFile reportPath
-                else return ""
     let tests = parseTestRes $ splitWhen (isInfixOf "###############") $
             splitOn "\n" report
     let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $

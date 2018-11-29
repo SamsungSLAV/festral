@@ -37,10 +37,10 @@ module Festral.Meta (
 ) where
 
 import System.IO
-import Control.Exception
 import Data.List.Split
 import Data.List
 import Data.Maybe
+import Festral.Files
 
 -- |Class which describes Parser - something that can be cunstructed from the
 -- file with output of the build by function 'fromFile' and return 'Meta' parsed
@@ -175,12 +175,8 @@ toFile m fname = do
 -- |Read 'Meta' from file. Returns 'Nothing' if meta is not valid
 fromMetaFile :: FilePath -> IO Meta
 fromMetaFile fname = do
-    mdata <- catch (readFile fname) handler
+    mdata <- safeReadFile fname
     return $ fromMaybe emptyMeta (readMeta mdata)
-
-    where
-        handler :: SomeException -> IO String
-        handler e = return ""
 
 -- |Check if given meta is 'Meta' constructor
 isBuild Meta{} = True

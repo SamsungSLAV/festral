@@ -16,7 +16,7 @@
  - limitations under the License
  -}
 
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 -- |Module for building process managament. It get information about build
 -- targets
@@ -78,7 +78,7 @@ import Festral.Builder.OwnParser
 import Festral.Builder.GBSParser
 import Data.Aeson
 import qualified GHC.Generics as G
-import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.UTF8 as LBU
 import System.Process
 import System.IO
 import System.Directory
@@ -123,8 +123,8 @@ instance MetaParser (Parser a) where
 -- |Gets builder object from given configuration json.
 builderFromFile :: FilePath -> IO (Maybe [Build])
 builderFromFile fname = do
-    file <- LB.readFile fname
-    return $ decode file
+    file <- safeReadFile fname
+    return $ decode $ LBU.fromString file
 
 -- |Build target located at the given path and put meta file to
 -- the directory tree given from "Festral.Config" from 'buildLogDir' field of
@@ -165,7 +165,7 @@ buildOne srcDir branch opts outdir build = do
     resFiles <- handle badDir $
         getDirectoryContents (outDirName ++ "/build_res")
     cachePath <- buildCache
-    cache <- handle badFile $ readFile cachePath
+    cache <- safeReadFile cachePath
     let out = hash $>> meta ++ "_" ++ buildTime $>> meta
     let new = foldl (updateCache out)
             cache resFiles
@@ -177,10 +177,7 @@ copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
 copyHandler a b ex = copyFile a b
 
 badDir :: SomeException -> IO [FilePath]
-badDir ex = putStrLn (show ex) >> return [""]
-
-badFile :: SomeException -> IO String
-badFile ex = putStrLn (show ex) >> return ""
+badDir ex = return [""]
 
 handler :: SomeException -> IO ()
 handler ex = putStrLn $ show ex
