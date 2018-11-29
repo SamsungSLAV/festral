@@ -62,6 +62,7 @@
 --  passed.
 --  TEST_TIME=time where test was performed
 --  TEST_NAME=Name of the test
+--  TEST_DEVICE=name of the device which test was performed on.
 -- @
 --
 -- Parser script must gets output of the 'buildCmd' from its 'stdin' and writes
@@ -147,7 +148,7 @@ buildOne srcDir branch opts outdir build = do
         openTempFileWithDefaultPermissions "/tmp" "build.log"
     hSetEncoding loghandle latin1
     prepareRepo srcDir branch
-    buildWithLog logfile (buildCmd build) srcDir
+    buildWithLog logfile (buildCmd build)
     parser <- getParser (buildResParser build) loghandle
     meta <- getMeta parser build branch
     let outDirName = outdir ++ "/" ++ hash $>> meta ++ "_" ++ buildTime $>> meta
@@ -177,7 +178,7 @@ copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
 copyHandler a b ex = copyFile a b
 
 badDir :: SomeException -> IO [FilePath]
-badDir ex = return [""]
+badDir ex = return []
 
 handler :: SomeException -> IO ()
 handler ex = putStrLn $ show ex
@@ -243,8 +244,8 @@ prepareRepo srcDir brunch =
         handler e =
             putStrLn "Setting up working branch failed. Build current..."
 
-buildWithLog fname cmd wdir = do
-    catch (callCommand $ "cd " ++ wdir ++ " ; " ++ cmd ++ " | tee " ++ fname)
+buildWithLog fname cmd = do
+    catch (callCommand $ cmd ++ " | tee " ++ fname)
         handler
     where
         handler :: SomeException -> IO ()
