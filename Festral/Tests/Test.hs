@@ -28,7 +28,8 @@ module Festral.Tests.Test (
     TestResult(..),
     TestStatus(..),
     FileContents,
-    JobResult(..)
+    JobStartResult(..),
+    JobExecutionResult(..),
 ) where
 
 import Data.Aeson
@@ -73,7 +74,7 @@ data TestStatus
     -- Contains test execution logs.
     = SegFault FileContents
     -- |Appears when job finished with error
-    | BadJob JobResult
+    | BadJob JobExecutionResult
     -- |If test job finished withowt errors, it returns 'TestSuccess'.
     -- It doesn't mean that tests was passed. Contains test logs.
     | TestSuccess FileContents
@@ -83,8 +84,8 @@ instance Show TestStatus where
     show (BadJob x) = show x
     show (TestSuccess _) = "COMPLETE"
 
--- |Status of test job starting/execution.
-data JobResult
+-- |Status of the starting of test job.
+data JobStartResult
     -- |Job was not started because repository under test failed to build
     = BuildFailed
     -- |YAML file passed to the Weles does not exist
@@ -94,29 +95,40 @@ data JobResult
     -- |If job was started successfully, its id is returned.
     -- Contains usual job's ID
     | JobId Int
+
+-- |Status of test job execution.
+data JobExecutionResult
     -- |After successfull completion of testing logs are returned by this
-    -- constructor. Contains logs and jobId.
-    | JobLogs FileContents Int
+    -- constructor. Contains logs and job start result.
+    = JobLogs FileContents JobStartResult
     -- |Job execution failed because Dryad failed with error. It usually means
     -- some hardware error (connection between MuxPi and DUT were lost | some
     -- commands executed on DUT failed | DUT was flashed with bad OS image etc.)
-    -- Contains jobId.
-    | DryadError Int
+    -- Contains logs and job start result.
+    | DryadError FileContents JobStartResult
     -- |Weles failed to download some files specified in YAML file (maybe link
-    -- is invalid or server has no free space). Contains jobId
-    | DownloadError Int
-    -- |Other unexpected error. Contains error message and jobId.
-    | UnknownError String Int
+    -- is invalid or server has no free space). Contains job start result.
+    | DownloadError JobStartResult
+    -- |Other unexpected error. Contains error message and job start result.
+    | UnknownError String JobStartResult
+    -- |Connection for the Weles was lost.
+    | ConnectionLost JobStartResult
+    -- |Job was not started.
+    | JobNotStarted JobStartResult
 
-instance Show JobResult where
+instance Show JobStartResult where
     show BuildFailed        = "BUILD FAILED"
     show BadYaml            = "YAML NOT FOUND"
     show StartJobFailed     = "NO JOB STARTED"
     show (JobId x)          = show x
+
+instance Show JobExecutionResult where
     show (JobLogs x _)      = show x
-    show (DryadError _)     = "DEVICE FAILED"
-    show (DownloadError _)  = "DOWNLOAD FILES ERROR"
-    show (UnknownError _ _) = "WELES ERROR"
+    show (DryadError{})     = "DEVICE FAILED"
+    show (DownloadError{})  = "DOWNLOAD FILES ERROR"
+    show (UnknownError{})   = "WELES ERROR"
+    show (ConnectionLost{}) = "CONNECTION LOST"
+    show (JobNotStarted x)  = show x
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
@@ -311,8 +323,8 @@ getYaml templatePath buildID test = do
                     yamlTemplater $ TemplaterOpts buildOutDir test
 
 -- |Helper function for use pattern matching for resolve different errors
--- before test start. RunTestJob buildStatus (Maybe parsedYaml) buildId
-runTestJob :: String -> Maybe String -> String -> IO JobResult
+-- before test start. runTestJob buildStatus (Maybe parsedYaml) buildId
+runTestJob :: String -> Maybe String -> String -> IO JobStartResult
 runTestJob _ Nothing _ = return BadYaml
 runTestJob "FAILED" _ _ = return BuildFailed
 runTestJob "SUCCEED" (Just yaml) buildId = do
@@ -332,40 +344,41 @@ runTestJob "SUCCEED" (Just yaml) buildId = do
 runTestJob _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish
-waitForJob :: JobResult -> JobParameters -> IO JobResult
-waitForJob (JobId jobid) timeout = do
+waitForJob :: JobStartResult -> JobParameters -> IO JobExecutionResult
+waitForJob startRes@(JobId jobid) timeout = do
     job <- getJobWhenDone jobid timeout
-    filesFromJob job >>= outToResults
+    filesFromJob job startRes
+waitForJob x _ = return $ JobNotStarted x
 
-    where
-        outToResults :: Either [String] JobResult -> IO JobResult
-        outToResults (Right x) = return x
-        outToResults (Left x) = do
-            y <- logs x jobid
-            return $ JobLogs y jobid
-waitForJob x _ = return x
+allowedLogFiles = [".log", "results"]
 
-filesFromJob :: Maybe Job -> IO (Either [String] JobResult)
-filesFromJob Nothing = return $ Right StartJobFailed
-filesFromJob (Just job) = if WJob.status job == "FAILED"
-                            then return $ Right (dryadErr job)
-                            else do
-                                jobFiles <-
-                                    (filter (not . (isInfixOf ".rpm")) <$>)
-                                    <$> getFileList (jobid job)
-                                if isNothing jobFiles
-                                    then return $ Right StartJobFailed
-                                    else return $ Left $ fromJust jobFiles
+-- |After job finished this function checks if it was finished by
+-- network connection problems or was it done. If it was done successfully,
+-- returns 'Left' with job logs, or if it failed, returns 'Right' error.
+filesFromJob :: Maybe Job -> JobStartResult -> IO JobExecutionResult
+filesFromJob Nothing res = return $ ConnectionLost res
+filesFromJob (Just job) res = do
+    jobFiles <- fmap (filter (\ x -> any (`isInfixOf` x) allowedLogFiles))
+        <$> getFileList (jobid job)
+    log <- maybeLog jobFiles (jobid job)
+    return $ if WJob.status job == "FAILED"
+                then dryadErr res log job
+                else maybe (ConnectionLost res) (flip JobLogs res) log
+
+maybeLog :: Maybe [String] -> Int -> IO (Maybe FileContents)
+maybeLog Nothing _ = return Nothing
+maybeLog (Just x) id = Just <$> logs x id
 
 -- |Extract tests results from list of the Weles job's filenames
 logs :: [String] -> Int -> IO FileContents
 logs files jobid = mapM (fileToFileContent jobid) files
 
-dryadErr job
+dryadErr res log job
     | info job == "Failed to download all artifacts for the Job"
-        = DownloadError $ jobid job
-    | info job == "Failed to execute test on Dryad." = DryadError $ jobid job
-    | otherwise = UnknownError (info job) (jobid job)
+        = DownloadError res
+    | info job == "Failed to execute test on Dryad."
+        = maybe (ConnectionLost res) (flip DryadError res) log
+    | otherwise =  UnknownError (info job) res
 
 -- |Converts filename from Weles to pair (filename, contents)
 fileToFileContent :: Int -> String -> IO (String, String)
@@ -399,28 +412,31 @@ runTestAsync lock build test = do
     jobRes <- waitForJob jobId jobOpts
     testResults lock jobRes meta test
 
-testResults :: MVar a -> JobResult -> Meta -> TestUnit -> IO TestResult
-testResults lock BuildFailed m c = do
-    putAsyncLog lock $ do
-        putLogColor m Magenta [(target c)]
-        colorBoldBrace "NOTE" Yellow
-        putStrColor Magenta $ "This repository build failed. Nothing to test.\n"
-    return $ TestResult (BadJob BuildFailed) c
-testResults lock BadYaml m c = do
-    putAsyncLog lock $ do
-        putLogColor m Magenta [(target c)]
-        colorBoldBrace "ERROR" Red
-        putStrColor Red "No such YAML testcase file.\n"
-    return $ TestResult (BadJob BadYaml) c
-testResults lock (JobLogs logs jobid) m conf = do
+testResults :: MVar a -> JobExecutionResult -> Meta -> TestUnit -> IO TestResult
+testResults lock (JobLogs logs res) m conf = do
     resLog <- fromWelesFiles logs "results"
     putAsyncLog lock $ do
-        putLogColor m Magenta [(target conf), (show jobid)]
+        putLogColor m Magenta [(target conf), (show res)]
         colorBoldBrace "FINISHED" Green
         putStrLn ""
     if "Segmentation fault" `isInfixOf` out resLog
         then return $ TestResult (SegFault logs) conf
         else return $ TestResult (TestSuccess logs) conf
+
+testResults lock err@(JobNotStarted BuildFailed) m c = do
+    putAsyncLog lock $ do
+        putLogColor m Magenta [(target c)]
+        colorBoldBrace "NOTE" Yellow
+        putStrColor Yellow $ "This repository build failed. Nothing to test.\n"
+    return $ TestResult (BadJob err) c
+
+testResults lock err@(JobNotStarted BadYaml) m c = do
+    putAsyncLog lock $ do
+        putLogColor m Magenta [(target c)]
+        colorBoldBrace "ERROR" Red
+        putStrColor Red "No such YAML testcase file.\n"
+    return $ TestResult (BadJob err) c
+
 testResults lock err m c = do
     putAsyncLog lock $ do
         putLogColor m Magenta [(target c), (showJobResultId err)]
@@ -463,11 +479,9 @@ filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
 
-showJobResultId (BuildFailed) = "Nothing"
-showJobResultId (BadYaml) = "Nothing"
-showJobResultId (StartJobFailed) = "Nothing"
-showJobResultId (JobId i) = show i
-showJobResultId (JobLogs _ i) = show i
-showJobResultId (DryadError i) = show i
-showJobResultId (DownloadError i) = show i
-showJobResultId (UnknownError _ i) = show i
+showJobResultId (JobLogs _ i)       = show i
+showJobResultId (DryadError _ i)    = show i
+showJobResultId (DownloadError i)   = show i
+showJobResultId (UnknownError _ i)  = show i
+showJobResultId (ConnectionLost i)  = show i
+showJobResultId (JobNotStarted i)   = show i
