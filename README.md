@@ -69,7 +69,7 @@ Subcommands are described below:
 This command clone and build all targets listed in configuration json file:
 each target is built for every branch listed for this target.
 
-This command writes names of the builds to the `stdout` of into the file if `-o`
+This command writes names of the builds to the `stdout` or into the file if `-o`
 option is specified.
 
 The `festral build` utility has simple command format:
@@ -218,7 +218,8 @@ fields as follow:
 ]
 ```
 
-Supported built-in test parsers currently are only "Default" - for tct-test-ta
+Supported built-in test parsers currently are only "Default" - for simple `OK`
+by line for every passed test, and other line is treated as failed test;
 and "XTest" - for xtest made by OPTEE.
 
 You can create own parser scripts for festral-weles. Such script
@@ -274,7 +275,7 @@ When you run `festral test` command, it will do actions:
 
   * send this yaml for the Weles server and wait for an 1 hour for test
   finishes, if not, cancel this mjob and run next test
-  4. if test finished, pass output of test to the specified in config parser.
+  * if test finished, pass output of test to the specified in config parser.
 
   **Only** `test.log` **file is passed to the test parser**
   so **YOU MUST REDIRECT THESE TEST OUTPUTS TO THE RIGHT FILE
@@ -512,11 +513,11 @@ real filename)
     `uri: 'http://127.0.0.1/download?file=tef-libteec-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`
     and `Weles` will can download this package by generated link.
 * `##TEMPLATE_LATEST packagename##` - replace given filename with uri to the
-latest built version of the specified package if it ever been built by
+latest built version of the specified package if it has ever been built by
 the `Festral`.
 
     Example: `##TEMPLATE_LATEST tf##` can be replaced with `uri: 'http://127.0.0.1/download?file=tf-0.0.1-0.armv7l.rpm&build=c2ac26bd548e04ddd5ef5150f600172048f2fcfa_20180622210245/build_res'`.
-    You can push packages from other repositories built by `festral-build`
+    You can push packages from other repositories built by `festral build`
     to the `Weles` using this template.
 * `##TEMPLATE_RPM_INSTALL_CURRENT packagename##` - install package specified
 by name on target using `rpm`. It is more generic replacement for
@@ -582,6 +583,6 @@ The typical usage example for automated running tests with `cron`:
 
 Steps which are executed:
 
-1. building repositories listed in `buildconfig.json` by `festral-build`
-2. running tests for new builds on `Weles` by `festral-weles`
+1. building repositories listed in `buildconfig.json` by `festral build`
+2. running tests for new builds on `Weles` by `festral weles`
 3. generate summary HTML report

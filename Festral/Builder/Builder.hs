@@ -92,6 +92,7 @@ import Data.List.Split
 import Control.Monad (when)
 import Festral.Files
 import System.File.Tree (getDirectory', copyTo_)
+import Data.Maybe
 
 -- |Build structure which represents config json format.
 data Build = Build
@@ -139,40 +140,47 @@ build :: Build          -- ^ Build configuration
 build build opts wdir outdir = do
     cloneRepo wdir build
     let srcDir = wdir ++ "/" ++ buildName build
-    mapM (\x -> handle badFile $
+    catMaybes <$> mapM (\x -> handle badFileMaybe $
         withCurrentDirectory srcDir (buildOne srcDir x opts outdir build))
         (branches build)
+    where
+        badFileMaybe :: SomeException -> IO (Maybe String)
+        badFileMaybe _ = return Nothing
 
 buildOne srcDir branch opts outdir build = do
-    (logfile, loghandle) <-
-        openTempFileWithDefaultPermissions "/tmp" "build.log"
+    (logfile, loghandle) <- getTemporaryDirectory >>=
+        flip openTempFileWithDefaultPermissions "build.log"
     hSetEncoding loghandle latin1
     prepareRepo srcDir branch
     buildWithLog logfile (buildCmd build)
     parser <- getParser (buildResParser build) loghandle
     meta <- getMeta parser build branch
-    let outDirName = outdir ++ "/" ++ hash $>> meta ++ "_" ++ buildTime $>> meta
-    createDirectoryIfMissing True outDirName
-    toFile meta (outDirName ++ "/meta.txt")
+    writeBuildOut logfile outdir opts meta
 
+writeBuildOut _ _ _ Nothing = return Nothing
+writeBuildOut logfile outdir opts (Just meta) = do
+    let out = hash $>> meta ++ "_" ++ buildTime $>> meta
+    let outDirName = outdir ++ "/" ++ out
     let getBuildOut = if noCleanRes opts then copyDirectory else renameDirectory
 
+    createDirectoryIfMissing True outDirName
+    toFile meta (outDirName ++ "/meta.txt")
+    -- create directory with built files by copy/move results to it
     catch (getBuildOut (outDir $>> meta) (outDirName ++ "/build_res")) handler
     catch (renameFile logfile (outDirName ++ "/build.log"))
         (copyHandler logfile (outDirName ++ "/build.log"))
     bLogFile <- freshBuilds
-    appendFile bLogFile (hash $>> meta ++ "_" ++ buildTime $>> meta ++ "\n")
+    appendFile bLogFile (out ++ "\n")
 
     resFiles <- handle badDir $
         getDirectoryContents (outDirName ++ "/build_res")
     cachePath <- buildCache
     cache <- safeReadFile cachePath
-    let out = hash $>> meta ++ "_" ++ buildTime $>> meta
     let new = foldl (updateCache out)
             cache resFiles
     when (length new > 0) $
         handle handler $ writeFile cachePath new
-    return out
+    return $ Just out
 
 copyHandler :: FilePath -> FilePath -> SomeException -> IO ()
 copyHandler a b ex = copyFile a b
@@ -208,18 +216,19 @@ cloneRepo wdir (Build name _ remote _ _) = do
 
 -- |Run given parser and create Meta from it, but replace user and commit
 -- data with actual
-getMeta :: Parser a -> Build -> String -> IO Meta
+getMeta :: Parser a -> Build -> String -> IO (Maybe Meta)
 getMeta p b branch = do
     c <- getCommitHash
     builder <- getEffectiveUserName
     m <- parse p
-    return $ Meta $ (buildData m)
-        { commit=c
-        , hash=c
-        , builder=builder
-        , branch=branch
-        , repoName=(buildName b)
-        }
+    return $ maybe Nothing
+        (\ m -> Just $ Meta $ (buildData m)
+            { commit=c
+            , hash=c
+            , builder=builder
+            , branch=branch
+            , repoName=(buildName b)
+            }) m
 
 -- |Resolve parser type from its name
 getParser :: String -> Handle -> IO (Parser a)

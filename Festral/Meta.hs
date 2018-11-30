@@ -46,7 +46,7 @@ import Festral.Files
 -- file with output of the build by function 'fromFile' and return 'Meta' parsed
 -- from this build output.
 class MetaParser a where
-    parse :: a -> IO Meta
+    parse :: a -> IO (Maybe Meta)
     fromFile :: FilePath -> IO a
     fromHandle :: Handle -> IO a
 

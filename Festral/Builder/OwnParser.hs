@@ -42,12 +42,14 @@ data OwnParser = OwnParser
     } deriving Show
 
 instance MetaParser OwnParser where
-    parse :: OwnParser -> IO Meta
+    parse :: OwnParser -> IO (Maybe Meta)
     parse parser = do
         (inp, out, err, _) <- runInteractiveCommand $ parserExec parser
         forkIO $ hPutStr inp $ buildLog parser
         log <- hGetContents out
-        return $ fromMaybe emptyMeta (readMeta log)
+        maybe (putStrLn ("Parser file does not exists: "
+                ++ parserExec parser) >> return Nothing)
+            (return . Just) (readMeta log)
 
     fromFile :: FilePath -> IO OwnParser
     fromFile fname = do

@@ -43,7 +43,7 @@ data GBSParser = GBSParser
 
 instance MetaParser GBSParser where
 
-    parse :: GBSParser -> IO Meta
+    parse :: GBSParser -> IO (Maybe Meta)
     parse gbsParser = do
         let content = buildHtml gbsParser
         time <- show <$> getZonedTime
@@ -65,7 +65,7 @@ instance MetaParser GBSParser where
         let out = dropWhile isSpace $ head $ splitOn "\n" $ last $
                     splitOn "generated RPM packages can be found from \
                     \local repo:\n" log
-        return $ Meta (MetaBase
+        return $ Just $ Meta (MetaBase
                         arch'
                         "unknown"
                         "unknown"
