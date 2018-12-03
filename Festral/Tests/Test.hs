@@ -244,6 +244,7 @@ parseTest' writer (TestResult status test) buildDir outDir = do
                     ++ "------------------ End of "
                     ++ n ++ "   ------------------\n")
                 outs)
+        writeLog (BadJob (DryadError log _ )) t = writeLog (TestSuccess log) t
         writeLog (BadJob (UnknownError x _)) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             writeFile ((outDirName meta t) ++ "/tf.log") $ x
