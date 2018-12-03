@@ -35,6 +35,9 @@ module Festral.SLAV.Boruta (
     dutBoot,
     createRequest,
     workerDeviceType,
+    setMaintenace,
+    setIdle,
+    setState,
     Worker (..),
     BorutaRequest(..),
     Caps(..),
@@ -445,6 +448,33 @@ dutBoot uid = do
     execDryad (sshCmd ./"dut_boot.sh") auth
     execDryad (sshCmd ./"dut_login.sh root") auth
     closeAuth auth
+
+-- |Helper type for send JSON with WorkerState to the Boruta.
+data WorkerState = WorkerState String deriving Generic
+
+instance ToJSON WorkerState where
+    toJSON (WorkerState state) = object ["WorkerState" .= state]
+
+-- |Set specified by UUID dryad in MAINTENANCE mode: Weles will not be able to
+-- start tests on it.
+setMaintenace :: String -> IO ()
+setMaintenace uuid = setState (WorkerState "MAINTENANCE") uuid
+
+-- |Set specified by UUID dryad in IDLE mode: it can be used by Weles normally.
+setIdle :: String -> IO ()
+setIdle uuid = setState (WorkerState "IDLE") uuid
+
+-- |Set specified by UUID dryad in specified 'WorkerState' mode.
+setState :: WorkerState -> String -> IO ()
+setState req uuid = do
+    (addr, port) <- borutaAddr
+    (curlAeson
+            parseJSON
+            "POST"
+            (addr ++ ":" ++ show port ++
+                "/api/v1/workers/" ++ uuid ++ "/setstate")
+            [CurlFollowLocation True]
+            (Just req)) :: IO ()
 
 -- |Prepend executable path to the string and execute function
 infixr 4 ./

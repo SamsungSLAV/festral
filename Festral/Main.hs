@@ -71,6 +71,8 @@ data BorutaSubOpt
         , force  :: Bool
         }
     | Boot String
+    | SetMaintanence String
+    | SetIdle String
 
 -- |Helper type for unify all Weles options which use job ID parameter.
 data JobOpts
@@ -400,6 +402,22 @@ borutaBoot = Boot
         <>metavar "DRYAD_UUID"
         <>help  "Boot device under test of Dryad dpecified by UUID" )
 
+borutaSetMaintanence :: Parser BorutaSubOpt
+borutaSetMaintanence = SetMaintanence
+    <$> strOption
+        ( long  "set-maintanence"
+        <>short 'm'
+        <>metavar "DRYAD_UUID"
+        <>help  "Set dryad specified by DRYAD_UUID in the MAINTENANCE mode" )
+
+borutaSetIdle :: Parser BorutaSubOpt
+borutaSetIdle = SetIdle
+    <$> strOption
+        ( long  "set-idle"
+        <>short 'i'
+        <>metavar "DRYAD_UUID"
+        <>help  "Set dryad specified by DRYAD_UUID in the IDLE mode" )
+
 borutaOpts :: Parser Command
 borutaOpts = Boruta <$>
     (  borutaWorkers
@@ -407,7 +425,9 @@ borutaOpts = Boruta <$>
     <|>borutaConsole
     <|>borutaCloseRequest
     <|>borutaDryadCmd
-    <|>borutaBoot)
+    <|>borutaBoot
+    <|>borutaSetMaintanence
+    <|>borutaSetIdle)
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -522,6 +542,8 @@ borutaSubCmd (Console x force) = borutaConsoleCall x force
 borutaSubCmd (CloseRequest x) = closeRequest x
 borutaSubCmd (DryadCmd a dut id f) = dryadCmdCall a dut id f
 borutaSubCmd (Boot id) = dutBoot id
+borutaSubCmd (SetMaintanence id) = setMaintenace id
+borutaSubCmd (SetIdle id) = setIdle id
 borutaSubCmd _ = runCmd None
 
 dryadCmdCall (DryadExec cmd) True id f= execDUT id cmd f
