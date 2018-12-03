@@ -68,7 +68,7 @@ data MetaBase
 -- |Representation of the meta.txt file which is used by database and wep page
 -- for extracting information about build results.
 data Meta
-    = Meta 
+    = Meta
         { buildData  :: MetaBase
         }
     | MetaTest

@@ -109,19 +109,6 @@ instance ToJSON Build
 -- |Options for build process
 data BuildOptions = BuildOptions { noCleanRes :: Bool}
 
-data Parser a = GBS GBSParser | Own OwnParser deriving Show
-instance MetaParser (Parser a) where
-    parse (GBS x) = parse x
-    parse (Own x) = parse x
-
-    fromFile f = do
-        p <- fromFile f
-        return $ GBS p
-
-    fromHandle h = do
-        p <- fromHandle h
-        return $ GBS p
-
 -- |Gets builder object from given configuration json.
 builderFromFile :: FilePath -> IO (Maybe [Build])
 builderFromFile fname = do
@@ -153,8 +140,8 @@ buildOne srcDir branch opts outdir build = do
     hSetEncoding loghandle latin1
     prepareRepo srcDir branch
     buildWithLog logfile (buildCmd build)
-    parser <- getParser (buildResParser build) loghandle
-    meta <- getMeta parser build branch
+    parse <- getParser (buildResParser build) loghandle
+    meta <- parse build branch
     writeBuildOut logfile outdir opts meta
 
 writeBuildOut _ _ _ Nothing = return Nothing
@@ -214,9 +201,9 @@ cloneRepo wdir (Build name _ remote _ _) = do
             handler :: SomeException -> IO ()
             handler ex = return ()
 
--- |Run given parser and create Meta from it, but replace user and commit
--- data with actual
-getMeta :: Parser a -> Build -> String -> IO (Maybe Meta)
+-- |Helper function for run given parser and create Meta from it, but replace
+-- user and commit data with actual
+getMeta :: MetaParser a => a -> Build -> String -> IO (Maybe Meta)
 getMeta p b branch = do
     c <- getCommitHash
     builder <- getEffectiveUserName
@@ -231,14 +218,12 @@ getMeta p b branch = do
             }) m
 
 -- |Resolve parser type from its name
-getParser :: String -> Handle -> IO (Parser a)
+getParser :: String -> Handle -> IO (Build -> String -> IO (Maybe Meta))
 getParser "GBS" f = do
-    p <- fromHandle f
-    return $ GBS p
+    (fromHandle f :: IO GBSParser) >>= return . getMeta
 getParser exec f = do
-    p <- fromHandle f
-    let p' = setExec exec p
-    return $ Own p'
+    p <- (fromHandle f :: IO OwnParser)
+    return $ getMeta p{parserExec=exec}
 
 getCommitHash = do
     (_, out, _, pid) <- runInteractiveCommand "git rev-parse HEAD"
