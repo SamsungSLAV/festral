@@ -40,7 +40,14 @@ import Festral.WWW.TestGUI
 import Control.Exception
 import Network.HTTP.Types.Header
 import System.FilePath
+import qualified Data.Text as T
 import Festral.Meta
+
+data ServerOpts = ServerOpts
+    { opts      :: [[String]]
+    , config    :: AppConfig
+    , respF     :: (Response -> IO ())
+    }
 
 runServerOnPort port = do
     putStrLn $ "Listening on port " ++ show port
@@ -49,7 +56,7 @@ runServerOnPort port = do
 fileServer req respond = do
     config <- getAppConfig
     let opts = parseQuery $ show $ rawQueryString req
-    sendRespond opts config respond $ pathInfo req
+    sendRespond opts config respond $ T.unpack <$> pathInfo req
 
 sendRespond opts config r ["download"    ] = r $ download opts config
 sendRespond opts config r ["download.php"] = r $ download opts config
@@ -58,13 +65,15 @@ sendRespond opts config r ["getlog.php"  ] = sendRespond opts config
 sendRespond opts config r ["getlog"      ] = do
     log <- readLog opts config
     r $ getlog log
-sendRespond opts config r ["files"       ] = sendRespond opts config
-    r ["reports"]
-sendRespond opts config r ["reports.php" ] = sendRespond opts config
-    r ["reports"]
-sendRespond opts config r ["reports"     ] = do
-    reports <- listDirectory $ serverRoot config
-    r $ listFiles reports config opts
+sendRespond opts config r ("reports"    :xs) = sendRespond opts config
+    r $ ["files"] ++ xs
+sendRespond opts config r ("reports.php":xs) = sendRespond opts config
+    r $ ["files"] ++ xs
+sendRespond opts config r ("files"  :xs) = do
+    let fullpath = intercalate "/" $ filter (\ x ->
+                    not $ any (x ==) [".", ".."]) xs
+    reports <- listDirectory $  (serverRoot config) ++ "/" ++ fullpath
+    listFiles (reports) config opts fullpath >>= r
 sendRespond opts config r ("secosci":x) = sendRespond opts config r x
 sendRespond a b c d = indexRespond a b c d
 
@@ -75,14 +84,20 @@ download opts config = do
     responseFile status200 (contentTypeFromExt "" fname)
         (dir ++ "/" ++ build_hash ++ "/" ++ fname) Nothing
 
-listFiles reports config opts = do
-    let fname = findField "file" opts
-    showFile fname
+listFiles :: [String] -> AppConfig -> t -> String -> Response
+listFiles reports config opts fullpath = do
+    let fname = takeFileName fullpath
+    isDirectory <- doesDirectoryExist $ (serverRoot config) ++ "/" fullpath
+    let arg = if isDirectory
+                then fname
+                else ""
+    return $ showFile fname
 
     where
         showFile "" = responseBuilder status200 [("Content-Type", "text/html")]
             $ mconcat $ map copyByteString
-            $ map (\x -> BSU.fromString $ "<a href=\"files?file="++ x ++"\">"
+            $ map (\x -> BSU.fromString $ "<a href=\"files" ++
+                fullpath ++"/" ++ x ++"\">"
             ++ x ++"</a><br>") (sort reports)
         showFile x = responseFile status200
                     (contentTypeFromExt (takeExtension x) x)
