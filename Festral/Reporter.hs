@@ -47,7 +47,7 @@ defaultHTML time =
            ++ "</style>\n"
            ++ "</head>\n"
            ++ "<body>\n"
-           ++ "    <h2>Secos CI summary report for "++ time ++ "</h2>\n"
+           ++ "    <h2>Test summary report for "++ time ++ "</h2>\n"
            ++ "    <h2>Build summary:</h2>\n"
            ++ "    ##TEMPLATE_BUILD_TABLE buildTable##\n"
            ++ "    <h2>Test summary:</h2>\n"
@@ -126,7 +126,7 @@ formatTextReport format dirs = do
             let str = foldl (\ s (f,o) -> replace f (o m) s) format formats
             r <- if isTest m
                 then do
-                    (_,_,_,rating,_) <- testSummary n
+                    (_,_,_,_,rating,_) <- testSummary n
                     return rating
                 else return ""
             return $ replace "%R" r str
@@ -161,11 +161,12 @@ makeBuildRow (repo, branch, status, link)
     ++ branch ++ "</td><td "++ color status ++ ">"
     ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
 
-makeTestRow :: (String, String, String, String, String) -> String
-makeTestRow (repo, branch, name, status, link)
+makeTestRow :: (String, String, String, String, String, String) -> String
+makeTestRow (repo, branch, device, name, status, link)
     = "<tr><td>" ++ repo ++ "</td><td>" ++ branch
-    ++ "</td><td>" ++ name ++ "</td><td "++ color status ++">"
-    ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
+    ++ "</td><td>" ++ device ++ "</td><td>" ++ name ++ "</td><td "
+    ++ color status ++">" ++ status ++ "</td><td><a href=\""
+    ++ link ++ "\">log</a></td></tr>"
 
 color "SUCCEED" = "style=\"color:green;\""
 color "FAILED" = "style=\"color:red;\""
@@ -184,7 +185,7 @@ buildSummary dir = do
 
 -- |Gets name of the test result (sha1_time) and returns its build data as
 -- (repository name, branch name, test name, passed tests/ all tests, log link)
-testSummary :: String -> IO (String, String, String, String, String)
+testSummary :: String -> IO (String, String, String, String, String, String)
 testSummary dir = do
     config <- getAppConfig
     meta <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
@@ -199,7 +200,7 @@ testSummary dir = do
     let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
              ++ "/getlog?type=test&hash=" ++ hash $>> meta
              ++ "&time=" ++ testTime meta
-    return (repoName $>> meta, branch $>> meta, testName meta,
+    return (repoName $>> meta, branch $>> meta, testDevice meta, testName meta,
             percents pass (testStatus meta), link)
 
 percents :: (Int, Int) -> String -> String
@@ -243,8 +244,8 @@ templateHTML dirs (TestTable id) = do
     let rows = concat $ map makeTestRow testSummaries
     return $  "    <table id=\"" ++ id ++ "\">\n"
            ++ "        <thead><tr>\n"
-           ++ "             <th>Repository</th><th>Branch</th><th>Test name\
-           \</th><th>Test result</th><th>Log file</th>\n"
+           ++ "             <th>Repository</th><th>Branch</th><th>Device</th>\
+           \<th>Test name</th><th>Test result</th><th>Log file</th>\n"
            ++ "        </tr></thead>\n"
            ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
