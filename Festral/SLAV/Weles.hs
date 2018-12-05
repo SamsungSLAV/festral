@@ -132,8 +132,10 @@ getJobWhenDone id parameters = do
         f job
             | isNothing job || (status <$> job) `elem` (map Just doneStatuses)
                 = return job
-            | timeout <= 0 || runTTL <= 0 = cancelJob id >> return job
-            | otherwise = threadDelay 1000000 >>
+            | timeout <= 0 || runTTL <= 0
+                = cancelJob id >> threadDelay oneSec
+                >> getJobWhenDone id parameters
+            | otherwise = threadDelay oneSec >>
                 getJobWhenDone id (JobParameters (timeout - 1) newRunTTL)
             where
                 newRunTTL = if (status <$> job) `elem` (map Just activeStatuses)
@@ -221,3 +223,5 @@ cancelAll = do
     jobs <- curlJobs
     let runningJobs = filter (\ x -> not $ (status x) `elem` doneStatuses) jobs
     mapM_ (\ x -> cancelJob (jobid x)) runningJobs
+
+oneSec = 1000000

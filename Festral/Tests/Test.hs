@@ -115,6 +115,8 @@ data JobExecutionResult
     | ConnectionLost JobStartResult
     -- |Job was not started.
     | JobNotStarted JobStartResult
+    -- |Job was timed out and cancelled by Weles
+    | Cancelled FileContents JobStartResult
 
 instance Show JobStartResult where
     show BuildFailed        = "BUILD FAILED"
@@ -129,6 +131,7 @@ instance Show JobExecutionResult where
     show (UnknownError{})   = "WELES ERROR"
     show (ConnectionLost{}) = "CONNECTION LOST"
     show (JobNotStarted x)  = show x
+    show (Cancelled{})      = "CANCELLED"
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
@@ -245,6 +248,7 @@ parseTest' writer (TestResult status test) buildDir outDir = do
                     ++ n ++ "   ------------------\n")
                 outs)
         writeLog (BadJob (DryadError log _ )) t = writeLog (TestSuccess log) t
+        writeLog (BadJob (Cancelled log _ )) t = writeLog (TestSuccess log) t
         writeLog (BadJob (UnknownError x _)) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             writeFile ((outDirName meta t) ++ "/tf.log") $ x
@@ -362,9 +366,14 @@ filesFromJob (Just job) res = do
     jobFiles <- fmap (filter (\ x -> any (`isInfixOf` x) allowedLogFiles))
         <$> getFileList (jobid job)
     log <- maybeLog jobFiles (jobid job)
-    return $ if WJob.status job == "FAILED"
-                then dryadErr res log job
-                else maybe (ConnectionLost res) (flip JobLogs res) log
+    return $ resultFromStatus res log job
+
+resultFromStatus res log job
+    | status == "FAILED" = dryadErr res log job
+    | status == "CANCELED" = maybe (ConnectionLost res) (flip Cancelled res) log
+    | otherwise = maybe (ConnectionLost res) (flip JobLogs res) log
+    where
+        status = WJob.status job
 
 maybeLog :: Maybe [String] -> Int -> IO (Maybe FileContents)
 maybeLog Nothing _ = return Nothing
@@ -486,3 +495,4 @@ showJobResultId (DownloadError i)   = show i
 showJobResultId (UnknownError _ i)  = show i
 showJobResultId (ConnectionLost i)  = show i
 showJobResultId (JobNotStarted i)   = show i
+showJobResultId (Cancelled _ i)     = show i
