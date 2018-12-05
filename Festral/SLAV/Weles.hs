@@ -39,24 +39,25 @@ module Festral.SLAV.Weles (
     cancelJob
 ) where
 
-import Network.Curl.Aeson
-import Network.Curl
-import Control.Applicative
-import Data.Aeson
-import GHC.Generics
-import Control.Concurrent
-import System.Process
-import System.IO
-import qualified Data.ByteString.Lazy as LB
-import qualified Data.ByteString.Char8 as B
-import Data.List.Split
-import Data.List
-import Control.Monad
-import Data.Maybe
-import Festral.Config
-import System.Directory
-import Festral.Files
-import Control.Exception
+import           Network.Curl.Aeson
+import           Network.Curl
+import           Control.Applicative
+import           Data.Aeson
+import           GHC.Generics
+import           Control.Concurrent
+import           System.Process
+import           System.IO
+import qualified Data.ByteString.Lazy   as LB
+import qualified Data.ByteString.Char8  as B
+import           Data.List.Split
+import           Data.List
+import           Control.Monad
+import           Data.Maybe
+import           System.Directory
+import           Control.Exception
+
+import           Festral.Files
+import           Festral.Config
 
 -- |Job datatype describes json job object got from weles
 data Job = Job

@@ -27,13 +27,14 @@ module Festral.Files (
     getAppConfig
 ) where
 
-import System.Directory
+import           System.Directory
 import qualified Data.ByteString.Lazy as LB
-import Data.Aeson
-import Festral.Config
-import Control.Monad
-import Data.Maybe
-import Control.Exception
+import           Data.Aeson
+import           Control.Monad
+import           Data.Maybe
+import           Control.Exception
+
+import           Festral.Config
 
 freshBuilds = do
     x <- getHomeDirectory

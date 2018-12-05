@@ -22,18 +22,19 @@ module Festral.Reporter (
     formatTextReport
 ) where
 
-import System.IO
-import System.Directory
-import Data.List.Split
-import Festral.Files
-import Festral.Meta
-import Festral.Config
+import           System.IO
+import           System.Directory
+import           Data.List.Split
 import qualified Data.ByteString.Lazy as LB
-import Data.Aeson
-import Data.List
-import Data.Time.LocalTime
-import Festral.Template
-import Data.List.Utils
+import           Data.Aeson
+import           Data.List
+import           Data.Time.LocalTime
+import           Data.List.Utils
+
+import           Festral.Template
+import           Festral.Files
+import           Festral.Meta
+import           Festral.Config
 
 defaultHTML time =
               "<!DOCTYPE html>\n"

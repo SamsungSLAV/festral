@@ -27,12 +27,13 @@ module Festral.Builder.OwnParser (
     setExec
 ) where
 
-import Festral.Meta
 import System.Process
 import Data.List.Split
 import System.IO
 import Control.Concurrent
 import Data.Maybe
+
+import Festral.Meta
 import Festral.Files
 
 -- |This data contains parts needed by 'OwnParser'

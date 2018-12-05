@@ -23,17 +23,18 @@ module Festral.WWW.TestGUI (
 )
 where
 
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Network.HTTP.Types (status200, status404)
-import Blaze.ByteString.Builder (copyByteString)
-import Data.Monoid
-import Festral.Files
-import Festral.Config
-import Data.List.Split
-import Data.List
+import           Network.Wai
+import           Network.Wai.Handler.Warp
+import           Network.HTTP.Types (status200, status404)
+import           Blaze.ByteString.Builder (copyByteString)
+import           Data.Monoid
+import           Data.List.Split
+import           Data.List
 import qualified Data.ByteString.UTF8 as BSU
-import System.Directory
+import           System.Directory
+
+import           Festral.Files
+import           Festral.Config
 
 indexRespond opts config r ["add_test"] = r $ addTest
 indexRespond opts config r query = r $ index query

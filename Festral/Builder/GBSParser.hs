@@ -26,13 +26,14 @@ module Festral.Builder.GBSParser (
     fromFile
 ) where
 
-import Festral.Meta
 import Data.List.Split
 import Data.List
 import Control.Exception
 import Data.Char
 import Data.Time
 import System.IO
+
+import Festral.Meta
 import Festral.Files
 
 -- |This data represents parser and contains files needed for parser.

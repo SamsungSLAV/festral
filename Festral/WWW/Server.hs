@@ -23,24 +23,25 @@ module Festral.WWW.Server (
 )
 where
 
-import Network.Wai
-import Network.Wai.Handler.Warp
-import Network.HTTP.Types (status200, status404)
-import Blaze.ByteString.Builder (copyByteString)
-import Data.Monoid
-import Festral.Files
-import Festral.Config
-import Data.List.Split
-import Data.List
-import qualified Data.ByteString.UTF8 as BSU
-import qualified Data.ByteString.Char8 as BS
-import System.IO
-import System.Directory
-import Festral.WWW.TestGUI
-import Control.Exception
-import Network.HTTP.Types.Header
-import System.FilePath
-import Festral.Meta
+import           Network.Wai
+import           Network.Wai.Handler.Warp
+import           Network.HTTP.Types (status200, status404)
+import           Blaze.ByteString.Builder (copyByteString)
+import           Data.Monoid
+import           Data.List.Split
+import           Data.List
+import qualified Data.ByteString.UTF8   as BSU
+import qualified Data.ByteString.Char8  as BS
+import           System.IO
+import           System.Directory
+import           Control.Exception
+import           Network.HTTP.Types.Header
+import           System.FilePath
+
+import           Festral.WWW.TestGUI
+import           Festral.Files
+import           Festral.Config
+import           Festral.Meta
 
 runServerOnPort port = do
     putStrLn $ "Listening on port " ++ show port

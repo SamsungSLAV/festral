@@ -44,23 +44,24 @@ module Festral.SLAV.Boruta (
     BorutaAuth(..)
 ) where
 
-import GHC.Generics
-import Data.Aeson
-import Control.Applicative
-import Festral.Files
-import Festral.Config
-import Control.Exception
-import Network.Curl
-import Network.Curl.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
-import Data.Maybe
-import Data.Time.Clock
-import Data.Time.Format
-import System.Process
-import System.IO
-import System.IO.Temp
-import Data.List.Split
-import Control.Exception
+import           GHC.Generics
+import           Data.Aeson
+import           Control.Applicative
+import           Control.Exception
+import           Network.Curl
+import           Network.Curl.Aeson
+import           Data.Maybe
+import           Data.Time.Clock
+import           Data.Time.Format
+import           System.Process
+import           System.IO
+import           System.IO.Temp
+import           Data.List.Split
+import           Control.Exception
+
+import           Festral.Files
+import           Festral.Config
 
 -- |Data type describing Boruta worker
 data Worker = Worker

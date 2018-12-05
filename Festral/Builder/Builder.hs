@@ -74,25 +74,26 @@ module Festral.Builder.Builder (
     Build(..)
 ) where
 
-import Festral.Meta
-import Festral.Builder.OwnParser
-import Festral.Builder.GBSParser
-import Data.Aeson
-import qualified GHC.Generics as G
-import qualified Data.ByteString.Lazy.UTF8 as LBU
-import System.Process
-import System.IO
-import System.Directory
-import System.Environment
-import System.Exit
-import Control.Exception
-import System.Posix.User
-import Data.List
-import Data.List.Split
-import Control.Monad (when)
-import Festral.Files
-import System.File.Tree (getDirectory', copyTo_)
-import Data.Maybe
+import           Data.Aeson
+import qualified GHC.Generics               as G
+import qualified Data.ByteString.Lazy.UTF8  as LBU
+import           System.Process
+import           System.IO
+import           System.Directory
+import           System.Environment
+import           System.Exit
+import           Control.Exception
+import           System.Posix.User
+import           Data.List
+import           Data.List.Split
+import           Control.Monad (when)
+import           System.File.Tree (getDirectory', copyTo_)
+import           Data.Maybe
+
+import           Festral.Files
+import           Festral.Meta
+import           Festral.Builder.OwnParser
+import           Festral.Builder.GBSParser
 
 -- |Build structure which represents config json format.
 data Build = Build

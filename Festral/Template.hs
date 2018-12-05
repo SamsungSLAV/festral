@@ -25,14 +25,15 @@ module Festral.Template (
     TemplateType(..)
 ) where
 
-import Data.List.Split
-import Data.List
+import           Data.List.Split
+import           Data.List
 import qualified Data.String.Utils as U
-import Festral.Config
-import Festral.Files
-import System.Directory
-import Data.Char
-import Control.Exception
+import           System.Directory
+import           Data.Char
+import           Control.Exception
+
+import           Festral.Config
+import           Festral.Files
 
 -- |Type represents types of templated fields of the yaml
 data TemplateType

@@ -23,20 +23,21 @@ module Main (
 import System.Process
 import System.IO
 import System.Environment
-import Festral.SLAV.Weles hiding (info)
 import Options.Applicative
 import Data.Semigroup ((<>))
+import Data.Maybe
+import Data.Version (showVersion)
+import Control.Concurrent
+import Paths_Festral (version)
+
+import Festral.WWW.Server
+import Festral.Config
+import Festral.SLAV.Boruta
+import Festral.SLAV.Weles hiding (info)
 import Festral.Tests.Test
 import Festral.Files
 import Festral.Reporter
 import Festral.Builder.Builder (builderFromFile, build, BuildOptions(..))
-import Data.Maybe
-import Paths_Festral (version)
-import Data.Version (showVersion)
-import Festral.WWW.Server
-import Festral.Config
-import Festral.SLAV.Boruta
-import Control.Concurrent
 
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion)

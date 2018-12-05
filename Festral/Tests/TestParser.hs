@@ -59,6 +59,7 @@ import System.IO
 import Data.List.Split
 import Data.Char
 import Data.List
+
 import Festral.Files
 
 -- |This data structure stores information needed by database for importing

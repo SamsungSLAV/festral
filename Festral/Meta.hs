@@ -40,6 +40,7 @@ import System.IO
 import Data.List.Split
 import Data.List
 import Data.Maybe
+
 import Festral.Files
 
 -- |Class which describes Parser - something that can be cunstructed from the
