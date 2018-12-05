@@ -133,6 +133,14 @@ instance Show JobExecutionResult where
     show (JobNotStarted x)  = show x
     show (Cancelled{})      = "CANCELLED"
 
+showJobResultId (JobLogs _ i)       = show i
+showJobResultId (DryadError _ i)    = show i
+showJobResultId (DownloadError i)   = show i
+showJobResultId (UnknownError _ i)  = show i
+showJobResultId (ConnectionLost i)  = show i
+showJobResultId (JobNotStarted i)   = show i
+showJobResultId (Cancelled _ i)     = show i
+
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
 performForallNewBuilds :: FilePath      -- ^ Tests configuration file
@@ -488,11 +496,3 @@ filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
-
-showJobResultId (JobLogs _ i)       = show i
-showJobResultId (DryadError _ i)    = show i
-showJobResultId (DownloadError i)   = show i
-showJobResultId (UnknownError _ i)  = show i
-showJobResultId (ConnectionLost i)  = show i
-showJobResultId (JobNotStarted i)   = show i
-showJobResultId (Cancelled _ i)     = show i
