@@ -35,7 +35,7 @@ import Festral.Config
 import Festral.SLAV.Boruta
 import Festral.SLAV.Weles hiding (info)
 import Festral.Tests.Test
-import Festral.Files
+import Festral.Internal.Files
 import Festral.Reporter
 import Festral.Builder.Builder (builderFromFile, build, BuildOptions(..))
 

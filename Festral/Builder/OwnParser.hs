@@ -34,7 +34,7 @@ import Control.Concurrent
 import Data.Maybe
 
 import Festral.Meta
-import Festral.Files
+import Festral.Internal.Files
 
 -- |This data contains parts needed by 'OwnParser'
 data OwnParser = OwnParser

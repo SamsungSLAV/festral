@@ -33,7 +33,7 @@ import           Data.Char
 import           Control.Exception
 
 import           Festral.Config
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Tests.Data
 
 -- |Type represents types of templated fields of the yaml

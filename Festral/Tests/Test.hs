@@ -47,7 +47,7 @@ import           System.Console.ANSI
 import           Control.Concurrent.MVar
 import           System.IO.Temp
 
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Config
 import           Festral.Template
 import           Festral.Tests.TestParser

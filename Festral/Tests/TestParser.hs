@@ -60,7 +60,7 @@ import Data.List.Split
 import Data.Char
 import Data.List
 
-import Festral.Files
+import Festral.Internal.Files
 
 -- |This data structure stores information needed by database for importing
 -- tests results.

@@ -39,7 +39,7 @@ import           Network.HTTP.Types.Header
 import           System.FilePath
 
 import           Festral.WWW.TestGUI
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Config
 import           Festral.Meta
 

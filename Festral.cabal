@@ -42,7 +42,7 @@ Library
        Festral.Tests.TestParser,
        Festral.Tests.Test,
        Festral.Config,
-       Festral.Files,
+       Festral.Internal.Files,
        Festral.Reporter
 
 Executable festral

@@ -18,7 +18,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Festral.Files (
+module Festral.Internal.Files (
     freshBuilds,
     freshTests,
     buildCache,

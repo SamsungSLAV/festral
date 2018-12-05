@@ -33,7 +33,7 @@ import           Data.List
 import qualified Data.ByteString.UTF8 as BSU
 import           System.Directory
 
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Config
 
 indexRespond opts config r ["add_test"] = r $ addTest

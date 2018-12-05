@@ -32,7 +32,7 @@ import           Data.Time.LocalTime
 import           Data.List.Utils
 
 import           Festral.Template
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Meta
 import           Festral.Config
 

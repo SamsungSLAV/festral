@@ -23,7 +23,7 @@
 -- management using Weles as testing server. It allows creating, cancelling,
 -- waiting Weles jobs and processing it in different ways.
 --
--- This library use module "Festral.Config" and "Festral.Files" for get server
+-- This library use module "Festral.Config" and "Festral.Internal.Files" for get server
 -- IP, port etc.
 module Festral.SLAV.Weles (
     Job(..),
@@ -56,7 +56,7 @@ import           Data.Maybe
 import           System.Directory
 import           Control.Exception
 
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Config
 
 -- |Job datatype describes json job object got from weles

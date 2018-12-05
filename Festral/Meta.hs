@@ -41,7 +41,7 @@ import Data.List.Split
 import Data.List
 import Data.Maybe
 
-import Festral.Files
+import Festral.Internal.Files
 
 -- |Class which describes Parser - something that can be cunstructed from the
 -- file with output of the build by function 'fromFile' and return 'Meta' parsed

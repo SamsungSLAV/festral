@@ -90,7 +90,7 @@ import           Control.Monad (when)
 import           System.File.Tree (getDirectory', copyTo_)
 import           Data.Maybe
 
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Meta
 import           Festral.Builder.OwnParser
 import           Festral.Builder.GBSParser

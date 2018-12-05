@@ -60,7 +60,7 @@ import           System.IO.Temp
 import           Data.List.Split
 import           Control.Exception
 
-import           Festral.Files
+import           Festral.Internal.Files
 import           Festral.Config
 
 -- |Data type describing Boruta worker
