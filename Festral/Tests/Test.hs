@@ -43,7 +43,6 @@ import qualified Control.Monad.Parallel     as Par
 import           Control.Concurrent
 import           System.FilePath.Posix
 import           Control.Monad
-import           System.Console.ANSI
 import           Control.Concurrent.MVar
 import           System.IO.Temp
 
@@ -55,6 +54,7 @@ import           Festral.Meta               hiding (parse, fromFile)
 import           Festral.SLAV.Weles         hiding (status, name)
 import qualified Festral.SLAV.Weles         as WJob (status, name)
 import           Festral.Tests.Data
+import           Festral.Internal.Logger
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
@@ -377,35 +377,6 @@ testResults lock err m c = do
         colorBrace (show err) Red
         putStrLn ""
     return $ TestResult (BadJob err) c
-
-putAsyncLog lock f = withMVar lock $ \_ -> f
-
-putStrColor c s = do
-    setSGR [SetColor Foreground Vivid c]
-    putStr s
-    setSGR [Reset]
-
-putLogColor m c y = do
-    colorBrace (repoName  $>> m) Blue
-    colorBrace (branch $>> m) Blue
-    mapM_ (flip colorBoldBrace c) y
-
-putLog m y = do
-    colorBrace (repoName $>> m) Blue
-    colorBrace (branch $>> m) Blue
-    putStrLn y
-
-colorBrace x color = do
-    putStr "["
-    putStrColor color x
-    putStr "]"
-
-colorBoldBrace x color = do
-    setSGR [SetConsoleIntensity BoldIntensity]
-    colorBrace x color
-    setSGR [Reset]
-
-brace x = "[" ++ x ++ "]"
 
 filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 
