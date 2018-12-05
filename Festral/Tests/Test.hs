@@ -24,12 +24,7 @@ module Festral.Tests.Test (
     runTest,
     runTests,
     parseTest,
-    performForallNewBuilds,
-    TestResult(..),
-    TestStatus(..),
-    FileContents,
-    JobStartResult(..),
-    JobExecutionResult(..),
+    performForallNewBuilds
 ) where
 
 import           Data.Aeson
@@ -59,88 +54,7 @@ import           Festral.Tests.TestParser
 import           Festral.Meta               hiding (parse, fromFile)
 import           Festral.SLAV.Weles         hiding (status, name)
 import qualified Festral.SLAV.Weles         as WJob (status, name)
-
--- |List of pairs filename - content
-type FileContents = [(String, String)]
-
-data TestResult
-    = TestResult
-        { testStatus :: TestStatus
-        , testConfig :: TestUnit
-        }
-    deriving Show
-
-data TestStatus
-    -- |Appears when segmantation fault detected during testing process.
-    -- Contains test execution logs.
-    = SegFault FileContents
-    -- |Appears when job finished with error
-    | BadJob JobExecutionResult
-    -- |If test job finished withowt errors, it returns 'TestSuccess'.
-    -- It doesn't mean that tests was passed. Contains test logs.
-    | TestSuccess FileContents
-
-instance Show TestStatus where
-    show (SegFault _) = "SEGFAULT"
-    show (BadJob x) = show x
-    show (TestSuccess _) = "COMPLETE"
-
--- |Status of the starting of test job.
-data JobStartResult
-    -- |Job was not started because repository under test failed to build
-    = BuildFailed
-    -- |YAML file passed to the Weles does not exist
-    | BadYaml
-    -- |Job was not able to start by some reason
-    | StartJobFailed
-    -- |If job was started successfully, its id is returned.
-    -- Contains usual job's ID
-    | JobId Int
-
--- |Status of test job execution.
-data JobExecutionResult
-    -- |After successfull completion of testing logs are returned by this
-    -- constructor. Contains logs and job start result.
-    = JobLogs FileContents JobStartResult
-    -- |Job execution failed because Dryad failed with error. It usually means
-    -- some hardware error (connection between MuxPi and DUT were lost | some
-    -- commands executed on DUT failed | DUT was flashed with bad OS image etc.)
-    -- Contains logs and job start result.
-    | DryadError FileContents JobStartResult
-    -- |Weles failed to download some files specified in YAML file (maybe link
-    -- is invalid or server has no free space). Contains job start result.
-    | DownloadError JobStartResult
-    -- |Other unexpected error. Contains error message and job start result.
-    | UnknownError String JobStartResult
-    -- |Connection for the Weles was lost.
-    | ConnectionLost JobStartResult
-    -- |Job was not started.
-    | JobNotStarted JobStartResult
-    -- |Job was timed out and cancelled by Weles
-    | Cancelled FileContents JobStartResult
-
-instance Show JobStartResult where
-    show BuildFailed        = "BUILD FAILED"
-    show BadYaml            = "YAML NOT FOUND"
-    show StartJobFailed     = "NO JOB STARTED"
-    show (JobId x)          = show x
-
-instance Show JobExecutionResult where
-    show (JobLogs x _)      = show x
-    show (DryadError{})     = "DEVICE FAILED"
-    show (DownloadError{})  = "DOWNLOAD FILES ERROR"
-    show (UnknownError{})   = "WELES ERROR"
-    show (ConnectionLost{}) = "CONNECTION LOST"
-    show (JobNotStarted x)  = show x
-    show (Cancelled{})      = "CANCELLED"
-
-showJobResultId (JobLogs _ i)       = show i
-showJobResultId (DryadError _ i)    = show i
-showJobResultId (DownloadError i)   = show i
-showJobResultId (UnknownError _ i)  = show i
-showJobResultId (ConnectionLost i)  = show i
-showJobResultId (JobNotStarted i)   = show i
-showJobResultId (Cancelled _ i)     = show i
+import           Festral.Tests.Data
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
