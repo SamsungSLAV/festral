@@ -36,25 +36,30 @@ import           Control.Exception
 
 import           Festral.Config
 
+-- |Returns path to the file with latest build names.
 freshBuilds = do
     x <- getHomeDirectory
     createDirectoryIfMissing False $ x ++ "/.festral"
     return $ x ++ "/.festral/fresh_builds"
 
+-- |Returns path to the file with build cache.
 buildCache = do
     home <- getHomeDirectory
     createDirectoryIfMissing False $ home ++ "/.festral"
     return $ home ++ "/.festral/build.cachce"
 
+-- |Returns path to the file which contains latest test names.
 freshTests = do
     x <- getHomeDirectory
     createDirectoryIfMissing False $ x ++ "/.festral"
     return $ x ++ "/.festral/fresh_tests"
 
+-- |Returns path to the festral's configuration file.
 configFile = do
     home <- getHomeDirectory
     return $ home ++ "/.festral.conf"
 
+-- |Returns 'AppConfig' got from file located at 'configFile'.
 getAppConfig = do
     confPath <- configFile
     exists <- doesFileExist confPath
