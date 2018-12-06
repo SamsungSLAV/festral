@@ -38,7 +38,8 @@ import Festral.Internal.Files
 
 -- |This data contains parts needed by 'OwnParser'
 data OwnParser = OwnParser
-    { buildLog      :: String -- ^Log file with standard output of the build command
+    { buildLog      :: String -- ^Log file with standard output of the
+                              -- build command
     , parserExec    :: FilePath -- ^Path to the user's parser executable.
     } deriving Show
 

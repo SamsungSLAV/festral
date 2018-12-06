@@ -147,8 +147,7 @@ chooseMeta m@MetaTest{}
         = chooseMeta $ Meta $>> m
     | otherwise = Just m
 chooseMeta m@Meta{}
-    | buildType     $>> m == ""
-        || status   $>> m == ""
+    | status        $>> m == ""
         || hash     $>> m == ""
         || repoName $>> m == ""
         = Nothing

@@ -22,19 +22,19 @@ module Festral.Reporter (
     formatTextReport
 ) where
 
-import           System.IO
-import           System.Directory
-import           Data.List.Split
+import System.IO
+import System.Directory
+import Data.List.Split
 import qualified Data.ByteString.Lazy as LB
-import           Data.Aeson
-import           Data.List
-import           Data.Time.LocalTime
-import           Data.List.Utils
+import Data.Aeson
+import Data.List
+import Data.Time.LocalTime
+import Data.List.Utils
 
-import           Festral.Template
-import           Festral.Internal.Files
-import           Festral.Meta
-import           Festral.Config
+import Festral.Template
+import Festral.Internal.Files
+import Festral.Meta
+import Festral.Config
 
 defaultHTML time =
               "<!DOCTYPE html>\n"
@@ -174,7 +174,7 @@ color "FAILED" = "style=\"color:red;\""
 color _ = ""
 
 -- |Gets name of the build (sha1_time) and returns its build
--- data as (repository name, branch name, build status)
+-- data as (repository name, branch name, build status, log link)
 buildSummary :: String -> IO (String, String, String, String)
 buildSummary dir = do
     config <- getAppConfig
@@ -185,7 +185,8 @@ buildSummary dir = do
     return (repoName $>> meta, branch $>> meta, status $>> meta, link)
 
 -- |Gets name of the test result (sha1_time) and returns its build data as
--- (repository name, branch name, test name, passed tests/ all tests, log link)
+-- (repository name, branch name, target device, test name,
+-- passed tests/ all tests, log link)
 testSummary :: String -> IO (String, String, String, String, String, String)
 testSummary dir = do
     config <- getAppConfig

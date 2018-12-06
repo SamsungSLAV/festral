@@ -27,34 +27,35 @@ module Festral.Tests.Test (
     performForallNewBuilds
 ) where
 
-import           Data.Aeson
-import qualified Data.ByteString.Lazy.UTF8  as LBU
-import           Data.Maybe
-import           System.Directory
-import           Data.Time
-import           System.Posix.User
-import           Data.List.Split
-import           Data.List
-import           Control.Exception
-import           System.IO.Error
-import           System.Process
-import           System.IO
-import qualified Control.Monad.Parallel     as Par
-import           Control.Concurrent
-import           System.FilePath.Posix
-import           Control.Monad
-import           Control.Concurrent.MVar
-import           System.IO.Temp
+import Data.Aeson
+import qualified Data.ByteString.Lazy.UTF8 as LBU
+import Data.Maybe
+import System.Directory
+import Data.Time
+import System.Posix.User
+import Data.List.Split
+import Data.List
+import Control.Exception
+import System.IO.Error
+import System.Process
+import System.IO
+import qualified Control.Monad.Parallel as Par
+import Control.Concurrent
+import System.FilePath.Posix
+import Control.Monad
+import Control.Concurrent.MVar
+import System.IO.Temp
 
-import           Festral.Internal.Files
-import           Festral.Config
-import           Festral.Template
-import           Festral.Tests.TestParser
-import           Festral.Meta               hiding (parse, fromFile)
-import           Festral.SLAV.Weles         hiding (status, name)
-import qualified Festral.SLAV.Weles         as WJob (status, name)
-import           Festral.Tests.Data
-import           Festral.Internal.Logger
+import Festral.Internal.Files
+import Festral.Config
+import Festral.Template
+import Festral.Tests.TestParser
+import Festral.Meta hiding (parse, fromFile)
+import Festral.SLAV.Weles hiding (status, name)
+import qualified Festral.SLAV.Weles as WJob (status, name)
+import Festral.Tests.Data
+import Festral.Internal.Logger
+import Festral.Internal.Preprocessor
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.

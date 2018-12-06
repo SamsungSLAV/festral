@@ -27,9 +27,10 @@ module Festral.Internal.Logger (
     module System.Console.ANSI
 ) where
 
-import Festral.Meta
 import System.Console.ANSI
 import Control.Concurrent.MVar
+
+import Festral.Meta
 
 -- |Synchronize putting log by given 'MVar'.
 putAsyncLog :: MVar a -> IO b -> IO b

@@ -27,14 +27,14 @@ module Festral.Internal.Files (
     getAppConfig
 ) where
 
-import           System.Directory
+import System.Directory
 import qualified Data.ByteString.Lazy as LB
-import           Data.Aeson
-import           Control.Monad
-import           Data.Maybe
-import           Control.Exception
+import Data.Aeson
+import Control.Monad
+import Data.Maybe
+import Control.Exception
 
-import           Festral.Config
+import Festral.Config
 
 -- |Returns path to the file with latest build names.
 freshBuilds = do
