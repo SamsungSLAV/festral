@@ -12,7 +12,7 @@
    * [Weles client](#festral-weles)
    * [Boruta client](#festral-boruta)
    * [File serwer](#festral-server)
-- [Test case description](#test-case-description)
+- [Test case description](#test-cases-description)
    * [YAML templates](#yaml-templates)
    * [File preprocessor](#file-preprocessor)
 - [How it works](#how-it-works)
