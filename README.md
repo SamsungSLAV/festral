@@ -1,26 +1,26 @@
+# Table of Contents
+- [Festral](#festral)
+   * [How to build](#how-to-build)
+- [Usage](#usage)
+   * [Configuration](#configuration)
+   * [Automated building software](#festral-build)
+   * [Automated testing software](#festral-test)
+   * [Make reports](#festral-report)
+        + [Text report](#text-report)
+        + [HTML report](#html-report)
+- [Other utilities](#festral-weles)
+   * [Weles client](#festral-weles)
+   * [Boruta client](#festral-boruta)
+   * [File serwer](#festral-server)
+- [Test case description](#test-case-description)
+   * [YAML templates](#yaml-templates)
+   * [File preprocessor](#file-preprocessor)
+- [How it works](#how-it-works)
+
 # Festral
 
 This package provides client for SLAV testing framework and more abstract layer
 for performing building and testing repositories by user.
-
-# Table of Contents
-1. [Festral](#festral)
-   1. [How to build](#how-to-build)
-2. [Usage](#usage)
-   1. [Configuration](#configuration)
-   2. [Automated building software](#festral-build)
-   3. [Automated testing software](#festral-test)
-   4. [Make reports](#festral-report)
-        1. [Text report](#text-report)
-        2. [HTML report](#html-report)
-3. [Other utilities](#festral-weles)
-   1. [Weles client](#festral-weles)
-   2. [Boruta client](#festral-boruta)
-   3. [File serwer](#festral-server)
-4. [Test case description](#test-case-description)
-   1. [YAML templates](#yaml-templates)
-   2. [File preprocessor](#file-preprocessor)
-5. [How it works](#how-it-works)
 
 Festral consists of some small utilities:
 
