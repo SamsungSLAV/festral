@@ -467,8 +467,7 @@ reportCmd (HTML True x) o [] = do
     tests <- safeReadFile testFile
     buildFile <- freshBuilds
     builds <- safeReadFile buildFile
-    let all = builds ++ "\n" ++ tests
-    reportCmd (HTML True x) o $ lines all
+    reportCmd (HTML True x) o $ notEmptyEnteries $ builds ++ "\n" ++ tests
 
 reportCmd (HTML True x) o args = do
     html <- flip reportHTML args =<< (readNotEmpty x)
@@ -479,7 +478,8 @@ reportCmd (TextReport True format) o [] = do
     tests <- safeReadFile testFile
     buildFile <- freshBuilds
     builds <- safeReadFile buildFile
-    reportCmd (TextReport True format) o $ lines (builds ++ "\n" ++ tests)
+    reportCmd (TextReport True format) o $
+        notEmptyEnteries $ builds ++ "\n" ++ tests
 
 reportCmd (TextReport True format) o args =
     writeOut o =<< unlines <$> formatTextReport format args
@@ -498,7 +498,7 @@ subCmd (TestControl conf out []) = do
 
     listFile <- freshBuilds
     list <- safeReadFile listFile
-    outs <- performForallNewBuilds conf $ lines list
+    outs <- performForallNewBuilds conf $ notEmptyEnteries list
     writeOut out $ unlines outs
 
 subCmd (TestControl config out fnames) = do
@@ -567,3 +567,5 @@ cutHere = "-------------------- Result outputs -----------------------\n"
 
 writeOut "" = (\ x -> putStrLn $ cutHere ++ x)
 writeOut x = writeFile x
+
+notEmptyEnteries = filter ((/=) "") . lines
