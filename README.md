@@ -502,7 +502,7 @@ where PORT_NUMBER is just number of port where server will listen to.
 Web pages of this server have API as follow:
 
   * `/files` - page with listed files in root of the server
-  * `/files?file=filename` - show specified by filename file (download it if it's not `html` or `css`)
+  * `/files/path/to/filename` - show specified by filename file (download it if it's not `html` or `css`)
   * `/getlog[.php]?type=type&hash=hash&time=time` - show log specified
   by type: it can be `build` for build log and `test` for test log.Log also
   must be specified by hash and time of the build/test.
