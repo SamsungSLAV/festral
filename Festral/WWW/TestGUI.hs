@@ -24,32 +24,20 @@ module Festral.WWW.TestGUI (
 where
 
 import Network.Wai
-import Network.Wai.Handler.Warp
 import Network.HTTP.Types (status200, status404)
 import Blaze.ByteString.Builder (copyByteString)
-import Data.Monoid
-import Data.List.Split
-import Data.List
-import qualified Data.ByteString.UTF8 as BSU
-import System.Directory
+import Paths_Festral (version)
+import Data.Version (showVersion)
+import qualified Data.ByteString.UTF8 as BS
 
-import Festral.Internal.Files
-import Festral.Config
-
-indexRespond opts config r ["add_test"] = r $ addTest
 indexRespond opts config r query = r $ index query
 
-index x = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
+index x = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat
+    $ map copyByteString
     [ "<p><a href=\"tests\">Tests</a></p>"
-    , "<p><a href=\"files\">Reports</a></p>"
+    , "<p><a href=\"files\">Files</a></p>"
     , "<p><a href=\"deploys\">Deploys</a></p>"
-    ]
-
-addTest = responseBuilder status200 [("Content-Type", "text/html")] $ mconcat $ map copyByteString
-    ["<p> Target: <select>"
-    ,"<option value=\"KantM2\">KantM2</option>"
-    ,"<option value=\"KantM1\">KantM1</option>"
-    ,"<option value=\"rpi3\">Raspberri Pi 3</option>"
-    ,"</select></p>"
-    ,"<p> "
+    , "<hr><h6>Festral v."
+    , BS.fromString $ showVersion version
+    , "</h6>"
     ]
