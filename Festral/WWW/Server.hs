@@ -43,14 +43,11 @@ import System.FilePath
 import qualified Data.Text as T
 import Festral.Meta
 
-data ServerOpts = ServerOpts
-    { opts      :: [[String]]
-    , config    :: AppConfig
-    , respF     :: (Response -> IO ())
-    }
+data ContentType
+    = Download
+    | Directory
 
 runServerOnPort port = do
-    putStrLn $ "Listening on port " ++ show port
     run port fileServer
 
 fileServer req respond = do
@@ -69,11 +66,10 @@ sendRespond opts config r ("reports"    :xs) = sendRespond opts config
     r $ ["files"] ++ xs
 sendRespond opts config r ("reports.php":xs) = sendRespond opts config
     r $ ["files"] ++ xs
-sendRespond opts config r ("files"  :xs) = do
+sendRespond opts config r ("files"      :xs) = do
     let fullpath = intercalate "/" $ filter (\ x ->
-                    not $ any (x ==) [".", ".."]) xs
-    reports <- listDirectory $  (serverRoot config) ++ "/" ++ fullpath
-    listFiles (reports) config opts fullpath >>= r
+                    not $ any (x ==) ["", ".", ".."]) xs
+    listFiles config fullpath >>= r
 sendRespond opts config r ("secosci":x) = sendRespond opts config r x
 sendRespond a b c d = indexRespond a b c d
 
@@ -84,24 +80,26 @@ download opts config = do
     responseFile status200 (contentTypeFromExt "" fname)
         (dir ++ "/" ++ build_hash ++ "/" ++ fname) Nothing
 
-listFiles :: [String] -> AppConfig -> t -> String -> Response
-listFiles reports config opts fullpath = do
-    let fname = takeFileName fullpath
-    isDirectory <- doesDirectoryExist $ (serverRoot config) ++ "/" fullpath
-    let arg = if isDirectory
-                then fname
-                else ""
-    return $ showFile fname
+listFiles :: AppConfig -> String -> IO Response
+listFiles config fullpath = do
+    isDirectory <- doesDirectoryExist $ (serverRoot config) ++ "/" ++ fullpath
+    let ftype = if isDirectory
+                    then Directory
+                    else Download
+    showFile ftype config fullpath
 
-    where
-        showFile "" = responseBuilder status200 [("Content-Type", "text/html")]
-            $ mconcat $ map copyByteString
-            $ map (\x -> BSU.fromString $ "<a href=\"files" ++
-                fullpath ++"/" ++ x ++"\">"
-            ++ x ++"</a><br>") (sort reports)
-        showFile x = responseFile status200
-                    (contentTypeFromExt (takeExtension x) x)
-                    (serverRoot config ++ "/" ++ x) Nothing
+showFile :: ContentType -> AppConfig -> FilePath -> IO Response
+showFile Directory config fullpath = do
+    reports <- listDirectory $  (serverRoot config) ++ "/" ++ fullpath
+    return $ responseBuilder status200 [("Content-Type", "text/html")]
+        $ mconcat $ map copyByteString
+        $ map (\x -> BSU.fromString $ "<a href=\"/files/" ++
+            fullpath ++"/" ++ x ++"\">"
+        ++ x ++"</a><br>") (sort reports)
+showFile Download config x = do
+            return $ responseFile status200
+                (contentTypeFromExt (takeExtension x) x)
+                (serverRoot config ++ "/" ++ x) Nothing
 
 contentTypeFromExt ".html" _ = [(hContentType, "text/html")]
 contentTypeFromExt ".htm" _ = contentTypeFromExt ".html" ""
@@ -109,7 +107,7 @@ contentTypeFromExt ".css" _ = [(hContentType, "text/css")]
 contentTypeFromExt _ fname =
         [
             (hContentDisposition, BSU.fromString
-                $ "attachment; filename=\""++ fname ++"\""),
+                $ "attachment; filename=\""++ takeFileName fname ++"\""),
             (hContentType, "application/octet-stream")
         ]
 
