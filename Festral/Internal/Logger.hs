@@ -20,6 +20,7 @@
 module Festral.Internal.Logger (
     putAsyncLog,
     putStrColor,
+    putColorBold,
     putLogColor,
     putLog,
     colorBrace,
@@ -42,6 +43,10 @@ putStrColor c s = do
     setSGR [SetColor Foreground Vivid c]
     putStr s
     setSGR [Reset]
+
+-- |Same as 'putStrColor' but use bold font.
+putColorBold :: Color -> String -> IO ()
+putColorBold c s = setSGR [SetConsoleIntensity BoldIntensity] >> putStrColor c s
 
 -- |Put given strings with given color in squared braces each one, appended
 -- to the reposytory name and branch name got from givem 'Meta'. Prepending

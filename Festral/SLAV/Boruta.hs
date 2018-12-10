@@ -55,6 +55,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Aeson
 
 import Festral.Internal.Files
+import Festral.Internal.Logger
 import Festral.Config
 import Festral.SLAV.Boruta.Data
 
@@ -99,7 +100,8 @@ createRequest caps priority timeout = do
     return $ simpleReqID <$> req
     where
         handleCurlInt :: CurlAesonException -> IO (Maybe ReqID)
-        handleCurlInt e = putStrLn "Can't create new request" >> return Nothing
+        handleCurlInt e = putStrColor Yellow "Can't create new request\n"
+                            >> return Nothing
 
 -- |List all requests from Boruta
 allRequests :: IO [BorutaRequest]
@@ -130,8 +132,8 @@ getTargetAuth selector caps = do
     id <- if length active == 0
         then createRequest caps 4 3600
         else do
-            putStrLn $ "Target is busy by request with ID "
-                ++ show (reqID $ head active)
+            putStrColor Yellow $ "Target is busy by request with ID "
+                ++ show (reqID $ head active) ++ "\n"
             return Nothing
     maybe (return Nothing) getKey id
 
@@ -278,8 +280,10 @@ execDryad :: DryadCmd -> Maybe BorutaAuth -> IO ()
 execDryad _ Nothing = do
     putStrLn "Use --force option to connect for existing session if you are \
     \sure you know you do."
-    putStrLn "IMPORTANT: force connecting to the running job will cause \
-    \closing it after your command done, so YOU MAY BROKE OTHER'S WORK!!!"
+    putColorBold Red "IMPORTANT: "
+    putStr "force connecting to the running job will cause \
+    \closing it after your command done, so "
+    putColorBold Red "YOU MAY BROKE OTHER'S WORK!!!\n"
 execDryad f (Just auth) = do
     (addr, _) <- borutaAddr
     keyFile <- writeKey auth
@@ -304,7 +308,7 @@ closeRequest id = do
         (Nothing :: Maybe Caps)
     where
         h :: CurlAesonException -> IO ()
-        h _ = putStrLn "Cant access requesteed ID" >> return ()
+        h _ = putStrColor Yellow "Cant access requesteed ID\n" >> return ()
 
 -- |Boot up Device Under Test specified by UUID
 dutBoot uid = do
