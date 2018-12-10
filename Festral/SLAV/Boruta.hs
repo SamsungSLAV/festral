@@ -49,6 +49,7 @@ import System.IO
 import System.IO.Temp
 import Data.List.Split
 import Control.Exception
+import Control.Concurrent
 import Data.Maybe
 import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Aeson
@@ -87,7 +88,7 @@ createRequest caps priority timeout = do
     let now = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" time
     let afterHour = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%SZ" $
                     addUTCTime timeout time
-    let request = BorutaRequestOut afterHour now caps priority
+    let request = BorutaRequestCreate afterHour now caps priority
     (addr, port) <- borutaAddr
     req <- handle handleCurlInt $ Just <$> ((curlAeson
             parseJSON
@@ -110,14 +111,21 @@ allRequests = do
             [CurlFollowLocation True]
     return $ fromMaybe [] (decode (BL.pack str) :: Maybe [BorutaRequest])
 
+-- |Get request information specified by its Id.
+getRequestById :: Int -> IO (Maybe BorutaRequest)
+getRequestById id = listToMaybe <$>
+    filter (\ x -> reqID x == id) <$> allRequests
+
+activeStatuses = ["IN PROGRESS", "WAITING"]
+
 -- |Return ssh key for session for given by name target and request ID.
 -- If this target has running session it returns key for it,
 -- othervise it opens new request
-getTargetAuth :: (BorutaRequest -> Bool) -> Caps -> IO (Maybe (BorutaAuth, Int))
+getTargetAuth :: (BorutaRequest -> Bool) -> Caps -> IO (Maybe BorutaAuth)
 getTargetAuth selector caps = do
     requests <- allRequests
-    let active = filter (\ x@(BorutaRequestIn _ state _) ->
-                (selector x) && (state `elem` ["IN PROGRESS", "WAITING"]))
+    let active = filter (\ x -> (selector x)
+                        && ((reqState x) `elem` activeStatuses))
                 requests
     id <- if length active == 0
         then createRequest caps 4 3600
@@ -130,11 +138,11 @@ getTargetAuth selector caps = do
 -- |The same as "getTargetAuth" but connect busy session instead of reject
 -- request such request.
 getBusyTargetAuth :: (BorutaRequest -> Bool) -> Caps
-    -> IO (Maybe (BorutaAuth, Int))
+    -> IO (Maybe BorutaAuth)
 getBusyTargetAuth selector caps = do
     requests <- allRequests
-    let active = filter (\ x@(BorutaRequestIn _ state _) ->
-                (selector x) && state == "IN PROGRESS") requests
+    let active = filter (\ x ->
+                (selector x) && (reqState x) == "IN PROGRESS") requests
     id <- if length active == 0
         then createRequest caps 4 3600
         else return $ Just $ reqID $ head active
@@ -143,37 +151,50 @@ getBusyTargetAuth selector caps = do
 
 getSpecifiedTargetAuth targetUUID f = do
     let caps = Caps "" "" "" targetUUID
-    let selector = (\(BorutaRequestIn _ state caps) ->
-            (uuid caps) == targetUUID)
+    let selector = (\ x -> (uuid $ reqCapsIn x) == targetUUID)
     f selector caps
 
 -- |Get any accessible device of given device_type
 getDeviceTypeAuth device f = do
     let caps = Caps ""  "" device ""
-    let selector = (\(BorutaRequestIn _ state caps) ->
-            (device_type caps == device) || deviceType caps == device)
+    let selector = (\ x -> (device_type (reqCapsIn x) == device)
+                    || deviceType (reqCapsIn x) == device)
     f selector caps
 
-getKey :: Int -> IO (Maybe (BorutaAuth, Int))
+getKey :: Int -> IO (Maybe BorutaAuth)
 getKey id = do
     (addr, port) <- borutaAddr
-    auth <- handle curlHandler $ Just <$> curlAeson
+    auth <- handle (curlHandler id) $ Just <$> curlAeson
         parseJSON
         "POST"
         (addr ++ ":" ++ show port ++ "/api/v1/reqs/"
             ++ show id ++ "/acquire_worker")
         [CurlFollowLocation True]
         (Nothing :: Maybe Caps)
-    maybe (return Nothing) (\ x -> return $ Just (x,id)) auth
+    maybe (return Nothing) (\ x -> return $ Just (x{authReqId=id})) auth
 
-curlHandler :: CurlAesonException -> IO (Maybe BorutaAuth)
-curlHandler e = putStrLn "All targets are busy and no one can be requested \
-    \immediately. Try later." >> return Nothing
+curlHandler :: Int -> CurlAesonException -> IO (Maybe BorutaAuth)
+curlHandler id e = do
+    threadDelay oneSec
+    getKey id
 
 authMethod True = getBusyTargetAuth
 authMethod _ = getTargetAuth
 
-closeAuth auth = maybe (return ()) (\ (_,x) -> closeRequest x) auth
+-- |Close authorised request. Wait until it will defenitely be closed.
+closeAuth auth = do
+    maybe (return ()) closeAuth' auth
+
+closeAuth' auth = do
+    closeRequest $ authReqId auth
+    waitJobClosed auth
+
+waitJobClosed auth = do
+    req <- getRequestById $ authReqId auth
+    maybe (return ()) (\ req ->
+        if any (\ x -> reqState req == x) activeStatuses
+            then threadDelay oneSec >> waitJobClosed auth
+            else return ()) req
 
 -- |Run ssh session for any device which matches specified 'device_type'.
 -- Second parameter decide if connect forcely if device is busy.
@@ -253,13 +274,13 @@ type DryadCmd = (DryadSSH -> String)
 
 -- |This function takes function converting dryad connection data to the command
 -- and this function's argument and executes this command.
-execDryad :: DryadCmd -> Maybe (BorutaAuth, Int) -> IO ()
+execDryad :: DryadCmd -> Maybe BorutaAuth -> IO ()
 execDryad _ Nothing = do
     putStrLn "Use --force option to connect for existing session if you are \
     \sure you know you do."
     putStrLn "IMPORTANT: force connecting to the running job will cause \
     \closing it after your command done, so YOU MAY BROKE OTHER'S WORK!!!"
-execDryad f (Just (auth, id)) = do
+execDryad f (Just auth) = do
     (addr, _) <- borutaAddr
     keyFile <- writeKey auth
     let creds = DryadSSH
@@ -317,3 +338,5 @@ setState req uuid = do
 infixr 4 ./
 (./) :: (String -> a) -> String -> a
 f ./ x = f $ "/usr/local/bin/" ++ x
+
+oneSec = 1000000

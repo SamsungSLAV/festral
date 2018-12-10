@@ -22,6 +22,7 @@
 module Festral.SLAV.Boruta.Data
     ( Worker          (..)
     , BorutaRequest   (..)
+    , BorutaRequestCreate (..)
     , Caps            (..)
     , BorutaAuth      (..)
     , ReqID           (..)
@@ -54,25 +55,26 @@ data Caps = Caps
 -- |Helper datatype for getting request ID from boruta after creating it
 data ReqID = ReqID {simpleReqID :: Int} deriving Generic
 
--- |Requests (recieved and sent) for Boruta
+-- |Responce recieved from Boruta. Contains ID of the created request and
+-- its state.
 data BorutaRequest
-    -- |Responce recieved from Boruta. Contains ID of the created request and
-    -- its state.
-    = BorutaRequestIn
+    = BorutaRequest
     { reqID     :: Int
     , reqState  :: String
     , reqCapsIn :: Caps
-    }
-    -- |Request to be send for Boruta when ask it about creating new request. It
-    -- contains needed data: priority, needed times and information about
-    -- requested device.
-    | BorutaRequestOut
+    } deriving Generic
+
+-- |Request to be send for Boruta when ask it about creating new request. It
+-- contains needed data: priority, needed times and information about
+-- requested device.
+data BorutaRequestCreate
+    = BorutaRequestCreate
     { deadline  :: String
     , validAfter:: String
     , reqCapsOut:: Caps
     , priority  :: Int
     }
-    deriving (Generic)
+    deriving Generic
 
 -- |Representation of the responce of the Boruta which gives information where
 -- to connect to the requested device.
@@ -89,6 +91,7 @@ data BorutaAuth = BorutaAuth
     { sshKey    :: String
     , username  :: String
     , authAddr  :: Addr
+    , authReqId :: Int
     } deriving (Generic, Show)
 
 data DryadSSH = DryadSSH
@@ -114,14 +117,17 @@ instance FromJSON Addr where
 instance ToJSON Addr
 
 instance FromJSON BorutaRequest where
-    parseJSON = withObject "BorutaRequestIn" $ \o -> do
+    parseJSON = withObject "BorutaRequest" $ \o -> do
         reqID       <- o .: "ID"
         reqState    <- o .: "State"
         reqCapsIn   <- o .: "Caps"
-        return BorutaRequestIn{..}
+        return BorutaRequest{..}
 
-instance ToJSON BorutaRequest where
-    toJSON (BorutaRequestOut d v caps p) =
+instance ToJSON BorutaRequest
+
+instance FromJSON BorutaRequestCreate
+instance ToJSON BorutaRequestCreate where
+    toJSON (BorutaRequestCreate d v caps p) =
         object ["Deadline"      .= d
                ,"ValidAfter"    .= v
                ,"Priority"      .= p
@@ -129,9 +135,8 @@ instance ToJSON BorutaRequest where
                ]
 
 instance Show BorutaRequest where
-    show (BorutaRequestIn i s c) =
+    show (BorutaRequest i s c) =
           "[" ++ show i ++ "," ++ s ++ "," ++ BL.unpack (encode c) ++ "]\n"
-    show x = show $ toJSON x
 
 instance Show Caps where
     show x = "  {\n"
@@ -148,7 +153,7 @@ instance FromJSON Caps where
     parseJSON = withObject "Caps" $ \o -> do
         addr        <- o .:? "Addr"         .!= ""
         deviceType  <- o .:? "DeviceType"   .!= ""
-        device_type  <- o .:? "device_type" .!= ""
+        device_type <- o .:? "device_type"  .!= ""
         uuid        <- o .:? "UUID"         .!= ""
         return Caps{..}
 
@@ -190,5 +195,6 @@ instance FromJSON BorutaAuth where
         sshKey      <- o .: "Key"
         username    <- o .: "Username"
         authAddr    <- o .: "Addr"
+        authReqId   <- o .:? "authReqId" .!= 0
         return BorutaAuth{..}
 instance ToJSON BorutaAuth
