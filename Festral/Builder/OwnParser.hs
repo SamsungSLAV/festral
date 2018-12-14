@@ -27,17 +27,19 @@ module Festral.Builder.OwnParser (
     setExec
 ) where
 
-import Festral.Meta
 import System.Process
 import Data.List.Split
 import System.IO
 import Control.Concurrent
 import Data.Maybe
-import Festral.Files
+
+import Festral.Meta
+import Festral.Internal.Files
 
 -- |This data contains parts needed by 'OwnParser'
 data OwnParser = OwnParser
-    { buildLog      :: String -- ^Log file with standard output of the build command
+    { buildLog      :: String -- ^Log file with standard output of the
+                              -- build command
     , parserExec    :: FilePath -- ^Path to the user's parser executable.
     } deriving Show
 

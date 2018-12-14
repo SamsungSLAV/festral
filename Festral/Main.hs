@@ -23,20 +23,21 @@ module Main (
 import System.Process
 import System.IO
 import System.Environment
-import Festral.SLAV.Weles hiding (info)
 import Options.Applicative
 import Data.Semigroup ((<>))
-import Festral.Tests.Test
-import Festral.Files
-import Festral.Reporter
-import Festral.Builder.Builder (builderFromFile, build, BuildOptions(..))
 import Data.Maybe
-import Paths_Festral (version)
 import Data.Version (showVersion)
+import Control.Concurrent
+import Paths_Festral (version)
+
 import Festral.WWW.Server
 import Festral.Config
 import Festral.SLAV.Boruta
-import Control.Concurrent
+import Festral.SLAV.Weles hiding (info)
+import Festral.Tests.Test
+import Festral.Internal.Files
+import Festral.Reporter
+import Festral.Builder.Builder (builderFromFile, build, BuildOptions(..))
 
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion)
@@ -466,8 +467,7 @@ reportCmd (HTML True x) o [] = do
     tests <- safeReadFile testFile
     buildFile <- freshBuilds
     builds <- safeReadFile buildFile
-    let all = builds ++ "\n" ++ tests
-    reportCmd (HTML True x) o $ lines all
+    reportCmd (HTML True x) o $ notEmptyEnteries $ builds ++ "\n" ++ tests
 
 reportCmd (HTML True x) o args = do
     html <- flip reportHTML args =<< (readNotEmpty x)
@@ -478,7 +478,8 @@ reportCmd (TextReport True format) o [] = do
     tests <- safeReadFile testFile
     buildFile <- freshBuilds
     builds <- safeReadFile buildFile
-    reportCmd (TextReport True format) o $ lines (builds ++ "\n" ++ tests)
+    reportCmd (TextReport True format) o $
+        notEmptyEnteries $ builds ++ "\n" ++ tests
 
 reportCmd (TextReport True format) o args =
     writeOut o =<< unlines <$> formatTextReport format args
@@ -497,7 +498,7 @@ subCmd (TestControl conf out []) = do
 
     listFile <- freshBuilds
     list <- safeReadFile listFile
-    outs <- performForallNewBuilds conf $ lines list
+    outs <- performForallNewBuilds conf $ notEmptyEnteries list
     writeOut out $ unlines outs
 
 subCmd (TestControl config out fnames) = do
@@ -566,3 +567,5 @@ cutHere = "-------------------- Result outputs -----------------------\n"
 
 writeOut "" = (\ x -> putStrLn $ cutHere ++ x)
 writeOut x = writeFile x
+
+notEmptyEnteries = filter ((/=) "") . lines

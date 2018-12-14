@@ -1,3 +1,22 @@
+# Table of Contents
+- [Festral](#festral)
+   * [How to build](#how-to-build)
+- [Usage](#usage)
+   * [Configuration](#configuration)
+   * [Automated building software](#festral-build)
+   * [Automated testing software](#festral-test)
+   * [Make reports](#festral-report)
+        + [Text report](#text-report)
+        + [HTML report](#html-report)
+- [Other utilities](#festral-weles)
+   * [Weles client](#festral-weles)
+   * [Boruta client](#festral-boruta)
+   * [File serwer](#festral-server)
+- [Test case description](#test-cases-description)
+   * [YAML templates](#yaml-templates)
+   * [File preprocessor](#file-preprocessor)
+- [How it works](#how-it-works)
+
 # Festral
 
 This package provides client for SLAV testing framework and more abstract layer

@@ -24,111 +24,38 @@ module Festral.Tests.Test (
     runTest,
     runTests,
     parseTest,
-    performForallNewBuilds,
-    TestResult(..),
-    TestStatus(..),
-    FileContents,
-    JobStartResult(..),
-    JobExecutionResult(..),
+    performForallNewBuilds
 ) where
 
 import Data.Aeson
 import qualified Data.ByteString.Lazy.UTF8 as LBU
-import Festral.SLAV.Weles hiding (status, name)
-import qualified Festral.SLAV.Weles as WJob (status, name)
 import Data.Maybe
-import Festral.Meta hiding (parse, fromFile)
 import System.Directory
-import Festral.Tests.TestParser
 import Data.Time
 import System.Posix.User
 import Data.List.Split
-import Festral.Template
 import Data.List
 import Control.Exception
 import System.IO.Error
-import Festral.Config
 import System.Process
 import System.IO
 import qualified Control.Monad.Parallel as Par
-import Festral.Files
 import Control.Concurrent
 import System.FilePath.Posix
 import Control.Monad
-import System.Console.ANSI
 import Control.Concurrent.MVar
 import System.IO.Temp
 
--- |List of pairs filename - content
-type FileContents = [(String, String)]
-
-data TestResult
-    = TestResult
-        { testStatus :: TestStatus
-        , testConfig :: TestUnit
-        }
-    deriving Show
-
-data TestStatus
-    -- |Appears when segmantation fault detected during testing process.
-    -- Contains test execution logs.
-    = SegFault FileContents
-    -- |Appears when job finished with error
-    | BadJob JobExecutionResult
-    -- |If test job finished withowt errors, it returns 'TestSuccess'.
-    -- It doesn't mean that tests was passed. Contains test logs.
-    | TestSuccess FileContents
-
-instance Show TestStatus where
-    show (SegFault _) = "SEGFAULT"
-    show (BadJob x) = show x
-    show (TestSuccess _) = "COMPLETE"
-
--- |Status of the starting of test job.
-data JobStartResult
-    -- |Job was not started because repository under test failed to build
-    = BuildFailed
-    -- |YAML file passed to the Weles does not exist
-    | BadYaml
-    -- |Job was not able to start by some reason
-    | StartJobFailed
-    -- |If job was started successfully, its id is returned.
-    -- Contains usual job's ID
-    | JobId Int
-
--- |Status of test job execution.
-data JobExecutionResult
-    -- |After successfull completion of testing logs are returned by this
-    -- constructor. Contains logs and job start result.
-    = JobLogs FileContents JobStartResult
-    -- |Job execution failed because Dryad failed with error. It usually means
-    -- some hardware error (connection between MuxPi and DUT were lost | some
-    -- commands executed on DUT failed | DUT was flashed with bad OS image etc.)
-    -- Contains logs and job start result.
-    | DryadError FileContents JobStartResult
-    -- |Weles failed to download some files specified in YAML file (maybe link
-    -- is invalid or server has no free space). Contains job start result.
-    | DownloadError JobStartResult
-    -- |Other unexpected error. Contains error message and job start result.
-    | UnknownError String JobStartResult
-    -- |Connection for the Weles was lost.
-    | ConnectionLost JobStartResult
-    -- |Job was not started.
-    | JobNotStarted JobStartResult
-
-instance Show JobStartResult where
-    show BuildFailed        = "BUILD FAILED"
-    show BadYaml            = "YAML NOT FOUND"
-    show StartJobFailed     = "NO JOB STARTED"
-    show (JobId x)          = show x
-
-instance Show JobExecutionResult where
-    show (JobLogs x _)      = show x
-    show (DryadError{})     = "DEVICE FAILED"
-    show (DownloadError{})  = "DOWNLOAD FILES ERROR"
-    show (UnknownError{})   = "WELES ERROR"
-    show (ConnectionLost{}) = "CONNECTION LOST"
-    show (JobNotStarted x)  = show x
+import Festral.Internal.Files
+import Festral.Config
+import Festral.Template
+import Festral.Tests.TestParser
+import Festral.Meta hiding (parse, fromFile)
+import Festral.SLAV.Weles hiding (status, name)
+import qualified Festral.SLAV.Weles as WJob (status, name)
+import Festral.Tests.Data
+import Festral.Internal.Logger
+import Festral.Internal.Preprocessor
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
@@ -245,6 +172,7 @@ parseTest' writer (TestResult status test) buildDir outDir = do
                     ++ n ++ "   ------------------\n")
                 outs)
         writeLog (BadJob (DryadError log _ )) t = writeLog (TestSuccess log) t
+        writeLog (BadJob (Cancelled log _ )) t = writeLog (TestSuccess log) t
         writeLog (BadJob (UnknownError x _)) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             writeFile ((outDirName meta t) ++ "/tf.log") $ x
@@ -362,9 +290,14 @@ filesFromJob (Just job) res = do
     jobFiles <- fmap (filter (\ x -> any (`isInfixOf` x) allowedLogFiles))
         <$> getFileList (jobid job)
     log <- maybeLog jobFiles (jobid job)
-    return $ if WJob.status job == "FAILED"
-                then dryadErr res log job
-                else maybe (ConnectionLost res) (flip JobLogs res) log
+    return $ resultFromStatus res log job
+
+resultFromStatus res log job
+    | status == "FAILED" = dryadErr res log job
+    | status == "CANCELED" = maybe (ConnectionLost res) (flip Cancelled res) log
+    | otherwise = maybe (ConnectionLost res) (flip JobLogs res) log
+    where
+        status = WJob.status job
 
 maybeLog :: Maybe [String] -> Int -> IO (Maybe FileContents)
 maybeLog Nothing _ = return Nothing
@@ -446,43 +379,7 @@ testResults lock err m c = do
         putStrLn ""
     return $ TestResult (BadJob err) c
 
-putAsyncLog lock f = withMVar lock $ \_ -> f
-
-putStrColor c s = do
-    setSGR [SetColor Foreground Vivid c]
-    putStr s
-    setSGR [Reset]
-
-putLogColor m c y = do
-    colorBrace (repoName  $>> m) Blue
-    colorBrace (branch $>> m) Blue
-    mapM_ (flip colorBoldBrace c) y
-
-putLog m y = do
-    colorBrace (repoName $>> m) Blue
-    colorBrace (branch $>> m) Blue
-    putStrLn y
-
-colorBrace x color = do
-    putStr "["
-    putStrColor color x
-    putStr "]"
-
-colorBoldBrace x color = do
-    setSGR [SetConsoleIntensity BoldIntensity]
-    colorBrace x color
-    setSGR [Reset]
-
-brace x = "[" ++ x ++ "]"
-
 filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
-
-showJobResultId (JobLogs _ i)       = show i
-showJobResultId (DryadError _ i)    = show i
-showJobResultId (DownloadError i)   = show i
-showJobResultId (UnknownError _ i)  = show i
-showJobResultId (ConnectionLost i)  = show i
-showJobResultId (JobNotStarted i)   = show i

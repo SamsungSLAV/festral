@@ -23,8 +23,8 @@
 -- management using Weles as testing server. It allows creating, cancelling,
 -- waiting Weles jobs and processing it in different ways.
 --
--- This library use module "Festral.Config" and "Festral.Files" for get server
--- IP, port etc.
+-- This library use module "Festral.Config" and "Festral.Internal.Files" for
+-- get server IP, port etc.
 module Festral.SLAV.Weles (
     Job(..),
     JobParameters(..),
@@ -53,10 +53,11 @@ import Data.List.Split
 import Data.List
 import Control.Monad
 import Data.Maybe
-import Festral.Config
 import System.Directory
-import Festral.Files
 import Control.Exception
+
+import Festral.Internal.Files
+import Festral.Config
 
 -- |Job datatype describes json job object got from weles
 data Job = Job
@@ -132,8 +133,10 @@ getJobWhenDone id parameters = do
         f job
             | isNothing job || (status <$> job) `elem` (map Just doneStatuses)
                 = return job
-            | timeout <= 0 || runTTL <= 0 = cancelJob id >> return job
-            | otherwise = threadDelay 1000000 >>
+            | timeout <= 0 || runTTL <= 0
+                = cancelJob id >> threadDelay oneSec
+                >> getJobWhenDone id parameters
+            | otherwise = threadDelay oneSec >>
                 getJobWhenDone id (JobParameters (timeout - 1) newRunTTL)
             where
                 newRunTTL = if (status <$> job) `elem` (map Just activeStatuses)
@@ -221,3 +224,5 @@ cancelAll = do
     jobs <- curlJobs
     let runningJobs = filter (\ x -> not $ (status x) `elem` doneStatuses) jobs
     mapM_ (\ x -> cancelJob (jobid x)) runningJobs
+
+oneSec = 1000000
