@@ -31,6 +31,7 @@ package: all
 	mkdir -p deb/festral/usr/bin
 	mkdir -p deb/festral/DEBIAN
 	cp dist/build/festral/festral deb/festral/usr/bin/festral
+	cp dist/build/festral-boruta/festral-boruta deb/festral/usr/bin/festral-boruta
 
 	echo "Package: festral" > ${CONTROL}
 	echo "$$(grep ^Version Festral.cabal)" >> ${CONTROL}
@@ -41,6 +42,7 @@ package: all
 
 	echo "#!/bin/bash" > ${POSTINST}
 	echo "festral --bash-completion-script festral >/etc/bash_completion.d/festral" >> ${POSTINST}
+	echo "festral-boruta --bash-completion-script festral-boruta >/etc/bash_completion.d/festral-boruta" >> ${POSTINST}
 	chmod +x ${POSTINST}
 
 	dpkg-deb --build deb/festral

@@ -20,19 +20,14 @@ module Main (
     main
 ) where
 
-import System.Process
-import System.IO
-import System.Environment
 import Options.Applicative
 import Data.Semigroup ((<>))
-import Data.Maybe
 import Data.Version (showVersion)
 import Control.Concurrent
 import Paths_Festral (version)
 
 import Festral.WWW.Server
 import Festral.Config
-import Festral.SLAV.Boruta
 import Festral.SLAV.Weles hiding (info)
 import Festral.Tests.Test
 import Festral.Internal.Files
@@ -45,35 +40,6 @@ main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
      \testing process.  Copyright (c) 2018 Samsung Electronics Co., Ltd All \
      \Rights Reserved.")
     )
-
--- |Helper type for segregate opening console by type or by UUID.
-data BorutaConsole
-    = ConsoleFromUUID String
-    | ConsoleFromType String
-
--- |Helper type for unite push and exec options.
-data DryadAction
-    = DryadExec String
-    | DryadPush
-        { pushIn    :: FilePath
-        , pushOut   :: FilePath
-        }
-
--- |Representation of boruta command options.
-data BorutaSubOpt
-    = Workers Bool
-    | AllRequests Bool
-    | Console BorutaConsole Bool
-    | CloseRequest Int
-    | DryadCmd
-        { action :: DryadAction
-        , dut    :: Bool
-        , dryadId:: String
-        , force  :: Bool
-        }
-    | Boot String
-    | SetMaintanence String
-    | SetIdle String
 
 -- |Helper type for unify all Weles options which use job ID parameter.
 data JobOpts
@@ -91,7 +57,6 @@ data WelesSubOpts
         { jobOpt :: JobOpts
         , jobId  :: Int
         }
-
 -- |Type which is root of all program commands tree.
 data Command
     = Build
@@ -101,7 +66,6 @@ data Command
         , outFile   :: FilePath
         }
     | Weles WelesSubOpts
-    | Boruta BorutaSubOpt
     | TestControl
         { perfTest  :: FilePath
         , outTestRes:: FilePath
@@ -139,8 +103,6 @@ testDesc    = "Create jobs on remote Weles server with tests defined in .yaml \
 buildDesc   = "Build all repositories for all branches described in \
 \configuration file. Put results into the directory specified in the \
 \buildLogDir field of the ~/.festral.conf configuration file."
-borutaDesc  = "Give access for the device farm of the Boruta and managament \
-\devices under test by hands."
 welesDesc   = "Low-level client for Weles API for accessing and managing jobs \
 \by hands."
 serverDesc  = "Run local file server for external parts of test process \
@@ -152,7 +114,6 @@ opts :: Parser Command
 opts = hsubparser
     ( command "build" (info buildopts (progDesc buildDesc))
     <>command "weles" (info welesopts (progDesc welesDesc))
-    <>command "boruta" (info borutaOpts (progDesc borutaDesc))
     <>command "test" (info testCtl (progDesc testDesc))
     <>command "server" (info runServer (progDesc serverDesc))
     <>command "report" (info report (progDesc reportDesc))
@@ -309,127 +270,6 @@ welesopts :: Parser Command
 welesopts = Weles
     <$> (welesAllJobs <|> welesStartJob <|> welesJobOpt <|> welesCloseAllJobs)
 
-borutaConsoleUUID :: Parser BorutaConsole
-borutaConsoleUUID = ConsoleFromUUID
-    <$> strOption
-        ( long  "console-uuid"
-        <>metavar "DRYAD_UUID"
-        <>help  "Open console for MuxPi specified by UUID of Dryad." )
-
-borutaConsoleDevice :: Parser BorutaConsole
-borutaConsoleDevice = ConsoleFromType
-    <$> strOption
-        ( long  "console-device"
-        <>metavar "DEVCE_TYPE"
-        <>help  "Open console for any MuxPi connected for given \
-        \DEVICE_TYPE board" )
-
-dryadExec :: Parser DryadAction
-dryadExec = DryadExec
-    <$> strOption
-        ( long  "exec"
-        <>short 'e'
-        <>metavar "COMMAND"
-        <>help  "Execute command on Dryad" )
-
-dryadPush :: Parser DryadAction
-dryadPush = DryadPush
-    <$> strOption
-        ( long  "push"
-        <>short 'p'
-        <>metavar "SOURCE_FILE"
-        <>help  "Push file from host." )
-    <*> strOption
-        ( long  "dst"
-        <>short 'o'
-        <>metavar "DESTINATION_FILE"
-        <>help  "Copied file name on target." )
-
-borutaWorkers :: Parser BorutaSubOpt
-borutaWorkers = Workers
-    <$> switch
-        (long   "workers"
-        <>short 'w'
-        <>help  "Show list of workers (registered devices) of the Boruta" )
-
-borutaAllRequests :: Parser BorutaSubOpt
-borutaAllRequests = AllRequests
-    <$> switch
-        (long   "all"
-        <>short 'a'
-        <>help  "Show list of all requests of Boruta" )
-
-borutaConsole :: Parser BorutaSubOpt
-borutaConsole = Console <$> (borutaConsoleUUID <|> borutaConsoleDevice)
-    <*> switch
-        (long   "force"
-        <>short 'f'
-        <>help  "Force connect device if it is already busy. WARNING: Job \
-        \will be closed after you close console and it can broke other's \
-        \person work!" )
-
-borutaCloseRequest :: Parser BorutaSubOpt
-borutaCloseRequest = CloseRequest
-    <$> option auto
-        ( long  "close"
-        <>short 'c'
-        <>metavar "REQUEST_ID"
-        <>help  "Close request specified by its ID" )
-
-borutaDryadCmd :: Parser BorutaSubOpt
-borutaDryadCmd = DryadCmd
-    <$> (dryadExec <|> dryadPush)
-    <*> switch
-        ( long  "dut"
-        <>help  "Pass command directly to the device under test instead of \
-        \MuxPi" )
-    <*> strOption
-        ( long  "uuid"
-        <>short 'u'
-        <>metavar "DRYAD_UUID"
-        <>help  "UUID of the dryad." )
-    <*> switch
-        ( long  "force"
-        <>short 'f'
-        <>help  "Force execute command even if target is busy. WARNING: \
-        \Current boruta's job will be closed after command execution, so \
-        \you can broke other's work!" )
-
-borutaBoot :: Parser BorutaSubOpt
-borutaBoot = Boot
-    <$> strOption
-        ( long  "boot"
-        <>short 'b'
-        <>metavar "DRYAD_UUID"
-        <>help  "Boot device under test of Dryad dpecified by UUID" )
-
-borutaSetMaintanence :: Parser BorutaSubOpt
-borutaSetMaintanence = SetMaintanence
-    <$> strOption
-        ( long  "set-maintanence"
-        <>short 'm'
-        <>metavar "DRYAD_UUID"
-        <>help  "Set dryad specified by DRYAD_UUID in the MAINTENANCE mode" )
-
-borutaSetIdle :: Parser BorutaSubOpt
-borutaSetIdle = SetIdle
-    <$> strOption
-        ( long  "set-idle"
-        <>short 'i'
-        <>metavar "DRYAD_UUID"
-        <>help  "Set dryad specified by DRYAD_UUID in the IDLE mode" )
-
-borutaOpts :: Parser Command
-borutaOpts = Boruta <$>
-    (  borutaWorkers
-    <|>borutaAllRequests
-    <|>borutaConsole
-    <|>borutaCloseRequest
-    <|>borutaDryadCmd
-    <|>borutaBoot
-    <|>borutaSetMaintanence
-    <|>borutaSetIdle)
-
 testCtl :: Parser Command
 testCtl = TestControl
     <$> strOption
@@ -488,7 +328,6 @@ reportCmd _ _ _ = runCmd None
 
 subCmd :: Command -> IO ()
 subCmd (Weles x) = welesSubCmd x
-subCmd (Boruta x) = borutaSubCmd x
 subCmd (Report x o p) = reportCmd x o p
 subCmd (TestControl conf out []) = do
     appCfg <- getAppConfig
@@ -536,24 +375,6 @@ jobCmd (ListFiles True "") id = show <$> getFileList id >>= putStrLn
 jobCmd (ListFiles True x) id = getJobOutFile id x >>=justPutStrLn "No such job."
 jobCmd (CancelJob True) id = cancelJob id
 jobCmd _ _ = runCmd None
-
-borutaSubCmd (Workers True) = show <$> curlWorkers >>= putStrLn
-borutaSubCmd (AllRequests True) = show <$> allRequests >>= putStrLn
-borutaSubCmd (Console x force) = borutaConsoleCall x force
-borutaSubCmd (CloseRequest x) = closeRequest x
-borutaSubCmd (DryadCmd a dut id f) = dryadCmdCall a dut id f
-borutaSubCmd (Boot id) = dutBoot id
-borutaSubCmd (SetMaintanence id) = setMaintenace id
-borutaSubCmd (SetIdle id) = setIdle id
-borutaSubCmd _ = runCmd None
-
-dryadCmdCall (DryadExec cmd) True id f= execDUT id cmd f
-dryadCmdCall (DryadExec cmd) _ id f = execMuxPi id cmd f
-dryadCmdCall (DryadPush from to) True id f = pushDUT id from to f
-dryadCmdCall (DryadPush from to) _ id f = pushMuxPi id from to f
-
-borutaConsoleCall (ConsoleFromType x) f = execAnyDryadConsole x f
-borutaConsoleCall (ConsoleFromUUID x) f = execSpecifiedDryadConsole x f
 
 justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
 justPutStrLn errMsg x

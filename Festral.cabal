@@ -1,5 +1,5 @@
 Name:               Festral
-Version:            1.1.2
+Version:            1.2.0
 Cabal-Version:      >= 1.2
 License:            Apache-2.0
 License-file:       LICENSE
@@ -33,19 +33,53 @@ Library
         ansi-terminal, MissingH,
         text
     Exposed-modules:
+       Festral.Builder.Builder,
+       Festral.Builder.GBSParser,
+       Festral.Builder.OwnParser,
+       Festral.Config,
+       Festral.Internal.Files,
+       Festral.Internal.Logger,
+       Festral.Internal.Preprocessor,
+       Festral.Meta,
+       Festral.Reporter,
+       Festral.SLAV.Boruta.Data,
        Festral.SLAV.Weles,
        Festral.SLAV.Boruta,
        Festral.Template,
-       Festral.Builder.Builder,
-       Festral.Meta,
-       Festral.Builder.GBSParser,
-       Festral.Builder.OwnParser,
        Festral.Tests.TestParser,
+       Festral.Tests.Data,
        Festral.Tests.Test,
-       Festral.Config,
-       Festral.Internal.Files,
-       Festral.Reporter
+       Festral.WWW.TestGUI,
+       Festral.WWW.Server
 
 Executable festral
     Main-Is:        Festral/Main.hs
     Ghc-Options: -threaded
+    Other-modules:
+       Festral.Builder.Builder,
+       Festral.Builder.GBSParser,
+       Festral.Builder.OwnParser,
+       Festral.Config,
+       Festral.Internal.Files,
+       Festral.Internal.Logger,
+       Festral.Internal.Preprocessor,
+       Festral.Meta,
+       Festral.Reporter,
+       Festral.SLAV.Weles,
+       Festral.Template,
+       Festral.Tests.TestParser,
+       Festral.Tests.Data,
+       Festral.Tests.Test,
+       Festral.WWW.TestGUI,
+       Festral.WWW.Server
+
+Executable festral-boruta
+    Main-Is:        Festral/SLAV/Boruta/Main.hs
+    Ghc-Options: -threaded
+    Other-modules:
+       Festral.Config,
+       Festral.Internal.Files,
+       Festral.Internal.Logger,
+       Festral.SLAV.Boruta,
+       Festral.SLAV.Boruta.Data,
+       Festral.Meta
