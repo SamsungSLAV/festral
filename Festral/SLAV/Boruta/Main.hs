@@ -32,8 +32,8 @@ import Festral.Internal.Files
 
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion)
-     (progDesc "festral-boruta - easy access for Boruta's farm devices \
-     \testing process.  Copyright (c) 2018 Samsung Electronics Co., Ltd All \
+     (progDesc "Farmer - part of Festral system for easy access for Boruta's\
+     \farm devices.  Copyright (c) 2018 Samsung Electronics Co., Ltd All \
      \Rights Reserved.")
     )
 
@@ -213,7 +213,8 @@ borutaSetIdle = SetIdle
         <>metavar "DRYAD_UUID"
         <>help  "Set dryad specified by DRYAD_UUID in the IDLE mode" )
 
-runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
+runCmd (Version True) = putStrLn $ "This farmer use festral v."
+                        ++ showVersion version
 runCmd (Cmd x) = borutaSubCmd x
 runCmd _ = putStrLn "Some parameter missed. Run program with --help option \
 \to see usage."

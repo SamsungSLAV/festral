@@ -10,7 +10,7 @@
         + [HTML report](#html-report)
 - [Other utilities](#festral-weles)
    * [Weles client](#festral-weles)
-   * [Boruta client](#festral-boruta)
+   * [Boruta client](#farmer)
    * [File serwer](#festral-server)
 - [Test case description](#test-cases-description)
    * [YAML templates](#yaml-templates)
@@ -31,9 +31,10 @@ and just do it.
 remote Weles server and recieving results of the tests.
 * `festral report` - generate reports in various formats
 * `festral weles` - utility for communication with Weles tests server.
-* `festral boruta` - utility for connecting devices of the farm directly.
 * `festral server` - simple built-in web server for sharing built files and
 logs.
+
+It additionaly has utility named `farmer` for accessing devices of Boruta farm.
 
 ----------
 ### How to build
@@ -435,22 +436,22 @@ To see list of files use
  $ festral weles -i 112233 --list-files
 ```
 ------------------
-### festral boruta
+### farmer
 
-The `festral boruta` is tool for connecting to devices registered in the
+The `farmer` is tool for connecting to devices registered in the
 Boruta's farm of SLAV stack. This tool is more low-lewel then even
 `festral weles`, but it could
 be helpful when you need to have console for device under test and its MuxPi.
 
 You can get list of all workers (devices) by calling
 ```
-festral boruta -w
+ $ farmer -w
 ```
 Now devices are identified by its `device_type` field of the output JSON,
 so if you are want to have console e.g. for some `rpi3` board, you can
 get it by command
 ```
- $ festral boruta --console-device rpi3
+ $ farmer --console-device rpi3
 ```
 This command will open ssh session which will be **valid not more than 1 hour**
 for one of the free boards of that type. If all devices of this type are busy,
@@ -463,29 +464,29 @@ this session.
 
 list all requests and statuses of Boruta:
 ```
- $ festral boruta -a
+ $ farmer -a
 ```
 Open ssh console for MuxPi specified by its UUID (you can find it in list of
-workers, see `festral boruta -w`):
+workers, see `farmer -w`):
 ```
- $ festral boruta --console-uuid 355e0604-7832-4c21-948c-86c55989118f
+ $ farmer --console-uuid 355e0604-7832-4c21-948c-86c55989118f
 ```
 Push file `~/file_from` from host to the MuxPi as /tmp/test.json with UUID:
 ```
- $ festral boruta -u 355e0604-7832-4c21-948c-86c55989118f --push ~/file_from -o /tmp/test.json
+ $ farmer push -u 355e0604-7832-4c21-948c-86c55989118f ~/file_from -o /tmp/test.json
 ```
 Push file `~/file_from` from host to the device under test directly
 (e.g. for Raspberry Pi3 connected to this MuxPi) as /tmp/test.json with UUID:
 ```
- $ festral boruta -u 355e0604-7832-4c21-948c-86c55989118f --push ~/file_from -o /tmp/test.json --dut
+ $ farmer push -u 355e0604-7832-4c21-948c-86c55989118f ~/file_from -o /tmp/test.json --dut
 ```
 Boot device up:
 ```
- $ festral boruta --boot 355e0604-7832-4c21-948c-86c55989118f
+ $ farmer --boot 355e0604-7832-4c21-948c-86c55989118f
 ```
 Execute command `uname -a` on device under test:
 ```
- $ festral boruta -u 355e0604-7832-4c21-948c-86c55989118f --exec "uname -a" --dut
+ $ farmer exec -u 355e0604-7832-4c21-948c-86c55989118f "uname -a" --dut
 ```
 ----------------
 ### festral server
