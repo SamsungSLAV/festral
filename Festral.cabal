@@ -1,5 +1,5 @@
 Name:               Festral
-Version:            1.2.0
+Version:            1.2.1
 Cabal-Version:      >= 1.2
 License:            Apache-2.0
 License-file:       LICENSE
@@ -50,7 +50,8 @@ Library
        Festral.Tests.Data,
        Festral.Tests.Test,
        Festral.WWW.TestGUI,
-       Festral.WWW.Server
+       Festral.WWW.Server,
+       Paths_Festral
 
 Executable festral
     Main-Is:        Festral/Main.hs
@@ -71,9 +72,10 @@ Executable festral
        Festral.Tests.Data,
        Festral.Tests.Test,
        Festral.WWW.TestGUI,
-       Festral.WWW.Server
+       Festral.WWW.Server,
+       Paths_Festral
 
-Executable festral-boruta
+Executable farmer
     Main-Is:        Festral/SLAV/Boruta/Main.hs
     Ghc-Options: -threaded
     Other-modules:
@@ -82,4 +84,5 @@ Executable festral-boruta
        Festral.Internal.Logger,
        Festral.SLAV.Boruta,
        Festral.SLAV.Boruta.Data,
-       Festral.Meta
+       Festral.Meta,
+       Paths_Festral

@@ -53,6 +53,8 @@ import Control.Concurrent
 import Data.Maybe
 import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Aeson
+import qualified Control.Monad.Parallel as Par
+import System.FilePath.Posix
 
 import Festral.Internal.Files
 import Festral.Internal.Logger
@@ -229,7 +231,7 @@ execMuxPi uid cmd f = do
 
 -- |Execute command on the device under test of the Dryad specified by UUID
 execDUT :: String   -- ^ UUID of the device
-        -> String   -- ^ Command
+        -> String -- ^ Command
         -> Bool     -- ^ Enforce connection
         -> IO ()
 execDUT uid cmd f = do
@@ -239,30 +241,31 @@ execDUT uid cmd f = do
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
 pushMuxPi :: String     -- ^ UUID of the device
-          -> FilePath   -- ^ File to be copied from host
+          -> [FilePath] -- ^ Files to be copied from host
           -> FilePath   -- ^ Destination file name on the MuxPi
           -> Bool       -- ^ Enforce connection
           -> IO ()
-pushMuxPi uid from to f = do
+pushMuxPi uid sources to f = do
     auth <- getSpecifiedTargetAuth uid (authMethod f)
-    execDryad (scpCmd from to) auth
+    Par.mapM_ (\ from -> execDryad (scpCmd from to) auth) sources
     closeAuth auth
 
 -- |The same as 'pushMuxPi' but push file to the device under test
 pushDUT :: String   -- ^ UUID of the device
-        -> FilePath -- ^ File to be copied from host
+        -> [FilePath]-- ^ Files to be copied from host
         -> FilePath -- ^ Destination file name on the Device Under Test (DUT)
         -> Bool     -- ^ Enforce connection
         -> IO ()
-pushDUT uid from to f = do
+pushDUT uid sources to f = do
     auth <- getSpecifiedTargetAuth uid (authMethod f)
-    execDryad (scpCmd from tmpfile) auth
-    execDryad (sshCmd ./ "dut_copyto.sh " ++ tmpfile ++ " " ++ to)
-        auth
-    execDryad (sshCmd $ "rm " ++ tmpfile) auth
+    Par.mapM_ (\ from -> do
+        execDryad (scpCmd from $ tmpfile from) auth
+        execDryad (sshCmd ./ "dut_copyto.sh " ++ tmpfile from ++ " " ++ to)
+            auth
+        execDryad (sshCmd $ "rm " ++ tmpfile from) auth) sources
     closeAuth auth
     where
-        tmpfile = "/tmp/festral_copied_file"
+        tmpfile x = "/tmp/" ++ takeFileName x
 
 sshCmd cmd x = "ssh -oStrictHostKeyChecking=no "
     ++ dsUser x ++ "@" ++ dsIp x ++ " -p " ++ show (dsPort x)

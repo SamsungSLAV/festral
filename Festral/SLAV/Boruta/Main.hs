@@ -231,7 +231,7 @@ borutaSubCmd _ = runCmd None
 dryadCmdCall (BorutaExec cmds opts)
     = (execFromOpts opts) (dryadId opts) (unwords cmds) (force opts)
 dryadCmdCall (BorutaPush files out opts)
-    = (pushFromOpts opts) (dryadId opts) (head files) out (force opts)
+    = (pushFromOpts opts) (dryadId opts) files out (force opts)
 
 execFromOpts (DryadAction True _ _) = execDUT
 execFromOpts _ = execMuxPi
