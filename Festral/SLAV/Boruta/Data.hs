@@ -29,6 +29,7 @@ module Festral.SLAV.Boruta.Data
     , DryadSSH        (..)
     , WorkerState     (..)
     , Addr            (..)
+    , RequestOptions  (..)
     ) where
 
 import GHC.Generics
@@ -99,6 +100,12 @@ data DryadSSH = DryadSSH
     , dsIp      :: String
     , dsPort    :: Int
     , idFile    :: FilePath
+    }
+
+-- |Helper data type for incapsulate options of Boruta request.
+data RequestOptions = RequestOptions
+    { force     :: Bool -- ^ Enforce connection
+    , noClose   :: Bool -- ^ Do not close request after finish
     }
 
 -- |Helper type for send JSON with WorkerState to the Boruta.

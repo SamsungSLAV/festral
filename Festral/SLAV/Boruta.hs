@@ -35,7 +35,8 @@ module Festral.SLAV.Boruta (
     workerDeviceType,
     setMaintenace,
     setIdle,
-    setState
+    setState,
+    RequestOptions(..)
 ) where
 
 import Control.Applicative
@@ -50,6 +51,7 @@ import System.IO.Temp
 import Data.List.Split
 import Control.Exception
 import Control.Concurrent
+import Control.Monad
 import Data.Maybe
 import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Aeson
@@ -200,70 +202,72 @@ waitJobClosed auth = do
             then threadDelay oneSec >> waitJobClosed auth
             else return ()) req
 
+optCloseAuth opts auth = when (not $ noClose opts) (closeAuth auth)
+
 -- |Run ssh session for any device which matches specified 'device_type'.
 -- Second parameter decide if connect forcely if device is busy.
 execAnyDryadConsole :: String   -- ^ Device type
-                    -> Bool     -- ^ Enforce connection
+                    -> RequestOptions
                     -> IO ()
-execAnyDryadConsole x f = do
-    auth <- getDeviceTypeAuth x (authMethod f)
+execAnyDryadConsole x opts = do
+    auth <- getDeviceTypeAuth x (authMethod $ force opts)
     execDryad (sshCmd "") auth
-    closeAuth auth
+    optCloseAuth opts auth
 
 -- |Run ssh session for device specified by its UUID
 execSpecifiedDryadConsole :: String -- ^ Device UUID
-                          -> Bool   -- ^ Enforce connection
+                          -> RequestOptions
                           -> IO ()
-execSpecifiedDryadConsole x f = do
-    auth <- getSpecifiedTargetAuth x (authMethod f)
+execSpecifiedDryadConsole x opts = do
+    auth <- getSpecifiedTargetAuth x (authMethod $ force opts)
     execDryad (sshCmd "") auth
-    closeAuth auth
+    optCloseAuth opts auth
 
 -- |Execute command on MuxPi
 execMuxPi :: String -- ^ UUID of the device
           -> String -- ^ Command
-          -> Bool   -- ^ Enforce connection
+          -> RequestOptions
           -> IO ()
-execMuxPi uid cmd f = do
-    auth <- getSpecifiedTargetAuth uid (authMethod f)
+execMuxPi uid cmd opts = do
+    auth <- getSpecifiedTargetAuth uid (authMethod $ force opts)
     execDryad (sshCmd cmd) auth
-    closeAuth auth
+    optCloseAuth opts auth
 
 -- |Execute command on the device under test of the Dryad specified by UUID
 execDUT :: String   -- ^ UUID of the device
-        -> String -- ^ Command
-        -> Bool     -- ^ Enforce connection
+        -> String   -- ^ Command
+        -> RequestOptions
         -> IO ()
-execDUT uid cmd f = do
-    auth <-  getSpecifiedTargetAuth uid (authMethod f)
+execDUT uid cmd opts = do
+    auth <-  getSpecifiedTargetAuth uid (authMethod $ force opts)
     execDryad (sshCmd ./"dut_exec.sh " ++ cmd) auth
-    closeAuth auth
+    optCloseAuth opts auth
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
 pushMuxPi :: String     -- ^ UUID of the device
           -> [FilePath] -- ^ Files to be copied from host
           -> FilePath   -- ^ Destination file name on the MuxPi
-          -> Bool       -- ^ Enforce connection
+          -> RequestOptions
           -> IO ()
-pushMuxPi uid sources to f = do
-    auth <- getSpecifiedTargetAuth uid (authMethod f)
+pushMuxPi uid sources to opts = do
+    auth <- getSpecifiedTargetAuth uid (authMethod $ force opts)
     Par.mapM_ (\ from -> execDryad (scpCmd from to) auth) sources
-    closeAuth auth
+    optCloseAuth opts auth
 
 -- |The same as 'pushMuxPi' but push file to the device under test
 pushDUT :: String   -- ^ UUID of the device
         -> [FilePath]-- ^ Files to be copied from host
         -> FilePath -- ^ Destination file name on the Device Under Test (DUT)
-        -> Bool     -- ^ Enforce connection
+        -> RequestOptions
         -> IO ()
-pushDUT uid sources to f = do
-    auth <- getSpecifiedTargetAuth uid (authMethod f)
+pushDUT uid sources to opts = do
+    auth <- getSpecifiedTargetAuth uid (authMethod $ force opts)
     Par.mapM_ (\ from -> do
         execDryad (scpCmd from $ tmpfile from) auth
         execDryad (sshCmd ./ "dut_copyto.sh " ++ tmpfile from ++ " " ++ to)
             auth
         execDryad (sshCmd $ "rm " ++ tmpfile from) auth) sources
-    closeAuth auth
+    optCloseAuth opts auth
     where
         tmpfile x = "/tmp/" ++ takeFileName x
 
@@ -314,11 +318,11 @@ closeRequest id = do
         h _ = putStrColor Yellow "Cant access requesteed ID\n" >> return ()
 
 -- |Boot up Device Under Test specified by UUID
-dutBoot uid = do
-    auth <- getSpecifiedTargetAuth uid (authMethod False)
+dutBoot uid opts = do
+    auth <- getSpecifiedTargetAuth uid (authMethod $ force opts)
     execDryad (sshCmd ./"dut_boot.sh") auth
     execDryad (sshCmd ./"dut_login.sh root") auth
-    closeAuth auth
+    optCloseAuth opts auth
 
 -- |Set specified by UUID dryad in MAINTENANCE mode: Weles will not be able to
 -- start tests on it.
