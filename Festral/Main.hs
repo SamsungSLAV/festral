@@ -37,8 +37,8 @@ import Festral.Builder.Builder (builderFromFile, build, BuildOptions(..))
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion)
      (progDesc "Festral - unified application for automating of building and \
-     \testing process.  Copyright (c) 2018 Samsung Electronics Co., Ltd All \
-     \Rights Reserved.")
+     \testing process.  Copyright (c) 2018-2019 Samsung Electronics Co., \
+     \Ltd. All Rights Reserved.")
     )
 
 -- |Helper type for unify all Weles options which use job ID parameter.

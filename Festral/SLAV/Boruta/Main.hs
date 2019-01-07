@@ -16,7 +16,7 @@
  - limitations under the License
  -}
 
--- |Main module for festral-boruta executable.
+-- |Main module for farmer (festral boruta) executable.
 module Main (
     main
 ) where
@@ -33,7 +33,7 @@ import Festral.Internal.Files
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion)
      (progDesc "Farmer - part of Festral system for easy access for Boruta's\
-     \farm devices.  Copyright (c) 2018 Samsung Electronics Co., Ltd All \
+     \farm devices.  Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All \
      \Rights Reserved.")
     )
 
@@ -47,17 +47,17 @@ data DryadAction
     = DryadAction
         { dut       :: Bool
         , dryadId   :: String
-        , force     :: Bool
+        , options   :: RequestOptions
         }
 
 -- |Representation of boruta command options.
 data BorutaSubOpt
     = Workers Bool
     | AllRequests Bool
-    | Console BorutaConsole Bool
+    | Console BorutaConsole RequestOptions
     | CloseRequest Int
     | DryadCmd BorutaCommand
-    | Boot String
+    | Boot String RequestOptions
     | SetMaintanence String
     | SetIdle String
 
@@ -94,6 +94,19 @@ borutaDesc  = "Give access for the device farm of the Boruta and managament \
 borutaExecDesc = "Execute command on dryad or on DUT"
 borutaPushDesc = "Push file(s) to the dryad or to the DUT"
 
+requestOptions :: Parser RequestOptions
+requestOptions = RequestOptions
+    <$> switch
+        ( long  "force"
+        <>short 'f'
+        <>help  "Force execute command even if target is busy. WARNING: \
+        \Current boruta's job will be closed after command execution, so \
+        \you can broke other's work!" )
+    <*> switch
+        ( long  "no-close"
+        <>short 'n'
+        <>help  "Do not close Boruta request after finish." )
+
 borutaSubOpts :: Parser BorutaCommand
 borutaSubOpts = hsubparser
     ( command "exec" (info borutaExec (progDesc borutaExecDesc))
@@ -126,12 +139,7 @@ dryadAction = DryadAction
         <>short 'u'
         <>metavar "DRYAD_UUID"
         <>help  "UUID of the dryad." )
-    <*> switch
-        ( long  "force"
-        <>short 'f'
-        <>help  "Force execute command even if target is busy. WARNING: \
-        \Current boruta's job will be closed after command execution, so \
-        \you can broke other's work!" )
+    <*> requestOptions
 
 prgVersion :: Parser Options
 prgVersion = Version
@@ -171,12 +179,7 @@ borutaAllRequests = AllRequests
 
 borutaConsole :: Parser BorutaSubOpt
 borutaConsole = Console <$> (borutaConsoleUUID <|> borutaConsoleDevice)
-    <*> switch
-        (long   "force"
-        <>short 'f'
-        <>help  "Force connect device if it is already busy. WARNING: Job \
-        \will be closed after you close console and it can broke other's \
-        \person work!" )
+    <*> requestOptions
 
 borutaCloseRequest :: Parser BorutaSubOpt
 borutaCloseRequest = CloseRequest
@@ -196,6 +199,7 @@ borutaBoot = Boot
         <>short 'b'
         <>metavar "DRYAD_UUID"
         <>help  "Boot device under test of Dryad dpecified by UUID" )
+    <*> requestOptions
 
 borutaSetMaintanence :: Parser BorutaSubOpt
 borutaSetMaintanence = SetMaintanence
@@ -224,15 +228,15 @@ borutaSubCmd (AllRequests True) = show <$> allRequests >>= putStrLn
 borutaSubCmd (Console x force) = borutaConsoleCall x force
 borutaSubCmd (CloseRequest x) = closeRequest x
 borutaSubCmd (DryadCmd x) = dryadCmdCall x
-borutaSubCmd (Boot id) = dutBoot id
+borutaSubCmd (Boot id opts) = dutBoot id opts
 borutaSubCmd (SetMaintanence id) = setMaintenace id
 borutaSubCmd (SetIdle id) = setIdle id
 borutaSubCmd _ = runCmd None
 
 dryadCmdCall (BorutaExec cmds opts)
-    = (execFromOpts opts) (dryadId opts) (unwords cmds) (force opts)
+    = (execFromOpts opts) (dryadId opts) (unwords cmds) (options opts)
 dryadCmdCall (BorutaPush files out opts)
-    = (pushFromOpts opts) (dryadId opts) files out (force opts)
+    = (pushFromOpts opts) (dryadId opts) files out (options opts)
 
 execFromOpts (DryadAction True _ _) = execDUT
 execFromOpts _ = execMuxPi
