@@ -16,14 +16,18 @@
 # limitations under the License
 #
 
-all: deps
-	runhaskell Setup.hs configure --user
-	runhaskell Setup.hs build
-	runhaskell Setup.hs install
+all: configure deps
+	cabal build
 
 deps:
 	cabal update
 	cabal install --only-dependencies
+
+docs: configure
+	cabal haddock
+
+configure:
+	cabal configure
 
 CONTROL="deb/festral/DEBIAN/control"
 POSTINST="deb/festral/DEBIAN/postinst"

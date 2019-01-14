@@ -54,14 +54,25 @@ sources (it contains Setup.hs file) and run `make` for build or
 subdirectory.
 
 If build finished with success, you will find festral executable in the
-`dist/build/festral/` directory.
+`dist/build/` directory.
+
+-----------
+### Source code documentation
+Source code of Festral is documented using `haddock`. For generate documentation
+just run:
+
+```
+ $ make docs
+```
+
+Documentation will be generated under `dist/doc/` directory.
 
 # Usage
 -----------
 ### festral
 
 You can get information about it by typing `festral --help`.
-Available commands are: `build`, `test`, `report`, `weles`, `server`, `boruta`.
+Available commands are: `build`, `test`, `report`, `weles`, `server`.
 
 ### configuration
 
