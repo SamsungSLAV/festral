@@ -1,6 +1,8 @@
 # Table of Contents
 - [Festral](#festral)
    * [How to build](#how-to-build)
+        + [Host build](#local-build)
+        + [Docker build](#docker-build)
    * [Generating documentation](#source-code-documentation)
 - [Usage](#usage)
    * [Configuration](#configuration)
@@ -39,6 +41,9 @@ It additionaly has utility named `farmer` for accessing devices of Boruta farm.
 
 ----------
 ### How to build
+
+#### Local build
+
 Installation scripts presented below are made on Ubuntu 16.04.
 
 `Festral` is written in Haskell and for building it from sources your need to
@@ -56,6 +61,18 @@ subdirectory.
 
 If build finished with success, you will find festral executable in the
 `dist/build/` directory.
+
+#### Docker build
+
+There is also Docker build available: just run
+
+```
+ $ make docker
+```
+
+This command will build `festral` and `farmer` binaries and Debian package
+inside the Docker container from local sources. The output will be placed
+at `bin` directory in the source root.
 
 -----------
 ### Source code documentation

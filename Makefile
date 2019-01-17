@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+# Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
 #
 # Author: Uladzislau Harbuz <u.harbuz@samsung.com>
 #
@@ -16,18 +16,47 @@
 # limitations under the License
 #
 
-all: configure deps
-	cabal build
+BUILD_IMAGE_NAME =festral-build-img
+CONTAINER_NAME =festral-container
+BINARIES =farmer festral
+BUILD_OUT =bin
+DEB_NAME =festral.deb
+
+all: deps configure
+	cabal ${CABAL_PREFIX}build
 
 deps:
-	cabal update
-	cabal install --only-dependencies
+	cabal ${CABAL_PREFIX}update
+	cabal ${CABAL_PREFIX}install --only-dependencies ${DEPS_OPTS}
 
 docs: configure
 	cabal haddock
 
 configure:
-	cabal configure
+	cabal ${CABAL_PREFIX}configure
+
+docker: ${BINARIES} docker-deb
+	docker rm ${CONTAINER_NAME}
+
+docker-build:
+	docker build --tag ${BUILD_IMAGE_NAME} .
+
+docker-container: docker-build
+	docker create --name ${CONTAINER_NAME} ${BUILD_IMAGE_NAME}
+
+docker-clean:
+	docker rm ${CONTAINER_NAME}
+	docker rmi ${BUILD_IMAGE_NAME}
+	rm -rf ${BUILD_OUT}
+
+${BINARIES}: docker-container | build-outdir
+	docker cp "${CONTAINER_NAME}:/festral/dist/build/$@/$@" "${BUILD_OUT}/$@"
+
+docker-deb: docker-container
+	docker cp "${CONTAINER_NAME}:/festral/deb/${DEB_NAME}" "${BUILD_OUT}/${DEB_NAME}"
+
+build-outdir:
+	mkdir -p ${BUILD_OUT}
 
 CONTROL="deb/festral/DEBIAN/control"
 POSTINST="deb/festral/DEBIAN/postinst"
@@ -54,3 +83,4 @@ package: all
 clean:
 	rm -rf dist
 	rm -rf deb
+	rm -rf ${BUILD_OUT}
