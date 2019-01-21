@@ -21,13 +21,27 @@ CONTAINER_NAME =festral-container
 BINARIES =farmer festral
 BUILD_OUT =bin
 DEB_NAME =festral.deb
+DISTRIBUTION_PATH =Distribution
+MANPAGES_PATH=${DISTRIBUTION_PATH}/ManPages
+MAN_PAGES_OUT =${MANPAGES_PATH}/manpages
+BUILD_PREFIX =dist/build
+FESTRAL_BIN_PATH =${BUILD_PREFIX}/festral
+FARMER_BIN_PATH =${BUILD_PREFIX}/farmer
 
-all: deps configure
+all: build package
+
+build: deps configure
 	cabal ${CABAL_PREFIX}build
+	mkdir -p ${BUILD_OUT}
+	cp ${FESTRAL_BIN_PATH}/festral ${BUILD_OUT}/
+	cp ${FARMER_BIN_PATH}/farmer ${BUILD_OUT}/
 
 deps:
 	cabal ${CABAL_PREFIX}update
 	cabal ${CABAL_PREFIX}install --only-dependencies ${DEPS_OPTS}
+
+manpages: build
+	${MANPAGES_PATH}/manpage-generator.sh ${BUILD_OUT} ${MAN_PAGES_OUT} ${MANPAGES_PATH}
 
 docs: configure
 	cabal haddock
@@ -50,7 +64,7 @@ docker-clean:
 	rm -rf ${BUILD_OUT}
 
 ${BINARIES}: docker-container | build-outdir
-	docker cp "${CONTAINER_NAME}:/festral/dist/build/$@/$@" "${BUILD_OUT}/$@"
+	docker cp "${CONTAINER_NAME}:/festral/${BUILD_PREFIX}/$@/$@" "${BUILD_OUT}/$@"
 
 docker-deb: docker-container
 	docker cp "${CONTAINER_NAME}:/festral/deb/${DEB_NAME}" "${BUILD_OUT}/${DEB_NAME}"
@@ -58,29 +72,11 @@ docker-deb: docker-container
 build-outdir:
 	mkdir -p ${BUILD_OUT}
 
-CONTROL="deb/festral/DEBIAN/control"
-POSTINST="deb/festral/DEBIAN/postinst"
-package: all
-	mkdir -p deb/festral/usr/bin
-	mkdir -p deb/festral/DEBIAN
-	cp dist/build/festral/festral deb/festral/usr/bin/festral
-	cp dist/build/farmer/farmer deb/festral/usr/bin/farmer
-
-	echo "Package: festral" > ${CONTROL}
-	echo "$$(grep ^Version Festral.cabal)" >> ${CONTROL}
-	echo "Maintainer: Uladzislau Harbuz" >> ${CONTROL}
-	echo "Architecture: all" >> ${CONTROL}
-	echo "Description: Automated testing system. Client for SLAV stack." >> ${CONTROL}
-	echo "Depends: curl, git, ssh" >> ${CONTROL}
-
-	echo "#!/bin/bash" > ${POSTINST}
-	echo "festral --bash-completion-script festral >/etc/bash_completion.d/festral" >> ${POSTINST}
-	echo "farmer --bash-completion-script farmer >/etc/bash_completion.d/farmer" >> ${POSTINST}
-	chmod +x ${POSTINST}
-
-	dpkg-deb --build deb/festral
+package: build manpages
+	./Distribution/make_debian.sh ${FESTRAL_BIN_PATH} ${FARMER_BIN_PATH} ${MAN_PAGES_OUT}
 
 clean:
 	rm -rf dist
 	rm -rf deb
 	rm -rf ${BUILD_OUT}
+	rm -rf ${MAN_PAGES_OUT}
