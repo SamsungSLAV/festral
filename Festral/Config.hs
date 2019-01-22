@@ -25,6 +25,8 @@
 -- Configuration file is just JSON file with fields as in 'AppConfig'.
 module Festral.Config (
     AppConfig (..),
+    NetAddress(..),
+    getAddr
 ) where
 
 import Data.Aeson
@@ -46,6 +48,11 @@ data AppConfig = AppConfig
     , borutaPort    :: Int      -- ^Default: 6666
     } deriving (Show, Generic)
 
+data NetAddress = NetAddress
+    { netIP     :: String
+    , netPort   :: Int
+    }
+
 instance FromJSON AppConfig where
     parseJSON = withObject "AppConfig" $ \o -> do
         buildLogDir     <- o .:? "buildLogDir"  .!= "/tmp/builds"
@@ -60,3 +67,5 @@ instance FromJSON AppConfig where
         borutaPort      <- o .:? "borutaPort"   .!= 6666
         return AppConfig{..}
 instance ToJSON AppConfig
+
+getAddr x = (netIP x, netPort x)
