@@ -221,23 +221,23 @@ borutaSetIdle = SetIdle
 
 runCmd (Version True) = putStrLn $ "This farmer use festral v."
                         ++ showVersion version
-runCmd (Cmd x) = borutaSubCmd x
+runCmd (Cmd x) = borutaAddr >>= flip borutaSubCmd x
 runCmd _ = getExecutablePath >>= flip callProcess ["--help"]
 
-borutaSubCmd (Workers True) = show <$> curlWorkers >>= putStrLn
-borutaSubCmd (AllRequests True) = show <$> allRequests >>= putStrLn
-borutaSubCmd (Console x force) = borutaConsoleCall x force
-borutaSubCmd (CloseRequest x) = closeRequest x
-borutaSubCmd (DryadCmd x) = dryadCmdCall x
-borutaSubCmd (Boot id opts) = dutBoot id opts
-borutaSubCmd (SetMaintanence id) = setMaintenace id
-borutaSubCmd (SetIdle id) = setIdle id
-borutaSubCmd _ = runCmd None
+borutaSubCmd a (Workers True) = show <$> curlWorkers a >>= putStrLn
+borutaSubCmd a (AllRequests True) = show <$> allRequests a >>= putStrLn
+borutaSubCmd a (Console x force) = borutaConsoleCall a x force
+borutaSubCmd a (CloseRequest x) = closeRequest a x
+borutaSubCmd a (DryadCmd x) = dryadCmdCall a x
+borutaSubCmd a (Boot id opts) = dutBoot a id opts
+borutaSubCmd a (SetMaintanence id) = setMaintenace a id
+borutaSubCmd a (SetIdle id) = setIdle a id
+borutaSubCmd _ _ = runCmd None
 
-dryadCmdCall (BorutaExec cmds opts)
-    = (execFromOpts opts) (dryadId opts) (unwords cmds) (options opts)
-dryadCmdCall (BorutaPush files out opts)
-    = (pushFromOpts opts) (dryadId opts) files out (options opts)
+dryadCmdCall a (BorutaExec cmds opts)
+    = (execFromOpts opts) a (dryadId opts) (unwords cmds) (options opts)
+dryadCmdCall a (BorutaPush files out opts)
+    = (pushFromOpts opts) a (dryadId opts) files out (options opts)
 
 execFromOpts (DryadAction True _ _) = execDUT
 execFromOpts _ = execMuxPi
@@ -245,10 +245,14 @@ execFromOpts _ = execMuxPi
 pushFromOpts (DryadAction True _ _) = pushDUT
 pushFromOpts _ = pushMuxPi
 
-borutaConsoleCall (ConsoleFromType x) f = execAnyDryadConsole x f
-borutaConsoleCall (ConsoleFromUUID x) f = execSpecifiedDryadConsole x f
+borutaConsoleCall a (ConsoleFromType x) f = execAnyDryadConsole a x f
+borutaConsoleCall a (ConsoleFromUUID x) f = execSpecifiedDryadConsole a x f
 
 justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
 justPutStrLn errMsg x
     | x == Nothing = putStrLn errMsg
     | otherwise = let Just y = x in putStrLn $ (read $ show y :: String)
+
+borutaAddr = do
+    c <- getAppConfig
+    return $ NetAddress (borutaIP c) (borutaPort c)
