@@ -37,6 +37,8 @@ import Data.Aeson
 import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Maybe
 
+import Festral.Config
+
 -- |Data type describing Boruta worker
 data Worker = Worker
     { workerUUID    :: String
