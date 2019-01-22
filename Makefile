@@ -74,6 +74,7 @@ build-outdir:
 
 package: build manpages
 	./Distribution/make_debian.sh ${FESTRAL_BIN_PATH} ${FARMER_BIN_PATH} ${MAN_PAGES_OUT}
+	cp deb/${DEB_NAME} ${BUILD_OUT}/
 
 clean:
 	rm -rf dist

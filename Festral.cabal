@@ -1,11 +1,11 @@
 Name:               Festral
-Version:            1.2.2
+Version:            1.2.3
 Cabal-Version:      >= 1.2
 License:            Apache-2.0
 License-file:       LICENSE
 Copyright:          (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
 Author:             Uladzislau Harbuz
-Homepage:
+Homepage:           https://github.com/SamsungSLAV/festral
 Category:           Testing
 Synopsis:           System for automation of building and testing software repositories
 Build-Type:         Simple

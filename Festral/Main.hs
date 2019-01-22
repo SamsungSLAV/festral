@@ -25,6 +25,8 @@ import Data.Semigroup ((<>))
 import Data.Version (showVersion)
 import Control.Concurrent
 import Paths_Festral (version)
+import System.Environment
+import System.Process
 
 import Festral.WWW.Server
 import Festral.Config
@@ -299,8 +301,7 @@ runServer = Server
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
 runCmd (Cmd x) = subCmd x
-runCmd _ = putStrLn "Some parameter missed. Run program with --help option \
-\to see usage."
+runCmd _ = getExecutablePath >>= flip callProcess ["--help"]
 
 reportCmd (HTML True x) o [] = do
     testFile <- freshTests

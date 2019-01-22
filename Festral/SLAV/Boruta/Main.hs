@@ -25,6 +25,8 @@ import Options.Applicative
 import Data.Semigroup ((<>))
 import Data.Version (showVersion)
 import Paths_Festral (version)
+import System.Environment
+import System.Process
 
 import Festral.Config
 import Festral.SLAV.Boruta
@@ -100,8 +102,8 @@ requestOptions = RequestOptions
         ( long  "force"
         <>short 'f'
         <>help  "Force execute command even if target is busy. WARNING: \
-        \Current boruta's job will be closed after command execution, so \
-        \you can broke other's work!" )
+        \Current boruta's request will be closed after command execution \
+        \if no --no-close option enabled, so you can broke other's work!" )
     <*> switch
         ( long  "no-close"
         <>short 'n'
@@ -220,8 +222,7 @@ borutaSetIdle = SetIdle
 runCmd (Version True) = putStrLn $ "This farmer use festral v."
                         ++ showVersion version
 runCmd (Cmd x) = borutaSubCmd x
-runCmd _ = putStrLn "Some parameter missed. Run program with --help option \
-\to see usage."
+runCmd _ = getExecutablePath >>= flip callProcess ["--help"]
 
 borutaSubCmd (Workers True) = show <$> curlWorkers >>= putStrLn
 borutaSubCmd (AllRequests True) = show <$> allRequests >>= putStrLn
