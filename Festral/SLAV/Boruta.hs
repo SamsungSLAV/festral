@@ -180,14 +180,15 @@ getKey borutaAddr id = do
         (Nothing :: Maybe Caps)
     maybe (return Nothing) (\ x -> return $ Just (x{authReqId=id})) auth
 
+-- |Wait for ssh key generating finished on Boruta side.
 curlHandler :: NetAddress -> Int -> CurlAesonException -> IO (Maybe BorutaAuth)
 curlHandler a id e = do
     threadDelay oneSec
     getKey a id
 
 authMethod a opts
-    | force opts == True = getBusyTargetAuth a
-    | otherwise = getTargetAuth a
+    | force opts = getBusyTargetAuth a
+    | otherwise  = getTargetAuth a
 
 -- |Close authorised request. Wait until it will defenitely be closed.
 closeAuth addr auth = do
@@ -359,3 +360,5 @@ infixr 4 ./
 f ./ x = f $ "/usr/local/bin/" ++ x
 
 oneSec = 1000000
+
+getAddr x = (netIP x, netPort x)

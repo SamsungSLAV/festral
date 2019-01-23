@@ -328,7 +328,7 @@ reportCmd (TextReport True format) o args =
 reportCmd _ _ _ = runCmd None
 
 subCmd :: Command -> IO ()
-subCmd (Weles x) = welesSubCmd x
+subCmd (Weles x) = welesAddr >>= flip welesSubCmd x
 subCmd (Report x o p) = reportCmd x o p
 subCmd (TestControl conf out []) = do
     appCfg <- getAppConfig
@@ -362,20 +362,21 @@ subCmd (Build config repos noClean outFile) = do
 
 subCmd (Server port) = runServerOnPort port
 
-welesSubCmd (AllJobs True) = show <$> curlJobs >>= putStrLn
-welesSubCmd (CloseAllJobs True) = cancelAll
-welesSubCmd (StartJob x) = show <$> startJob x >>= putStrLn
-welesSubCmd (JobSubOpt x id) = jobCmd x id
-welesSubCmd _ = runCmd None
+welesSubCmd a (AllJobs True) = show <$> curlJobs a >>= putStrLn
+welesSubCmd a (CloseAllJobs True) = cancelAll a
+welesSubCmd a (StartJob x) = show <$> startJob a x >>= putStrLn
+welesSubCmd a (JobSubOpt x id) = jobCmd a x id
+welesSubCmd _ _ = runCmd None
 
-jobCmd (WaitJob 0) id = show <$> getJob id >>= putStrLn
-jobCmd (WaitJob x) id = show <$> getJobWhenDone id (JobParameters x x)
+jobCmd a (WaitJob 0) id = show <$> getJob a id >>= putStrLn
+jobCmd a (WaitJob x) id = show <$> getJobWhenDone a id (JobParameters x x)
     >>= putStrLn
-jobCmd (JobSTDOut True) id = getJobOut id >>= putStrLn
-jobCmd (ListFiles True "") id = show <$> getFileList id >>= putStrLn
-jobCmd (ListFiles True x) id = getJobOutFile id x >>=justPutStrLn "No such job."
-jobCmd (CancelJob True) id = cancelJob id
-jobCmd _ _ = runCmd None
+jobCmd a (JobSTDOut True) id = getJobOut a id >>= putStrLn
+jobCmd a (ListFiles True "") id = show <$> getFileList a id >>= putStrLn
+jobCmd a (ListFiles True x) id = getJobOutFile a id x
+    >>= justPutStrLn "No such job."
+jobCmd a (CancelJob True) id = cancelJob a id
+jobCmd _ _ _ = runCmd None
 
 justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
 justPutStrLn errMsg x
@@ -391,3 +392,7 @@ writeOut "" = (\ x -> putStrLn $ cutHere ++ x)
 writeOut x = writeFile x
 
 notEmptyEnteries = filter ((/=) "") . lines
+
+welesAddr = do
+    c <- getAppConfig
+    return $ NetAddress (welesIP c) (welesPort c) (welesFilePort c)
