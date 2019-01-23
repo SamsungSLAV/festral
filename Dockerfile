@@ -8,4 +8,4 @@ COPY . festral/
 
 WORKDIR  festral
 
-RUN make package DEPS_OPTS=--force-reinstalls
+RUN make package docs DEPS_OPTS=--force-reinstalls
