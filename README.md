@@ -74,6 +74,12 @@ This command will build `festral` and `farmer` binaries and Debian package
 inside the Docker container from local sources. The output will be placed
 at `bin` directory in the source root.
 
+For make code documentation using docker, run
+```
+ $ make docker-docs
+```
+Documentation will be generated at `dist/doc` directory.
+
 -----------
 ### Source code documentation
 Source code of Festral is documented using `haddock`. For generate documentation
