@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "f3d24ef7_c9229a19",
+        "filename": "Festral/SLAV/Boruta/Data.hs",
+        "patchSetId": 1
+      },
+      "lineNbr": 40,
+      "author": {
+        "id": 1015718
+      },
+      "writtenOn": "2019-01-23T10:05:50Z",
+      "side": 1,
+      "message": "Unused import, removed in next commit",
+      "range": {
+        "startLine": 40,
+        "startChar": 0,
+        "endLine": 40,
+        "endChar": 21
+      },
+      "revId": "6020f51a3e2b1aae42c5b40e99d5e3c1ff3c54d9",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
