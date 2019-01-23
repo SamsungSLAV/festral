@@ -359,3 +359,5 @@ infixr 4 ./
 f ./ x = f $ "/usr/local/bin/" ++ x
 
 oneSec = 1000000
+
+getAddr x = (netIP x, netPort x)

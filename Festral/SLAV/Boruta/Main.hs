@@ -255,4 +255,4 @@ justPutStrLn errMsg x
 
 borutaAddr = do
     c <- getAppConfig
-    return $ NetAddress (borutaIP c) (borutaPort c)
+    return $ NetAddress (borutaIP c) (borutaPort c) (borutaPort c)
