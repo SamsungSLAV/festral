@@ -219,7 +219,7 @@ execAnyDryadConsole :: NetAddress -- ^ Address of requested Boruta made by 'simp
                     -> IO ()
 execAnyDryadConsole addr x opts = do
     auth <- getDeviceTypeAuth x (authMethod addr opts)
-    execDryad (sshCmd "") auth
+    execDryad addr (sshCmd "") auth
     optCloseAuth addr opts auth
 
 -- |Run ssh session for device specified by its UUID
@@ -229,7 +229,7 @@ execSpecifiedDryadConsole :: NetAddress -- ^ Address of requested Boruta made by
                           -> IO ()
 execSpecifiedDryadConsole addr x opts = do
     auth <- getSpecifiedTargetAuth x (authMethod addr opts)
-    execDryad (sshCmd "") auth
+    execDryad addr (sshCmd "") auth
     optCloseAuth addr opts auth
 
 -- |Execute command on MuxPi
@@ -240,7 +240,7 @@ execMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress'
           -> IO ()
 execMuxPi addr uid cmd opts = do
     auth <- getSpecifiedTargetAuth uid (authMethod addr opts)
-    execDryad (sshCmd cmd) auth
+    execDryad addr (sshCmd cmd) auth
     optCloseAuth addr opts auth
 
 -- |Execute command on the device under test of the Dryad specified by UUID
@@ -251,7 +251,7 @@ execDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' f
         -> IO ()
 execDUT addr uid cmd opts = do
     auth <-  getSpecifiedTargetAuth uid (authMethod addr opts)
-    execDryad (sshCmd ./"dut_exec.sh " ++ cmd) auth
+    execDryad addr (sshCmd ./"dut_exec.sh " ++ cmd) auth
     optCloseAuth addr opts auth
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
@@ -263,7 +263,7 @@ pushMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress'
           -> IO ()
 pushMuxPi addr uid sources to opts = do
     auth <- getSpecifiedTargetAuth uid (authMethod addr opts)
-    Par.mapM_ (\ from -> execDryad (scpCmd from to) auth) sources
+    Par.mapM_ (\ from -> execDryad addr (scpCmd from to) auth) sources
     optCloseAuth addr opts auth
 
 -- |The same as 'pushMuxPi' but push file to the device under test
@@ -276,10 +276,10 @@ pushDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' f
 pushDUT addr uid sources to opts = do
     auth <- getSpecifiedTargetAuth uid (authMethod addr opts)
     Par.mapM_ (\ from -> do
-        execDryad (scpCmd from $ tmpfile from) auth
-        execDryad (sshCmd ./ "dut_copyto.sh " ++ tmpfile from ++ " " ++ to)
+        execDryad addr (scpCmd from $ tmpfile from) auth
+        execDryad addr (sshCmd ./ "dut_copyto.sh " ++ tmpfile from ++ " " ++ to)
             auth
-        execDryad (sshCmd $ "rm " ++ tmpfile from) auth) sources
+        execDryad addr (sshCmd $ "rm " ++ tmpfile from) auth) sources
     optCloseAuth addr opts auth
     where
         tmpfile x = "/tmp/" ++ takeFileName x
@@ -296,16 +296,16 @@ type DryadCmd = (DryadSSH -> String)
 
 -- |This function takes function converting dryad connection data to the command
 -- and this function's argument and executes this command.
-execDryad :: DryadCmd -> Maybe BorutaAuth -> IO ()
-execDryad _ Nothing = do
+execDryad :: NetAddress -> DryadCmd -> Maybe BorutaAuth -> IO ()
+execDryad _ _ Nothing = do
     putStrLn "Use --force option to connect for existing session if you are \
     \sure you know you do."
     putColorBold Red "IMPORTANT: "
     putStr "force connecting to the running job will cause \
     \closing it after your command done (see also --no-close option), so "
     putColorBold Red "YOU MAY BROKE OTHER'S WORK!!!\n"
-execDryad f (Just auth) = do
-    let addr = ip $ authAddr auth
+execDryad borutaAddr f (Just auth) = do
+    let addr = netIP borutaAddr
     keyFile <- writeKey auth
     let creds = DryadSSH
                 (username auth) addr (port $ authAddr auth) keyFile
@@ -333,8 +333,8 @@ closeRequest borutaAddr id = do
 -- |Boot up Device Under Test specified by UUID
 dutBoot addr uid opts = do
     auth <- getSpecifiedTargetAuth uid (authMethod addr opts)
-    execDryad (sshCmd ./"dut_boot.sh") auth
-    execDryad (sshCmd ./"dut_login.sh root") auth
+    execDryad addr (sshCmd ./"dut_boot.sh") auth
+    execDryad addr (sshCmd ./"dut_login.sh root") auth
     optCloseAuth addr opts auth
 
 -- |Set specified by UUID dryad in MAINTENANCE mode: Weles will not be able to
