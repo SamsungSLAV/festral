@@ -20,6 +20,10 @@
 -- the SLAV stack. It allows to perform low level actions on the devices in the
 -- farm, push files, executing commands, booting up devices under test (DUT),
 -- and get informations about workers and jobs.
+--
+-- In this module, all 'NetAddress' values passed to the functions must contains
+-- only ip address and REST API port of Boruta will be requested. For make
+-- 'NetAddress' from these parameters use 'simpleAddress' function.
 module Festral.SLAV.Boruta (
     curlWorkers,
     allRequests,
@@ -66,8 +70,8 @@ import Festral.SLAV.Boruta.Data
 workerDeviceType :: Worker -> String
 workerDeviceType worker = device_type $ caps worker
 
--- |Returns list of workers of boruta under address declared in the application
--- configuration file "Festral.Config".
+-- |Returns list of workers of Boruta under given network address. Use
+-- 'simpleAddress' function for make addres for it.
 curlWorkers :: NetAddress -> IO [Worker]
 curlWorkers borutaAddr = do
     let (addr, port) = getAddr borutaAddr
@@ -103,7 +107,8 @@ createRequest borutaAddr caps priority timeout = do
         handleCurlInt e = putStrColor Yellow "Can't create new request\n"
                             >> return Nothing
 
--- |List all requests from Boruta
+-- |List all requests from Boruta listening under given address.
+-- Use 'simpleAddress' for make it.
 allRequests :: NetAddress -> IO [BorutaRequest]
 allRequests borutaAddr = do
     let (addr, port) = getAddr borutaAddr
@@ -114,6 +119,7 @@ allRequests borutaAddr = do
     return $ fromMaybe [] (decode (BL.pack str) :: Maybe [BorutaRequest])
 
 -- |Get request information specified by its Id.
+-- See also 'allRequests' for more details.
 getRequestById :: NetAddress -> Int -> IO (Maybe BorutaRequest)
 getRequestById addr id = listToMaybe <$>
     filter (\ x -> reqID x == id) <$> allRequests addr
@@ -122,8 +128,8 @@ activeStatuses = ["IN PROGRESS", "WAITING"]
 
 -- |Return ssh key for session for given by name target and request ID.
 -- If this target has running session it returns key for it,
--- othervise it opens new request
-getTargetAuth :: NetAddress             -- ^ Address of the Boruta API
+-- othervise it opens new request.
+getTargetAuth :: NetAddress             -- ^ Address of the Boruta API made by 'simpleAddress' function
               -> (BorutaRequest -> Bool)-- ^ BorutaRequest recieved from Boruta
               -> Caps                   -- ^ Capabilities of request
               -> IO (Maybe BorutaAuth)
@@ -142,7 +148,7 @@ getTargetAuth addr selector caps = do
 
 -- |The same as "getTargetAuth" but connect busy session instead of reject
 -- request such request.
-getBusyTargetAuth :: NetAddress             -- ^ Address of the Boruta API
+getBusyTargetAuth :: NetAddress             -- ^ Address of the Boruta API made by 'simpleAddress' function
                   -> (BorutaRequest -> Bool)-- ^ BorutaRequest from Boruta
                   -> Caps                   -- ^ Capabilities of request
                   -> IO (Maybe BorutaAuth)
@@ -182,9 +188,7 @@ getKey borutaAddr id = do
 
 -- |Wait for ssh key generating finished on Boruta side.
 curlHandler :: NetAddress -> Int -> CurlAesonException -> IO (Maybe BorutaAuth)
-curlHandler a id e = do
-    threadDelay oneSec
-    getKey a id
+curlHandler a id e = threadDelay oneSec >> getKey a id
 
 authMethod a opts
     | force opts = getBusyTargetAuth a
@@ -209,8 +213,8 @@ optCloseAuth a opts auth = when (not $ noClose opts) (closeAuth a auth)
 
 -- |Run ssh session for any device which matches specified 'device_type'.
 -- Second parameter decide if connect forcely if device is busy.
-execAnyDryadConsole :: NetAddress
-                    -> String   -- ^ Device type
+execAnyDryadConsole :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
+                    -> String     -- ^ Device type
                     -> RequestOptions
                     -> IO ()
 execAnyDryadConsole addr x opts = do
@@ -219,8 +223,8 @@ execAnyDryadConsole addr x opts = do
     optCloseAuth addr opts auth
 
 -- |Run ssh session for device specified by its UUID
-execSpecifiedDryadConsole :: NetAddress
-                          -> String -- ^ Device UUID
+execSpecifiedDryadConsole :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
+                          -> String     -- ^ Device UUID
                           -> RequestOptions
                           -> IO ()
 execSpecifiedDryadConsole addr x opts = do
@@ -229,9 +233,9 @@ execSpecifiedDryadConsole addr x opts = do
     optCloseAuth addr opts auth
 
 -- |Execute command on MuxPi
-execMuxPi :: NetAddress
-          -> String -- ^ UUID of the device
-          -> String -- ^ Command
+execMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
+          -> String     -- ^ UUID of the device
+          -> String     -- ^ Command
           -> RequestOptions
           -> IO ()
 execMuxPi addr uid cmd opts = do
@@ -240,9 +244,9 @@ execMuxPi addr uid cmd opts = do
     optCloseAuth addr opts auth
 
 -- |Execute command on the device under test of the Dryad specified by UUID
-execDUT :: NetAddress
-        -> String   -- ^ UUID of the device
-        -> String   -- ^ Command
+execDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
+        -> String     -- ^ UUID of the device
+        -> String     -- ^ Command
         -> RequestOptions
         -> IO ()
 execDUT addr uid cmd opts = do
@@ -251,7 +255,7 @@ execDUT addr uid cmd opts = do
     optCloseAuth addr opts auth
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
-pushMuxPi :: NetAddress
+pushMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
           -> String     -- ^ UUID of the device
           -> [FilePath] -- ^ Files to be copied from host
           -> FilePath   -- ^ Destination file name on the MuxPi
@@ -263,10 +267,10 @@ pushMuxPi addr uid sources to opts = do
     optCloseAuth addr opts auth
 
 -- |The same as 'pushMuxPi' but push file to the device under test
-pushDUT :: NetAddress
-        -> String   -- ^ UUID of the device
-        -> [FilePath]-- ^ Files to be copied from host
-        -> FilePath -- ^ Destination file name on the Device Under Test (DUT)
+pushDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
+        -> String     -- ^ UUID of the device
+        -> [FilePath] -- ^ Files to be copied from host
+        -> FilePath   -- ^ Destination file name on the Device Under Test (DUT)
         -> RequestOptions
         -> IO ()
 pushDUT addr uid sources to opts = do

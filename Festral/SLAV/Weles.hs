@@ -23,8 +23,9 @@
 -- management using Weles as testing server. It allows creating, cancelling,
 -- waiting Weles jobs and processing it in different ways.
 --
--- This library use module "Festral.Config" and "Festral.Internal.Files" for
--- get server IP, port etc.
+-- In this modole, 'NetAddress' values contains ip address of the Weles server,
+-- its REST API port number and its file server port number. These addresses
+-- should be made by 'makeAddress' function.
 module Festral.SLAV.Weles (
     Job(..),
     JobParameters(..),
@@ -96,7 +97,7 @@ instance Show Job where
 
 welesAddr x = (netIP x, netPort x, netFilePort x)
 
--- |Get list of all jobs on server
+-- |Get list of all jobs on server under given address.
 curlJobs :: NetAddress -> IO [Job]
 curlJobs addr = do
     let (ip, port, _) = welesAddr addr
@@ -105,7 +106,7 @@ curlJobs addr = do
         badCurl :: CurlAesonException -> IO [Job]
         badCurl ex = putStrLn (show ex) >> return []
 
--- |Get job by its ID
+-- |Get job by its ID.
 getJob :: NetAddress -> Int -> IO (Maybe Job)
 getJob addr id = do
     jobs <- curlJobs addr
