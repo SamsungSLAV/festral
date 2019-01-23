@@ -258,13 +258,14 @@ runTestJob _ Nothing _ = return BadYaml
 runTestJob "FAILED" _ _ = return BuildFailed
 runTestJob "SUCCEED" (Just yaml) buildId = do
     config <- getAppConfig
+    addr <- welesAddr
     buildOutDir <- buildResDir buildId
     withTempFile buildOutDir ".yml" $ \ yamlFileName yamlFileHandle -> do
         handle fileError $ hPutStr yamlFileHandle yaml
         -- Force write data to the file by forsing read it
         !forceFileWrite <- hGetContents yamlFileHandle
         !jobId <- handle badJob $
-                    startJob yamlFileName
+                    startJob addr yamlFileName
         return $ maybe StartJobFailed JobId jobId
 
     where
@@ -275,7 +276,8 @@ runTestJob _ _ _ = return StartJobFailed
 -- |Wait for job if it started successfully and return its results after finish
 waitForJob :: JobStartResult -> JobParameters -> IO JobExecutionResult
 waitForJob startRes@(JobId jobid) timeout = do
-    job <- getJobWhenDone jobid timeout
+    addr <- welesAddr
+    job <- getJobWhenDone addr jobid timeout
     filesFromJob job startRes
 waitForJob x _ = return $ JobNotStarted x
 
@@ -287,8 +289,9 @@ allowedLogFiles = [".log", "results"]
 filesFromJob :: Maybe Job -> JobStartResult -> IO JobExecutionResult
 filesFromJob Nothing res = return $ ConnectionLost res
 filesFromJob (Just job) res = do
+    addr <- welesAddr
     jobFiles <- fmap (filter (\ x -> any (`isInfixOf` x) allowedLogFiles))
-        <$> getFileList (jobid job)
+        <$> getFileList addr (jobid job)
     log <- maybeLog jobFiles (jobid job)
     return $ resultFromStatus res log job
 
@@ -317,7 +320,8 @@ dryadErr res log job
 -- |Converts filename from Weles to pair (filename, contents)
 fileToFileContent :: Int -> String -> IO (String, String)
 fileToFileContent jobid fname = do
-    content <- getJobOutFile jobid fname
+    addr <- welesAddr
+    content <- getJobOutFile addr jobid fname
     let content' = fromMaybe "" content
     return (fname, content')
 
@@ -383,3 +387,7 @@ filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
+
+welesAddr = do
+    c <- getAppConfig
+    return $ NetAddress (welesIP c) (welesPort c) (welesFilePort c)
