@@ -25,6 +25,7 @@ DISTRIBUTION_PATH =Distribution
 MANPAGES_PATH=${DISTRIBUTION_PATH}/ManPages
 MAN_PAGES_OUT =${MANPAGES_PATH}/manpages
 BUILD_PREFIX =dist/build
+DOCS_PREFIX =dist/doc
 FESTRAL_BIN_PATH =${BUILD_PREFIX}/festral
 FARMER_BIN_PATH =${BUILD_PREFIX}/farmer
 
@@ -68,6 +69,10 @@ ${BINARIES}: docker-container | build-outdir
 
 docker-deb: docker-container
 	docker cp "${CONTAINER_NAME}:/festral/deb/${DEB_NAME}" "${BUILD_OUT}/${DEB_NAME}"
+
+docker-docs: docker-container
+	mkdir -p ${DOCS_PREFIX}
+	docker cp "${CONTAINER_NAME}:/festral/${DOCS_PREFIX}" "${DOCS_PREFIX}/"
 
 build-outdir:
 	mkdir -p ${BUILD_OUT}
