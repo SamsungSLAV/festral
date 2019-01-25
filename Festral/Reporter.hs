@@ -33,8 +33,23 @@ import Data.List.Utils
 
 import Festral.Template
 import Festral.Internal.Files
-import Festral.Meta
+import Festral.Meta hiding (repoName, testName)
+import qualified Festral.Meta as M (repoName, testName)
 import Festral.Config
+
+data BuildSummary = BuildSummary
+    { repoName      :: String
+    , branchName    :: String
+    , buildStatus   :: String
+    , logLink       :: String
+    }
+
+data TestSummary = TestSummary
+    { bSummary      :: BuildSummary
+    , testName      :: String
+    , targetName    :: String
+    , testResult    :: String
+    }
 
 defaultHTML time =
               "<!DOCTYPE html>\n"
@@ -57,15 +72,16 @@ defaultHTML time =
            ++ "</html>\n"
 
 -- |Generate HTML report file with results given by second parameter
-reportHTML :: String    -- ^ Template HTML file to be filled with report data.
+reportHTML :: AppConfig -- ^ Program configuration with build and test log directories specified.
+           -> String    -- ^ Template HTML file to be filled with report data.
                         -- If it is empty, generate default simpliest HTML page.
            -> [String]  -- ^ List of names of builds and tests in format
                         -- returned by 'build' and 'performForallNewBuilds'
                         -- commands.
            -> IO String -- ^ Generated HTML report.
-reportHTML "" dirs = show <$> getZonedTime >>=
-    (\time -> reportHTML (defaultHTML time) dirs)
-reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
+reportHTML config "" dirs = show <$> getZonedTime >>=
+    (\time -> reportHTML config (defaultHTML time) dirs)
+reportHTML config src dirs = generateFromTemplate src (templateHTML config dirs)
 
 -- |Make text report when every line has a format like passed in first argument.
 -- Format string has special characters:
@@ -113,13 +129,15 @@ reportHTML src dirs = generateFromTemplate src (templateHTML dirs)
 -- +---------+-----------------------+-----------------------------------------+
 --
 -- Default format is \"%r[%B] Build: %s Test: %R\".
-formatTextReport :: String      -- ^ Format string.
+formatTextReport :: AppConfig   -- ^ Program configuration with buildLog and
+                                -- testLog configured
+                 -> String      -- ^ Format string.
                  -> [String]    -- ^ List of names of builds and tests in format
-                                --  returned by 'build' and
-                                --  'performForallNewBuilds'
+                                -- returned by 'build' and
+                                -- 'performForallNewBuilds'
                  -> IO [String] -- ^ Generated textual report.
-formatTextReport format dirs = do
-    metas <- mapM metaByName dirs
+formatTextReport config format dirs = do
+    metas <- mapM (metaByName config) dirs
     let tests = filter (\ (n,m) -> isMeta m) metas
     mapM f tests
     where
@@ -127,8 +145,8 @@ formatTextReport format dirs = do
             let str = foldl (\ s (f,o) -> replace f (o m) s) format formats
             r <- if isTest m
                 then do
-                    (_,_,_,_,rating,_) <- testSummary n
-                    return rating
+                    t <- (testSummary config) n
+                    return $ testResult t
                 else return ""
             return $ replace "%R" r str
 
@@ -145,51 +163,50 @@ formats =
     ,("%s", ($>>) status)
     ,("%h", ($>>) hash)
     ,("%o", ($>>) outDir)
-    ,("%r", ($>>) repoName)
+    ,("%r", ($>>) M.repoName)
     ,("%B", ($>>) branch)
     ,("%l", testOnly tester)
     ,("%L", testOnly testerName)
     ,("%e", testOnly testTime)
-    ,("%n", testOnly testName)
+    ,("%n", testOnly M.testName)
     ,("%S", testOnly testStatus)
     ,("%d", testOnly testDevice)
     ,("%%", (\ _ -> "%"))
     ]
 
-makeBuildRow :: (String, String, String, String) -> String
-makeBuildRow (repo, branch, status, link)
-    = "<tr><td>" ++ repo ++ "</td><td>"
-    ++ branch ++ "</td><td "++ color status ++ ">"
-    ++ status ++ "</td><td><a href=\"" ++ link ++ "\">log</a></td></tr>"
+makeBuildRow :: BuildSummary -> String
+makeBuildRow b
+    = "<tr><td>" ++ repoName b ++ "</td><td>"
+    ++ branchName b ++ "</td><td>"
+    ++ buildStatus b ++ "</td><td><a href=\""
+    ++ logLink b ++ "\">log</a></td></tr>"
 
-makeTestRow :: (String, String, String, String, String, String) -> String
-makeTestRow (repo, branch, device, name, status, link)
-    = "<tr><td>" ++ repo ++ "</td><td>" ++ branch
-    ++ "</td><td>" ++ device ++ "</td><td>" ++ name ++ "</td><td "
-    ++ color status ++">" ++ status ++ "</td><td><a href=\""
-    ++ link ++ "\">log</a></td></tr>"
+makeTestRow :: TestSummary -> String
+makeTestRow t
+    = "<tr><td>" ++ repoName b ++ "</td><td>" ++ branchName b
+    ++ "</td><td>" ++ targetName t ++ "</td><td>" ++ testName t ++ "</td><td>"
+    ++ testResult t ++ "</td><td><a href=\""
+    ++ logLink b ++ "\">log</a></td></tr>"
+    where b = bSummary t
 
-color "SUCCEED" = "style=\"color:green;\""
-color "FAILED" = "style=\"color:red;\""
-color _ = ""
-
--- |Gets name of the build (sha1_time) and returns its build
--- data as (repository name, branch name, build status, log link)
-buildSummary :: String -> IO (String, String, String, String)
-buildSummary dir = do
-    config <- getAppConfig
+-- |Gets name of the build (sha1_time) and returns its build data.
+buildSummary :: AppConfig -> String -> IO BuildSummary
+buildSummary config dir = do
     meta <- fromMetaFile $ buildLogDir config ++ "/" ++ dir ++ "/meta.txt"
     let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
             ++ "/getlog?type=build&hash="
             ++ hash $>> meta ++ "&time=" ++ buildTime $>> meta
-    return (repoName $>> meta, branch $>> meta, status $>> meta, link)
+    return $ BuildSummary
+        (M.repoName $>> meta)
+        (branch $>> meta)
+        (status $>> meta)
+        link
 
 -- |Gets name of the test result (sha1_time) and returns its build data as
 -- (repository name, branch name, target device, test name,
 -- passed tests/ all tests, log link)
-testSummary :: String -> IO (String, String, String, String, String, String)
-testSummary dir = do
-    config <- getAppConfig
+testSummary :: AppConfig -> String -> IO TestSummary
+testSummary config dir = do
     meta <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
 
     let reportPath = testLogDir config ++ "/" ++ dir ++ "/report.txt"
@@ -202,8 +219,15 @@ testSummary dir = do
     let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
              ++ "/getlog?type=test&hash=" ++ hash $>> meta
              ++ "&time=" ++ testTime meta
-    return (repoName $>> meta, branch $>> meta, testDevice meta, testName meta,
-            percents pass (testStatus meta), link)
+    return $ TestSummary
+        (BuildSummary
+            (M.repoName $>> meta)
+            (branch $>> meta)
+            (status $>> meta)
+            link )
+        (M.testName meta)
+        (testDevice meta)
+        (percents pass $ testStatus meta)
 
 percents :: (Int, Int) -> String -> String
 percents (0,0) "COMPLETE" = "NO RESULTS"
@@ -225,11 +249,11 @@ parseTestRes :: [[String]] -> [String]
 parseTestRes (_:x:_) = x
 parseTestRes _ = []
 
-templateHTML :: [String] -> TemplateType -> IO String
-templateHTML dirs (BuildTable id) = do
-    metas <- mapM metaByName dirs
+templateHTML :: AppConfig -> [String] -> TemplateType -> IO String
+templateHTML config dirs (BuildTable id) = do
+    metas <- mapM (metaByName config) dirs
     let builds = fst <$> filter (\ (n,m) -> isBuild m) metas
-    buildSummaries <- sequence $ map buildSummary builds
+    buildSummaries <- sequence $ map (buildSummary config) builds
     let rows = concat $ map makeBuildRow buildSummaries
     return $  "    <table id=\"" ++ id ++ "\">\n"
            ++ "        <thead><tr>\n"
@@ -239,10 +263,10 @@ templateHTML dirs (BuildTable id) = do
            ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
 
-templateHTML dirs (TestTable id) = do
-    metas <- mapM metaByName dirs
+templateHTML config dirs (TestTable id) = do
+    metas <- mapM (metaByName config) dirs
     let tests = fst <$> filter (\ (n,m) -> isTest m) metas
-    testSummaries <- sequence $ map testSummary tests
+    testSummaries <- sequence $ map (testSummary config) tests
     let rows = concat $ map makeTestRow testSummaries
     return $  "    <table id=\"" ++ id ++ "\">\n"
            ++ "        <thead><tr>\n"
@@ -252,10 +276,9 @@ templateHTML dirs (TestTable id) = do
            ++ "        <tbody>" ++ rows ++ "</tbody>\n"
            ++ "    </table>\n"
 
-templateHTML _ _ = return ""
+templateHTML _ _ _ = return ""
 
-metaByName name = do
-    config <- getAppConfig
+metaByName config name = do
     let build = buildLogDir config ++ "/" ++ name ++ "/meta.txt"
     let test = testLogDir config ++ "/" ++ name ++ "/meta.txt"
     tMeta <- fromMetaFile test

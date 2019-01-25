@@ -60,6 +60,7 @@ data TemplateType
 data TemplaterOpts = TemplaterOpts
     { _outDir    :: String
     , _testData  :: TestUnit
+    , _fsAddr    :: NetAddress
     }
 
 -- |Generate yaml file from template using function given as second parameter
@@ -93,13 +94,12 @@ yamlTemplater :: TemplaterOpts  -- ^ Options for parser
               -> TemplateType   -- ^ Resolved 'TemplateType' from part of text
               -> IO String      -- ^ Templated part of text
 yamlTemplater opts (URI url) = do
-    config <- getAppConfig
     rpms <- catch (getDirectoryContents $ _outDir opts) dirDoesntExists
     let rpmname = take 1 $ sortBy (\a b -> length a `compare` length b) $
             filter(isInfixOf url) $ rpms
     return $ "uri: 'http://"
-        ++ webPageIP config ++ ":"
-        ++ show (webPagePort config)
+        ++ netIP (_fsAddr opts) ++ ":"
+        ++ show (netPort $ _fsAddr opts)
         ++ "/download?file="
         ++ resolvedName rpmname
         ++ "&build="
@@ -111,15 +111,14 @@ yamlTemplater opts (URI url) = do
 
 yamlTemplater opts (Latest_URI url) = do
     let outDir = _outDir opts
-    config <- getAppConfig
     cachePath <- buildCache
     cache <- safeReadFile cachePath
     let (cachedName,cachedHash) = resolvePkg $ splitOn "#" $ resolvedName $
             sortBy (\a b -> length a `compare` length b)
             $ filter (isInfixOf url) $ splitOn "\n" cache
     return $ "uri: 'http://"
-        ++ webPageIP config ++ ":"
-        ++ show (webPagePort config)
+        ++ netIP (_fsAddr opts) ++ ":"
+        ++ show (netPort $ _fsAddr opts)
         ++ "/download?file="
         ++ cachedName
         ++ "&build="

@@ -24,7 +24,9 @@ module Festral.Internal.Files (
     buildCache,
     badFile,
     safeReadFile,
-    getAppConfig
+    configFile,
+    getAppConfig,
+    defaultConfigFileName
 ) where
 
 import System.Directory
@@ -35,6 +37,8 @@ import Data.Maybe
 import Control.Exception
 
 import Festral.Config
+
+defaultConfigFileName = ".festral.conf"
 
 -- |Returns path to the file with latest build names.
 freshBuilds = do
@@ -57,11 +61,10 @@ freshTests = do
 -- |Returns path to the festral's configuration file.
 configFile = do
     home <- getHomeDirectory
-    return $ home ++ "/.festral.conf"
+    return $ home ++ "/" ++ defaultConfigFileName
 
 -- |Returns 'AppConfig' got from file located at 'configFile'.
-getAppConfig = do
-    confPath <- configFile
+getAppConfig confPath = do
     exists <- doesFileExist confPath
     when (not exists) $ LB.writeFile confPath "{\n}"
     confStr <- LB.readFile confPath

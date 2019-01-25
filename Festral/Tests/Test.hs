@@ -59,29 +59,33 @@ import Festral.Internal.Preprocessor
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
-performForallNewBuilds :: FilePath      -- ^ Tests configuration file
+performForallNewBuilds :: AppConfig     -- ^ Program configuration
+                       -> FilePath      -- ^ Tests configuration file
                        -> [String]      -- ^ List of the build names for test
                        -> IO [String]   -- ^ List of names of performed tests
-performForallNewBuilds _ [] = return []
-performForallNewBuilds conf list = do
+performForallNewBuilds _ _ [] = return []
+performForallNewBuilds appConf conf list = do
     lock <- newMVar ()
-    concat <$> Par.mapM (performAsyncTestWithConfig conf lock) list
+    concat <$> Par.mapM (performAsyncTestWithConfig appConf conf lock) list
 
 -- |Read configuration file from first parameter and build directory from
 -- second and make test log from it
-performTestWithConfig :: FilePath -> String -> IO [String]
-performTestWithConfig confpath target = do
+performTestWithConfig :: AppConfig -> FilePath -> String -> IO [String]
+performTestWithConfig appConf confpath target = do
     lock <- newMVar ()
-    performAsyncTestWithConfig confpath lock target
+    performAsyncTestWithConfig appConf confpath lock target
 
 -- |Perform test with config and MVar for make execution of some internal things
 -- synchronized. It is necessary for `performForallNewBuilds`
-performAsyncTestWithConfig :: FilePath -> MVar a -> String -> IO [String]
-performAsyncTestWithConfig confPath lock target = do
+performAsyncTestWithConfig :: AppConfig -- ^ Program configuration
+                           -> FilePath  -- ^ Path to the test configuration
+                           -> MVar a    -- ^ Synchronization variable
+                           -> String    -- ^ Name of the build to be tested
+                           -> IO [String] -- ^ List of names of performed tests
+performAsyncTestWithConfig appConfig confPath lock target = do
     confStr <- safeReadFile confPath
     let Just config = decode (LBU.fromString confStr) :: Maybe [TestConfig]
-    appConfig <- getAppConfig
-    tests <- runTestsAsync lock config target
+    tests <- runTestsAsync appConfig lock config target
     mapM (\ testRes ->
             parseTest
                 testRes
@@ -217,49 +221,56 @@ getParser x testRes = do
 
 -- |Run tests for each given configuration for target 'Build' result.
 -- Returns list of test results.
-runTests :: [TestConfig]    -- ^ List of test configurations
+runTests :: AppConfig       -- ^ Program configuration
+         -> [TestConfig]    -- ^ List of test configurations
          -> String          -- ^ Build name to be tested
          -> IO [TestResult] -- ^ List of the results of testing
-runTests x y = newMVar () >>= (\ v -> runTestsAsync v x y)
+runTests c x y = newMVar () >>= (\ v -> runTestsAsync c v x y)
 
-runTestsAsync :: MVar a -> [TestConfig] -> String -> IO [TestResult]
-runTestsAsync lock config target = do
-    appConfig <- getAppConfig
+runTestsAsync :: AppConfig
+              -> MVar a
+              -> [TestConfig]
+              -> String
+              -> IO [TestResult]
+runTestsAsync appConfig lock config target = do
     meta <- fromMetaFile $
                 (buildLogDir appConfig) ++ "/" ++ target ++ "/meta.txt"
     let configs = filterConf config meta
 
-    concat <$> Par.mapM (runTestsForRepoAsync lock target) configs
+    concat <$> Par.mapM (runTestsForRepoAsync appConfig lock target) configs
 
-runTestsForRepoAsync :: MVar a -> String -> TestConfig -> IO [TestResult]
-runTestsForRepoAsync lock target config = do
-    Par.mapM (runTestAsync lock target) $ map (TestUnit config) $ targets config
+runTestsForRepoAsync :: AppConfig
+                     -> MVar a
+                     -> String
+                     -> TestConfig
+                     -> IO [TestResult]
+runTestsForRepoAsync appConfig lock target config = do
+    Par.mapM (runTestAsync appConfig lock target) $
+        map (TestUnit config) $ targets config
 
-buildResDir buildId = do
-    config <- getAppConfig
+buildResDir config buildId = do
     return $ (buildLogDir config) ++ "/" ++ buildId ++ "/build_res"
 
 -- |Get parsed yaml from given path to the template and build id
-getYaml :: FilePath -> String -> TestUnit -> IO (Maybe String)
-getYaml templatePath buildID test = do
-    config <- getAppConfig
-    buildOutDir <- buildResDir buildID
+getYaml :: AppConfig -> FilePath -> String -> TestUnit -> IO (Maybe String)
+getYaml config templatePath buildID test = do
+    buildOutDir <- buildResDir config buildID
     yamlTemplate <- safeReadFile templatePath
     if yamlTemplate == ""
         then return Nothing
         else fmap Just $
                 generateFromTemplate (preprocess test yamlTemplate) $
                     yamlTemplater $ TemplaterOpts buildOutDir test
+                    $ simpleAddress (webPageIP config) (webPagePort config)
 
 -- |Helper function for use pattern matching for resolve different errors
 -- before test start. runTestJob buildStatus (Maybe parsedYaml) buildId
-runTestJob :: String -> Maybe String -> String -> IO JobStartResult
-runTestJob _ Nothing _ = return BadYaml
-runTestJob "FAILED" _ _ = return BuildFailed
-runTestJob "SUCCEED" (Just yaml) buildId = do
-    config <- getAppConfig
-    addr <- welesAddr
-    buildOutDir <- buildResDir buildId
+runTestJob :: AppConfig -> String -> Maybe String -> String -> IO JobStartResult
+runTestJob _ _ Nothing _ = return BadYaml
+runTestJob _ "FAILED" _ _ = return BuildFailed
+runTestJob config "SUCCEED" (Just yaml) buildId = do
+    let addr = welesAddr config
+    buildOutDir <- buildResDir config buildId
     withTempFile buildOutDir ".yml" $ \ yamlFileName yamlFileHandle -> do
         handle fileError $ hPutStr yamlFileHandle yaml
         -- Force write data to the file by forsing read it
@@ -271,28 +282,34 @@ runTestJob "SUCCEED" (Just yaml) buildId = do
     where
         fileError :: SomeException -> IO ()
         fileError x = putStrLn $ show x
-runTestJob _ _ _ = return StartJobFailed
+runTestJob _ _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish
-waitForJob :: JobStartResult -> JobParameters -> IO JobExecutionResult
-waitForJob startRes@(JobId jobid) timeout = do
-    addr <- welesAddr
+waitForJob :: AppConfig
+           -> JobStartResult
+           -> JobParameters
+           -> IO JobExecutionResult
+waitForJob config startRes@(JobId jobid) timeout = do
+    let addr = welesAddr config
     job <- getJobWhenDone addr jobid timeout
-    filesFromJob job startRes
-waitForJob x _ = return $ JobNotStarted x
+    filesFromJob config job startRes
+waitForJob _ x _ = return $ JobNotStarted x
 
 allowedLogFiles = [".log", "results"]
 
 -- |After job finished this function checks if it was finished by
 -- network connection problems or was it done. If it was done successfully,
 -- returns 'Left' with job logs, or if it failed, returns 'Right' error.
-filesFromJob :: Maybe Job -> JobStartResult -> IO JobExecutionResult
-filesFromJob Nothing res = return $ ConnectionLost res
-filesFromJob (Just job) res = do
-    addr <- welesAddr
+filesFromJob :: AppConfig
+             -> Maybe Job
+             -> JobStartResult
+             -> IO JobExecutionResult
+filesFromJob _ Nothing res = return $ ConnectionLost res
+filesFromJob config (Just job) res = do
+    let addr = welesAddr config
     jobFiles <- fmap (filter (\ x -> any (`isInfixOf` x) allowedLogFiles))
         <$> getFileList addr (jobid job)
-    log <- maybeLog jobFiles (jobid job)
+    log <- maybeLog config jobFiles (jobid job)
     return $ resultFromStatus res log job
 
 resultFromStatus res log job
@@ -302,13 +319,13 @@ resultFromStatus res log job
     where
         status = WJob.status job
 
-maybeLog :: Maybe [String] -> Int -> IO (Maybe FileContents)
-maybeLog Nothing _ = return Nothing
-maybeLog (Just x) id = Just <$> logs x id
+maybeLog :: AppConfig -> Maybe [String] -> Int -> IO (Maybe FileContents)
+maybeLog _ Nothing _ = return Nothing
+maybeLog c (Just x) id = Just <$> logs c x id
 
 -- |Extract tests results from list of the Weles job's filenames
-logs :: [String] -> Int -> IO FileContents
-logs files jobid = mapM (fileToFileContent jobid) files
+logs :: AppConfig -> [String] -> Int -> IO FileContents
+logs c files jobid = mapM (fileToFileContent c jobid) files
 
 dryadErr res log job
     | info job == "Failed to download all artifacts for the Job"
@@ -318,36 +335,35 @@ dryadErr res log job
     | otherwise =  UnknownError (info job) res
 
 -- |Converts filename from Weles to pair (filename, contents)
-fileToFileContent :: Int -> String -> IO (String, String)
-fileToFileContent jobid fname = do
-    addr <- welesAddr
+fileToFileContent :: AppConfig -> Int -> String -> IO (String, String)
+fileToFileContent config jobid fname = do
+    let addr = welesAddr config
     content <- getJobOutFile addr jobid fname
     let content' = fromMaybe "" content
     return (fname, content')
 
 -- |Run test for the given build and return pairs (file name, contents) of files
 -- created on Weles.
-runTest :: String -> TestUnit -> IO TestResult
-runTest x y = newMVar () >>= (\ v -> runTestAsync v x y)
+runTest :: AppConfig -> String -> TestUnit -> IO TestResult
+runTest c x y = newMVar () >>= (\ v -> runTestAsync c v x y)
 
-runTestAsync :: MVar a -> String -> TestUnit -> IO TestResult
-runTestAsync lock build test = do
-    config <- getAppConfig
+runTestAsync :: AppConfig -> MVar a -> String -> TestUnit -> IO TestResult
+runTestAsync config lock build test = do
     let testConf = tConfig test
     meta <- fromMetaFile $ (buildLogDir config) ++ "/" ++ build ++ "/meta.txt"
     let yamlPath = yaml testConf
     putAsyncLog lock $ do
         putLogColor meta Magenta [(target test)]
         putStrLn $ "Starting Weles job with " ++ yamlPath ++ "..."
-    yaml <- getYaml yamlPath build test
-    jobId <- runTestJob (status $>> meta) yaml build
+    yaml <- getYaml config yamlPath build test
+    jobId <- runTestJob config (status $>> meta) yaml build
     let jobOpts = JobParameters (timeout testConf) (runTTL testConf)
 
     putAsyncLog lock $ do
         putLogColor meta Magenta [(target test), (show jobId)]
         putStrLn $ "Waiting for job finished with " ++ show jobOpts
 
-    jobRes <- waitForJob jobId jobOpts
+    jobRes <- waitForJob config jobId jobOpts
     testResults lock jobRes meta test
 
 testResults :: MVar a -> JobExecutionResult -> Meta -> TestUnit -> IO TestResult
@@ -388,6 +404,4 @@ filterConf config meta = filter (\x -> repo x == (repoName $>> meta)) config
 badJob :: SomeException -> IO (Maybe Int)
 badJob ex = putStrLn (show ex) >> return (Nothing)
 
-welesAddr = do
-    c <- getAppConfig
-    return $ NetAddress (welesIP c) (welesPort c) (welesFilePort c)
+welesAddr c = NetAddress (welesIP c) (welesPort c) (welesFilePort c)

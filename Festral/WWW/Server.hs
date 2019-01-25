@@ -48,11 +48,11 @@ data ContentType
     = Download
     | Directory
 
-runServerOnPort port = do
-    run port fileServer
+-- |Run server on port given in configuration.
+runServerOnPort config = do
+    run (webPagePort config) $ fileServer config
 
-fileServer req respond = do
-    config <- getAppConfig
+fileServer config req respond = do
     let opts = parseQuery $ show $ rawQueryString req
     sendRespond opts config respond $ T.unpack <$> pathInfo req
 

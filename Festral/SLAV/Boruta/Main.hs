@@ -76,9 +76,13 @@ data BorutaCommand
         }
 
 data Options
-    = Cmd BorutaSubOpt
+    = Cmd BorutaSubOpt FilePath
     | Version Bool
     | None
+
+-- |This is invalid path and it is used only for to be showed in help and used
+-- as default value. REal path get by 'configFile' function.
+defaultConfigPath = "~/" ++ defaultConfigFileName
 
 parseOptsCmd :: Parser Options
 parseOptsCmd = Cmd <$>
@@ -90,6 +94,12 @@ parseOptsCmd = Cmd <$>
     <|>borutaBoot
     <|>borutaSetMaintanence
     <|>borutaSetIdle)
+    <*> strOption
+        (  long     "config"
+        <> metavar  "FILENAME"
+        <> value    defaultConfigPath
+        <> showDefault
+        <> help     "Program configuration file." )
 
 borutaDesc  = "Give access for the device farm of the Boruta and managament \
 \devices under test by hands."
@@ -221,7 +231,7 @@ borutaSetIdle = SetIdle
 
 runCmd (Version True) = putStrLn $ "This farmer use festral v."
                         ++ showVersion version
-runCmd (Cmd x) = borutaAddr >>= flip borutaSubCmd x
+runCmd (Cmd x c) = resolveNetAddr c >>= flip borutaSubCmd x
 runCmd _ = getExecutablePath >>= flip callProcess ["--help"]
 
 borutaSubCmd a (Workers True) = show <$> curlWorkers a >>= putStrLn
@@ -253,6 +263,12 @@ justPutStrLn errMsg x
     | x == Nothing = putStrLn errMsg
     | otherwise = let Just y = x in putStrLn $ (read $ show y :: String)
 
-borutaAddr = do
-    c <- getAppConfig
-    return $ NetAddress (borutaIP c) (borutaPort c) (borutaPort c)
+borutaAddr c = NetAddress (borutaIP c) (borutaPort c) (borutaPort c)
+
+resolveNetAddr c
+    | c == defaultConfigPath = do
+        cfg <- getAppConfig =<< configFile
+        return $ simpleAddress (borutaIP cfg) (borutaPort cfg)
+    | otherwise = do
+        cfg <- getAppConfig c
+        return $ simpleAddress (borutaIP cfg) (borutaPort cfg)

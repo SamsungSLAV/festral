@@ -91,20 +91,32 @@ data ReportType
 
 -- |Options of the program called without commands (festral entery point).
 data Options
-    = Cmd Command
+    = Cmd Command FilePath
     | Version Bool
     | None
 
+-- |This path is not valid because tilda is not expanded to the home directory
+-- this way. This path is used only for show in the help where is it. For get
+-- valid path use 'configFile' function.
+defaultConfigPath = "~/" ++ defaultConfigFileName
+
 parseOptsCmd :: Parser Options
-parseOptsCmd = Cmd <$> opts
+parseOptsCmd = Cmd
+    <$> opts
+    <*> strOption
+        (  long     "config"
+        <> metavar  "FILENAME"
+        <> value    defaultConfigPath
+        <> showDefault
+        <> help     "Configuration file of the application." )
 
 testDesc    = "Create jobs on remote Weles server with tests defined in .yaml \
 \files and process responces with results of its execution. Put results of \
-\tests to the directory specified in testLogDir of the ~/.festral.conf \
+\tests to the directory specified in testLogDir of the configuration file \
 \configuration file."
 buildDesc   = "Build all repositories for all branches described in \
 \configuration file. Put results into the directory specified in the \
-\buildLogDir field of the ~/.festral.conf configuration file."
+\buildLogDir field of the configuration file."
 welesDesc   = "Low-level client for Weles API for accessing and managing jobs \
 \by hands."
 serverDesc  = "Run local file server for external parts of test process \
@@ -124,9 +136,9 @@ opts = hsubparser
 buildopts :: Parser Command
 buildopts = Build
     <$> strOption
-        (  long     "config"
+        (  long     "build-config"
         <> metavar  "FILENAME"
-        <> short    'c'
+        <> short    'b'
         <> help     "Configuration file" )
     <*> strOption
         (  long     "repos"
@@ -300,57 +312,54 @@ runServer = Server
 
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
-runCmd (Cmd x) = subCmd x
+runCmd (Cmd x c) = resolvedAppConfig c >>= subCmd x
 runCmd _ = getExecutablePath >>= flip callProcess ["--help"]
 
-reportCmd (HTML True x) o [] = do
+reportCmd (HTML True x) o [] c = do
     testFile <- freshTests
     tests <- safeReadFile testFile
     buildFile <- freshBuilds
     builds <- safeReadFile buildFile
-    reportCmd (HTML True x) o $ notEmptyEnteries $ builds ++ "\n" ++ tests
+    reportCmd (HTML True x) o (notEmptyEnteries $ builds ++ "\n" ++ tests) c
 
-reportCmd (HTML True x) o args = do
-    html <- flip reportHTML args =<< (readNotEmpty x)
+reportCmd (HTML True x) o args c = do
+    html <- (\ x -> reportHTML c x args) =<< (readNotEmpty x)
     writeOut o $ html
 
-reportCmd (TextReport True format) o [] = do
+reportCmd (TextReport True format) o [] c = do
     testFile <- freshTests
     tests <- safeReadFile testFile
     buildFile <- freshBuilds
     builds <- safeReadFile buildFile
-    reportCmd (TextReport True format) o $
-        notEmptyEnteries $ builds ++ "\n" ++ tests
+    reportCmd (TextReport True format) o
+        (notEmptyEnteries $ builds ++ "\n" ++ tests) c
 
-reportCmd (TextReport True format) o args =
-    writeOut o =<< unlines <$> formatTextReport format args
+reportCmd (TextReport True format) o args c =
+    writeOut o =<< unlines <$> formatTextReport c format args
 
-reportCmd _ _ _ = runCmd None
+reportCmd _ _ _ _ = runCmd None
 
-subCmd :: Command -> IO ()
-subCmd (Weles x) = welesAddr >>= flip welesSubCmd x
-subCmd (Report x o p) = reportCmd x o p
-subCmd (TestControl conf out []) = do
-    appCfg <- getAppConfig
-    forkIO $ runServerOnPort (webPagePort appCfg)
+subCmd :: Command -> AppConfig -> IO ()
+subCmd (Weles x) c = welesSubCmd (welesAddr c) x
+subCmd (Report x o p) c = reportCmd x o p c
+subCmd (TestControl conf out []) appCfg = do
+    forkIO $ runServerOnPort appCfg
     lastTestFile <- freshTests
     writeFile lastTestFile ""
 
     listFile <- freshBuilds
     list <- safeReadFile listFile
-    outs <- performForallNewBuilds conf $ notEmptyEnteries list
+    outs <- performForallNewBuilds appCfg conf $ notEmptyEnteries list
     writeOut out $ unlines outs
 
-subCmd (TestControl config out fnames) = do
-    appCfg <- getAppConfig
-    forkIO $ runServerOnPort (webPagePort appCfg)
-    outs <- performForallNewBuilds config fnames
+subCmd (TestControl config out fnames) appCfg = do
+    forkIO $ runServerOnPort appCfg
+    outs <- performForallNewBuilds appCfg config fnames
     writeOut out $ unlines outs
 
-subCmd (Build config repos noClean outFile) = do
+subCmd (Build config repos noClean outFile) appCfg = do
     freshBuildsFile <- freshBuilds
     writeFile freshBuildsFile ""
-    appCfg <- getAppConfig
 
     builder <- builderFromFile config
     (writeOut outFile) =<<  maybe
@@ -360,7 +369,7 @@ subCmd (Build config repos noClean outFile) = do
             (buildLogDir appCfg)))
         builder
 
-subCmd (Server port) = runServerOnPort port
+subCmd (Server port) c = runServerOnPort c
 
 welesSubCmd a (AllJobs True) = show <$> curlJobs a >>= putStrLn
 welesSubCmd a (CloseAllJobs True) = cancelAll a
@@ -393,6 +402,8 @@ writeOut x = writeFile x
 
 notEmptyEnteries = filter ((/=) "") . lines
 
-welesAddr = do
-    c <- getAppConfig
-    return $ NetAddress (welesIP c) (welesPort c) (welesFilePort c)
+welesAddr c =  NetAddress (welesIP c) (welesPort c) (welesFilePort c)
+
+resolvedAppConfig c
+    | c == defaultConfigPath = configFile >>= getAppConfig
+    | otherwise = getAppConfig c
