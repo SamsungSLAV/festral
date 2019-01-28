@@ -48,7 +48,6 @@ data Worker = Worker
 -- |Caps part of the worker
 data Caps = Caps
     { addr          :: String
-    , deviceType    :: String -- ^Field for back compatibility with older Weles
     , device_type   :: String
     , uuid          :: String
     } deriving (Generic)
@@ -127,7 +126,7 @@ instance FromJSON BorutaRequest where
     parseJSON = withObject "BorutaRequest" $ \o -> do
         reqID       <- o .: "ID"
         reqState    <- o .: "State"
-        reqCapsIn   <- o .: "Caps"
+        reqCapsIn   <- o .:? "Caps" .!= Caps "" "" ""
         return BorutaRequest{..}
 
 instance ToJSON BorutaRequest
@@ -148,26 +147,23 @@ instance Show BorutaRequest where
 instance Show Caps where
     show x = "  {\n"
            ++"    \"Addr\":"          ++ show (addr x)        ++ ",\n"
-           ++"    \"device_type\":"   ++
-                if (device_type x == "")
-                    then deviceType x
-                    else device_type x
-           ++ ",\n"
+           ++"    \"device_type\":"   ++ device_type x        ++ ",\n"
            ++"    \"UUID\":"          ++ show (uuid x)        ++ "\n"
            ++"  }"
 
 instance FromJSON Caps where
     parseJSON = withObject "Caps" $ \o -> do
         addr        <- o .:? "Addr"         .!= ""
-        deviceType  <- o .:? "DeviceType"   .!= ""
-        device_type <- o .:? "device_type"  .!= ""
+        tmpDevType  <- o .:? "device_type"
+        oldDevType  <- o .:? "DeviceType"   .!= ""
+        let device_type = fromMaybe oldDevType tmpDevType
         uuid        <- o .:? "UUID"         .!= ""
         return Caps{..}
 
 instance ToJSON Caps where
-    toJSON (Caps a old_d d u) = object $ catMaybes
+    toJSON (Caps a d u) = object $ catMaybes
         [ "Addr"        .=. a
-        , "device_type" .=. if d == "" then old_d else d
+        , "device_type" .=. d
         , "UUID"        .=. u
         ]
 

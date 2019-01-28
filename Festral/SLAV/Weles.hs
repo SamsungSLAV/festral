@@ -18,6 +18,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE RecordWildCards #-}
 
 -- |Simple library implementing SLAV Weles API, which allows low level test
 -- management using Weles as testing server. It allows creating, cancelling,
@@ -85,8 +86,26 @@ instance Show JobParameters where
     show x =  "TTL: " ++ show (absoluteTimeout x)
            ++ " RunTTL: " ++ show (afterRunTimeout x)
 
-instance FromJSON Job
-instance ToJSON Job
+instance FromJSON Job where
+    parseJSON = withObject "Job" $ \o -> do
+        jobid   <- o .:     "jobid"     <|> o .: "jobID"
+        name    <- o .:?    "name"      .!= ""
+        created <- o .:?    "created"   .!= ""
+        updated <- o .:?    "updated"   .!= ""
+        status  <- o .:     "status"
+        info    <- o .:?    "info"      .!= ""
+        return Job{..}
+
+instance ToJSON Job where
+    toJSON Job{..} =
+        object ["jobID"     .= jobid
+               ,"name"      .= name
+               ,"created"   .= created
+               ,"updated"   .= updated
+               ,"status"    .= status
+               ,"info"      .= info
+               ]
+
 instance Show Job where
     show (Job id n c u s i) = "{\n \"jobid\" : " ++ show id ++ ",\n \"name\" : "
                 ++ show n ++ ",\n \"created\" : "
@@ -98,13 +117,29 @@ instance Show Job where
 welesAddr x = (netIP x, netPort x, netFilePort x)
 
 -- |Get list of all jobs on server under given address.
+curlJobsOld :: NetAddress -> IO [Job]
+curlJobsOld addr = do
+    let (ip, port, _) = welesAddr addr
+    handle badCurl $ curlAesonGet (ip ++ ":" ++ show port ++ "/api/v1/jobs/")
+
+badCurl :: CurlAesonException -> IO [Job]
+badCurl ex = putStrLn (show ex) >> return []
+
+-- |Get list of all jobs on server under given address. This function use v1 API
+-- of veles and replaces 'curlJobs' function.
+-- @since 1.3.0
 curlJobs :: NetAddress -> IO [Job]
 curlJobs addr = do
     let (ip, port, _) = welesAddr addr
-    handle badCurl $ curlAesonGet (ip ++ ":" ++ show port ++ "/api/v1/jobs/")
-    where
-        badCurl :: CurlAesonException -> IO [Job]
-        badCurl ex = putStrLn (show ex) >> return []
+    handle (useV0API addr) $ curlAeson
+        parseJSON
+        "POST"
+        (ip ++ ":" ++ show port ++ "/api/v1/jobs/list")
+        [CurlFollowLocation True]
+        (Nothing :: Maybe Job)
+
+useV0API :: NetAddress -> CurlAesonException -> IO [Job]
+useV0API addr e = curlJobsOld addr
 
 -- |Get job by its ID.
 getJob :: NetAddress -> Int -> IO (Maybe Job)

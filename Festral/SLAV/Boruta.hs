@@ -163,15 +163,14 @@ getBusyTargetAuth addr selector caps = do
 
 
 getSpecifiedTargetAuth targetUUID f = do
-    let caps = Caps "" "" "" targetUUID
+    let caps = Caps "" "" targetUUID
     let selector = (\ x -> (uuid $ reqCapsIn x) == targetUUID)
     f selector caps
 
 -- |Get any accessible device of given device_type
 getDeviceTypeAuth device f = do
-    let caps = Caps ""  "" device ""
-    let selector = (\ x -> (device_type (reqCapsIn x) == device)
-                    || deviceType (reqCapsIn x) == device)
+    let caps = Caps ""  device ""
+    let selector = (\ x -> device_type (reqCapsIn x) == device)
     f selector caps
 
 getKey :: NetAddress -> Int -> IO (Maybe BorutaAuth)
