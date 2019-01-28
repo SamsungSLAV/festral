@@ -29,7 +29,7 @@ DOCS_PREFIX =dist/doc
 FESTRAL_BIN_PATH =${BUILD_PREFIX}/festral
 FARMER_BIN_PATH =${BUILD_PREFIX}/farmer
 
-all: build package
+all: build
 
 build: deps configure
 	cabal ${CABAL_PREFIX}build

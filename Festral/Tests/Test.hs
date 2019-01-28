@@ -271,17 +271,21 @@ runTestJob _ "FAILED" _ _ = return BuildFailed
 runTestJob config "SUCCEED" (Just yaml) buildId = do
     let addr = welesAddr config
     buildOutDir <- buildResDir config buildId
-    withTempFile buildOutDir ".yml" $ \ yamlFileName yamlFileHandle -> do
-        handle fileError $ hPutStr yamlFileHandle yaml
-        -- Force write data to the file by forsing read it
-        !forceFileWrite <- hGetContents yamlFileHandle
-        !jobId <- handle badJob $
+    handle createTempFileError
+        $ withTempFile buildOutDir ".yml" $ \ yamlFileName yamlFileHandle -> do
+            handle fileError $ hPutStr yamlFileHandle yaml
+            -- Force write data to the file by forsing read it
+            !forceFileWrite <- hGetContents yamlFileHandle
+            !jobId <- handle badJob $
                     startJob addr yamlFileName
-        return $ maybe StartJobFailed JobId jobId
+            return $ maybe StartJobFailed JobId jobId
 
     where
         fileError :: SomeException -> IO ()
         fileError x = putStrLn $ show x
+
+        createTempFileError :: SomeException -> IO JobStartResult
+        createTempFileError x = return BadYaml
 runTestJob _ _ _ _ = return StartJobFailed
 
 -- |Wait for job if it started successfully and return its results after finish

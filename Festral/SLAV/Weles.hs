@@ -101,7 +101,13 @@ welesAddr x = (netIP x, netPort x, netFilePort x)
 curlJobs :: NetAddress -> IO [Job]
 curlJobs addr = do
     let (ip, port, _) = welesAddr addr
-    handle badCurl $ curlAesonGet (ip ++ ":" ++ show port ++ "/api/v1/jobs/")
+    handle badCurl $ curlAeson
+        parseJSON
+        "POST"
+        (ip ++ ":" ++ show port ++ "/api/v1/jobs/list")
+        [CurlFollowLocation True]
+        (Nothing :: Maybe Job)
+    --handle badCurl $ curlAesonGet (ip ++ ":" ++ show port ++ "/api/v1/jobs/")
     where
         badCurl :: CurlAesonException -> IO [Job]
         badCurl ex = putStrLn (show ex) >> return []
