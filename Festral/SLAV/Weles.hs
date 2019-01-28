@@ -30,6 +30,7 @@
 module Festral.SLAV.Weles (
     Job(..),
     JobParameters(..),
+    APIVersion(..),
     curlJobs,
     getJob,
     getJobWhenDone,
@@ -38,7 +39,8 @@ module Festral.SLAV.Weles (
     getJobOutFile,
     getJobOut,
     cancelAll,
-    cancelJob
+    cancelJob,
+    getAPIVersion
 ) where
 
 import Network.Curl.Aeson
@@ -57,6 +59,7 @@ import Control.Monad
 import Data.Maybe
 import System.Directory
 import Control.Exception
+import Text.Read
 
 import Festral.Config
 
@@ -70,6 +73,13 @@ data Job = Job
     ,info       :: String
 } deriving (Generic)
 
+-- |Version of the Weles API.
+data APIVersion = APIVersion
+    { version   :: String
+    , server    :: String
+    , state     :: String
+    } deriving (Generic, Show)
+
 -- |Datatype incapsulating parameters of the job
 data JobParameters
     = JobParameters {
@@ -81,6 +91,13 @@ data JobParameters
     -- 'absoluteTimeout' has higher priority. It is in seconds.
     , afterRunTimeout   :: Int
     }
+
+instance FromJSON APIVersion where
+    parseJSON = withObject "APIVersion" $ \o -> do
+        version <- o .:?    "API"   .!= "0"
+        server  <- o .:?    "Server".!= ""
+        state   <- o .:?    "State" .!= "deprecated"
+        return APIVersion{..}
 
 instance Show JobParameters where
     show x =  "TTL: " ++ show (absoluteTimeout x)
@@ -121,9 +138,9 @@ curlJobsOld :: NetAddress -> IO [Job]
 curlJobsOld addr = do
     let (ip, port, _) = welesAddr addr
     handle badCurl $ curlAesonGet (ip ++ ":" ++ show port ++ "/api/v1/jobs/")
-
-badCurl :: CurlAesonException -> IO [Job]
-badCurl ex = putStrLn (show ex) >> return []
+    where
+        badCurl :: CurlAesonException -> IO [Job]
+        badCurl ex = putStrLn (show ex) >> return []
 
 -- |Get list of all jobs on server under given address. This function use v1 API
 -- of veles and replaces 'curlJobs' function.
@@ -150,6 +167,16 @@ getJob addr id = do
                 then Nothing
                 else Just $ head job
     return res
+
+-- |Returns just version of the Weles API or 'Nothing' if API is too old or
+-- other connection error occured.
+getAPIVersion :: NetAddress -> IO (Maybe APIVersion)
+getAPIVersion addr = do
+    let (ip, port, _) = welesAddr addr
+    handle badCurl $ curlAesonGet (ip ++ ":" ++ show port ++ "/api/v1/version")
+    where
+        badCurl :: CurlAesonException -> IO (Maybe APIVersion)
+        badCurl _ = return Nothing
 
 doneStatuses = ["FAILED", "COMPLETED", "CANCELED"]
 activeStatuses = ["RUNNING"]
@@ -189,19 +216,28 @@ instance FromJSON SimpleJob where
 -- Returns id of new job.
 startJob :: NetAddress -> FilePath -> IO (Maybe Int)
 startJob addr yamlFileName = do
+    apiVersion <- getAPIVersion addr
+    let filenameArg = resolveFileArg apiVersion
     let (ip, port, _) = welesAddr addr
     (_, out, err, _) <- runInteractiveCommand (
                         "curl -sL "
                          ++ ip
                          ++ ":"
                          ++ show port
-                         ++ "/api/v1/jobs/ -F \"uploadfile=@"
+                         ++ "/api/v1/jobs/ -F \""
+                         ++ filenameArg ++ "=@"
                          ++ yamlFileName
                          ++ ";\""
                       )
     outStr <- hGetContents out
-    let sjob = decode (LB.fromStrict $ B.pack outStr) :: Maybe SimpleJob
-    return (s_jobid <$> sjob)
+    return $ parseF apiVersion outStr
+    where
+        resolveFileArg Nothing = "uploadfile"
+        resolveFileArg _ = "yamlfile"
+
+        parseF Nothing x = s_jobid
+            <$> (decode (LB.fromStrict $ B.pack x) :: Maybe SimpleJob)
+        parseF _ x = readMaybe x :: Maybe Int
 
 testFileUrl addr id = do
     let (ip, _, port) = welesAddr addr

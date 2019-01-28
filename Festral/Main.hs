@@ -30,7 +30,7 @@ import System.Process
 
 import Festral.WWW.Server
 import Festral.Config
-import Festral.SLAV.Weles hiding (info)
+import Festral.SLAV.Weles hiding (info, APIVersion(..))
 import Festral.Tests.Test
 import Festral.Internal.Files
 import Festral.Reporter
@@ -59,6 +59,8 @@ data WelesSubOpts
         { jobOpt :: JobOpts
         , jobId  :: Int
         }
+    | ApiVersion Bool
+
 -- |Type which is root of all program commands tree.
 data Command
     = Build
@@ -262,6 +264,12 @@ welesCloseAllJobs = CloseAllJobs
         ( long  "cancel-all"
         <>help  "Cancel all not done jobs." )
 
+welesAPIVersion :: Parser WelesSubOpts
+welesAPIVersion = ApiVersion
+    <$> switch
+        ( long  "api-version"
+        <>help  "Show version of the Weles API" )
+
 welesStartJob :: Parser WelesSubOpts
 welesStartJob = StartJob
     <$> strOption
@@ -282,7 +290,11 @@ welesJobOpt = JobSubOpt
 
 welesopts :: Parser Command
 welesopts = Weles
-    <$> (welesAllJobs <|> welesStartJob <|> welesJobOpt <|> welesCloseAllJobs)
+    <$> (welesAllJobs
+        <|> welesStartJob
+        <|> welesJobOpt
+        <|> welesCloseAllJobs
+        <|> welesAPIVersion)
 
 testCtl :: Parser Command
 testCtl = TestControl
@@ -373,6 +385,7 @@ subCmd (Server port) c = runServerOnPort c
 
 welesSubCmd a (AllJobs True) = show <$> curlJobs a >>= putStrLn
 welesSubCmd a (CloseAllJobs True) = cancelAll a
+welesSubCmd a (ApiVersion True) = print =<< getAPIVersion a
 welesSubCmd a (StartJob x) = show <$> startJob a x >>= putStrLn
 welesSubCmd a (JobSubOpt x id) = jobCmd a x id
 welesSubCmd _ _ = runCmd None
