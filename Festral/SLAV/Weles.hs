@@ -1,5 +1,5 @@
 {-
- - Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+ - Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
  -
  - Author: Uladzislau Harbuz <u.harbuz@samsung.com>
  -
@@ -16,10 +16,6 @@
  - limitations under the License
  -}
 
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE RecordWildCards #-}
-
 -- |Simple library implementing SLAV Weles API, which allows low level test
 -- management using Weles as testing server. It allows creating, cancelling,
 -- waiting Weles jobs and processing it in different ways.
@@ -28,9 +24,6 @@
 -- its REST API port number and its file server port number. These addresses
 -- should be made by 'makeAddress' function.
 module Festral.SLAV.Weles (
-    Job(..),
-    JobParameters(..),
-    APIVersion(..),
     curlJobs,
     getJob,
     getJobWhenDone,
@@ -40,14 +33,12 @@ module Festral.SLAV.Weles (
     getJobOut,
     cancelAll,
     cancelJob,
-    getAPIVersion
+    getAPIVersion,
+    module Festral.SLAV.Weles.Data
 ) where
 
 import Network.Curl.Aeson
 import Network.Curl
-import Control.Applicative
-import Data.Aeson
-import GHC.Generics
 import Control.Concurrent
 import System.Process
 import System.IO
@@ -56,80 +47,14 @@ import qualified Data.ByteString.Char8 as B
 import Data.List.Split
 import Data.List
 import Control.Monad
-import Data.Maybe
 import System.Directory
 import Control.Exception
 import Text.Read
+import Data.Aeson
+import Data.Maybe
 
 import Festral.Config
-
--- |Job datatype describes json job object got from weles
-data Job = Job
-    {jobid      :: Int
-    ,name       :: String
-    ,created    :: String
-    ,updated    :: String
-    ,status     :: String
-    ,info       :: String
-} deriving (Generic)
-
--- |Version of the Weles API.
-data APIVersion = APIVersion
-    { version   :: String
-    , server    :: String
-    , state     :: String
-    } deriving (Generic, Show)
-
--- |Datatype incapsulating parameters of the job
-data JobParameters
-    = JobParameters {
-    -- |Timeout of job from it was created. Job will be closed after it expired
-    -- even if it just waiting all the time. It is in seconds.
-      absoluteTimeout   :: Int
-    -- |Timeout which starts from job finished waiting and started running. It
-    -- has no sence to be longer than 'absoluteTimeout' value because
-    -- 'absoluteTimeout' has higher priority. It is in seconds.
-    , afterRunTimeout   :: Int
-    }
-
-instance FromJSON APIVersion where
-    parseJSON = withObject "APIVersion" $ \o -> do
-        version <- o .:?    "API"   .!= "0"
-        server  <- o .:?    "Server".!= ""
-        state   <- o .:?    "State" .!= "deprecated"
-        return APIVersion{..}
-
-instance Show JobParameters where
-    show x =  "TTL: " ++ show (absoluteTimeout x)
-           ++ " RunTTL: " ++ show (afterRunTimeout x)
-
-instance FromJSON Job where
-    parseJSON = withObject "Job" $ \o -> do
-        jobid   <- o .:     "jobid"     <|> o .: "jobID"
-        name    <- o .:?    "name"      .!= ""
-        created <- o .:?    "created"   .!= ""
-        updated <- o .:?    "updated"   .!= ""
-        status  <- o .:     "status"
-        info    <- o .:?    "info"      .!= ""
-        return Job{..}
-
-instance ToJSON Job where
-    toJSON Job{..} =
-        object ["jobID"     .= jobid
-               ,"name"      .= name
-               ,"created"   .= created
-               ,"updated"   .= updated
-               ,"status"    .= status
-               ,"info"      .= info
-               ]
-
-instance Show Job where
-    show (Job id n c u s i) = "{\n \"jobid\" : " ++ show id ++ ",\n \"name\" : "
-                ++ show n ++ ",\n \"created\" : "
-                ++ show c ++ ",\n \"updated\" : "
-                ++ show u ++ ",\n \"status\" : "
-                ++ show s ++ ",\n \"info\" : "
-                ++ show i ++ "\n}\n"
+import Festral.SLAV.Weles.Data
 
 welesAddr x = (netIP x, netPort x, netFilePort x)
 
@@ -144,6 +69,7 @@ curlJobsOld addr = do
 
 -- |Get list of all jobs on server under given address. This function use v1 API
 -- of veles and replaces 'curlJobs' function.
+--
 -- @since 1.3.0
 curlJobs :: NetAddress -> IO [Job]
 curlJobs addr = do
@@ -170,6 +96,8 @@ getJob addr id = do
 
 -- |Returns just version of the Weles API or 'Nothing' if API is too old or
 -- other connection error occured.
+--
+-- @since 1.3.0
 getAPIVersion :: NetAddress -> IO (Maybe APIVersion)
 getAPIVersion addr = do
     let (ip, port, _) = welesAddr addr
@@ -206,12 +134,6 @@ getJobWhenDone addr id parameters = do
         timeout = absoluteTimeout parameters
         runTTL = afterRunTimeout parameters
 
-data SimpleJob = SimpleJob {s_jobid :: Int}
-    deriving (Show)
-
-instance FromJSON SimpleJob where
-    parseJSON = withObject "SimpleJob" $ \v -> SimpleJob <$> v.: "jobid"
-
 -- |Send new job defined in the YAML file defined as parameter to server.
 -- Returns id of new job.
 startJob :: NetAddress -> FilePath -> IO (Maybe Int)
@@ -239,36 +161,105 @@ startJob addr yamlFileName = do
             <$> (decode (LB.fromStrict $ B.pack x) :: Maybe SimpleJob)
         parseF _ x = readMaybe x :: Maybe Int
 
-testFileUrl addr id = do
-    let (ip, _, port) = welesAddr addr
-    return $ ip ++ ":" ++ show port ++ "/" ++ show id ++ "/TESTFILE/"
+-- |Get url for artifact storage in V0 Weles API for job specified by id.
+testFileUrl addr id =
+    let (ip, _, port) = welesAddr addr in
+        ip ++ ":" ++ show port ++ "/" ++ show id ++ "/TESTFILE/"
 
--- |Returns list of filenames generated by job with given id.
--- If job with given id does not exists return Nothing.
-getFileList :: NetAddress -> Int -> IO (Maybe [String])
-getFileList addr id = do
-    fileUrl <- testFileUrl addr id
+-- |Get url for download artifact by given id using V1 Weles API.
+testFileUrlV1 addr id =
+    let (ip, port, _) = welesAddr addr in
+        ip ++ ":" ++ show port ++ "/api/v1/artifacts/" ++ show id
+
+-- |Implementation of the old Weles API
+getFileListOld :: NetAddress -> Int -> IO (Maybe [String])
+getFileListOld addr id = do
+    let fileUrl = testFileUrl addr id
     (errCode, htmlOut) <- curlGetString fileUrl [CurlFollowLocation True]
     let res = if errCode == CurlOK
             then Just (extractHrefs htmlOut)
             else Nothing
     return res
-
     where
         extractHrefs = (map (\x -> x!!1)) . (map (splitOn "\"")) .
             ((filter (isInfixOf "a href=")) . (splitOneOf "<>"))
 
--- |Returns just contents of the file with given name located on Weles server
--- for job with given id. If file or job does not exists returns Nothing.
-getJobOutFile :: NetAddress -> Int -> String -> IO (Maybe String)
-getJobOutFile addr id fname = do
-    fileUrl <- testFileUrl addr id
-    (errCode, content) <- curlGetString (fileUrl ++ fname)
+-- |Get names of files of job specified by id. Always returns Just.
+--
+-- @since 1.3.2
+getFileListV1 :: NetAddress -> Int -> IO (Maybe [String])
+getFileListV1 addr id
+    = Just . (a_alias <$>) <$> getArtifacts addr (filterID id)
+
+-- |Returns list of filenames generated by job with given id.
+-- If job with given id does not exists return Nothing.
+getFileList :: NetAddress -> Int -> IO (Maybe [String])
+getFileList addr id = do
+    apiVersion <- getAPIVersion addr
+    apiDependFileList apiVersion addr id
+    where
+        apiDependFileList Nothing = getFileListOld
+        apiDependFileList _ = getFileListV1
+
+-- |Get list of artifacts of Weles job specified by filter.
+--
+-- @since 1.3.2
+getArtifacts :: NetAddress -> ArtifactFilter -> IO [Artifact]
+getArtifacts addr filter = do
+    let (ip, port, _) = welesAddr addr
+    handle badCurl $ curlAeson
+        parseJSON
+        "POST"
+        (ip ++ ":" ++ show port ++ "/api/v1/artifacts/list")
         [CurlFollowLocation True]
+        (Just filter)
+    where
+        badCurl :: CurlAesonException -> IO [Artifact]
+        badCurl _ = return []
+
+-- |Filter artifacts by job id.
+filterID id = ArtifactFilter $ emptyArtifact{a_jobid = id}
+
+-- |Filter artifacts by its alias.
+filterName name = ArtifactFilter $ emptyArtifact{a_alias = name}
+
+-- |Do not filter artifacts.
+filterEmpty = ArtifactFilter $ emptyArtifact
+
+-- |Implementation of 'getJobOutFile' for Weles API V0
+getJobOutFileOld :: NetAddress -> Int -> String -> IO (Maybe String)
+getJobOutFileOld addr id fname = do
+    let fileUrl = testFileUrl addr id
+    genericJobOutFile $ fileUrl ++ fname
+
+-- |Implementation of 'getJobOutFile' for Weles API V1.
+--
+-- @since 1.3.2
+getJobOutFileV1 :: NetAddress -> Int -> String -> IO (Maybe String)
+getJobOutFileV1 addr id fname = do
+    artifacts <- getArtifacts addr $ filterID id <||> filterName fname
+    let fileUrl = testFileUrlV1 addr $ a_id
+                $ fromMaybe emptyArtifact $ listToMaybe artifacts
+    genericJobOutFile fileUrl
+
+genericJobOutFile fileUrl = do
+    (errCode, content) <- curlGetString fileUrl [CurlFollowLocation True]
     let res = if errCode == CurlOK
             then Just content
             else Nothing
     return res
+
+-- |Returns just contents of the file with given name located on Weles server
+-- for job with given id. If file or job does not exists returns Nothing.
+--
+-- @since 1.3.2
+getJobOutFile :: NetAddress -> Int -> String -> IO (Maybe String)
+getJobOutFile addr id fname = do
+    apiVersion <- getAPIVersion addr
+    (apiJobOutFile apiVersion) addr id fname
+    where
+        apiJobOutFile Nothing = getJobOutFileOld
+        apiJobOutFile _ = getJobOutFileV1
 
 -- |Returns standard output of job given by id (contents of the results file).
 getJobOut :: NetAddress -> Int -> IO String

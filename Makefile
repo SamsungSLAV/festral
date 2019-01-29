@@ -50,7 +50,7 @@ docs: configure
 configure:
 	cabal ${CABAL_PREFIX}configure
 
-docker: ${BINARIES} docker-deb
+docker: ${BINARIES} docker-deb docker-docs
 	docker rm ${CONTAINER_NAME}
 
 docker-build:
