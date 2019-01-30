@@ -27,6 +27,7 @@ import Control.Concurrent
 import Paths_Festral (version)
 import System.Environment
 import System.Process
+import Data.Maybe
 
 import Festral.WWW.Server
 import Festral.Config
@@ -91,6 +92,7 @@ data ReportType
         , templateHTML  :: FilePath
         }
     | TextReport Bool String
+    | TestResults Bool
 
 -- |Options of the program called without commands (festral entery point).
 data Options
@@ -193,9 +195,16 @@ reportText = TextReport
         \status, %d - device name, %R - pass rating passed/all, \
         \% or %% - insert % character." )
 
+reportTestRes :: Parser ReportType
+reportTestRes = TestResults
+    <$> switch
+        (  long     "test-result"
+        <> help     "Show results of given in arguments tests if it was \
+        \performed and parsed successfully." )
+
 report :: Parser Command
 report = Report
-    <$> (reportHTMLParser <|> reportText )
+    <$> (reportHTMLParser <|> reportText <|> reportTestRes)
     <*> strOption
         (  long     "out"
         <> metavar  "FILENAME"
@@ -360,6 +369,9 @@ reportCmd (TextReport True format) o [] c = do
 
 reportCmd (TextReport True format) o args c =
     writeOut o =<< unlines <$> formatTextReport c format args
+
+reportCmd (TestResults True) o args c =
+    writeOut o =<< unlines <$> catMaybes <$> mapM (getTestResults c) args
 
 reportCmd _ _ _ _ = runCmd None
 

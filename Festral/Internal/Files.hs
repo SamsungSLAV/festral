@@ -26,7 +26,8 @@ module Festral.Internal.Files (
     safeReadFile,
     configFile,
     getAppConfig,
-    defaultConfigFileName
+    defaultConfigFileName,
+    reportFilePath
 ) where
 
 import System.Directory
@@ -75,6 +76,12 @@ getAppConfig confPath = do
             putStrLn $ confPath ++ " has invalid JSON format. \
             \Use default values."
             return $ fromJust $ (decode "{}" :: Maybe AppConfig)
+
+-- |Gives path for the parsed test report of the test specified by its id
+-- (returned by 'performForallNewBuilds' function or by festral test command).
+--
+-- @since 1.3.4
+reportFilePath cfg id = testLogDir cfg ++ "/" ++ id ++ "/report.txt"
 
 -- |Simple handler for bad file opening.
 badFile :: SomeException -> IO String

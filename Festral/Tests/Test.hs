@@ -24,7 +24,8 @@ module Festral.Tests.Test (
     runTest,
     runTests,
     parseTest,
-    performForallNewBuilds
+    performForallNewBuilds,
+    getTestResults
 ) where
 
 import Data.Aeson
@@ -56,6 +57,17 @@ import qualified Festral.SLAV.Weles as WJob (status, name)
 import Festral.Tests.Data
 import Festral.Internal.Logger
 import Festral.Internal.Preprocessor
+
+-- |Get parsed result of test specified by id. If test was performed
+-- successfully returns parsed result, otherwise returns 'Nothing'.
+--
+-- @since 1.3.4
+getTestResults :: AppConfig -> String -> IO (Maybe String)
+getTestResults appConf id = do
+    handle badFile $ Just <$> (readFile $ reportFilePath appConf id)
+    where
+        badFile :: SomeException -> IO (Maybe String)
+        badFile _ = return Nothing
 
 -- |Run tests from config for all build directories listed in given string.
 -- Returns list of names of test results directories.
