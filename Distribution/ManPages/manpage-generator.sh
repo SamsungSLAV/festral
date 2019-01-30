@@ -45,7 +45,7 @@ function generate_manpages {
 function format_specifiers {
     FILENAME=$1
     sed -i "s/ %/\n.PP\n%/g" $FILENAME
-    sed -i "s/,$/d/" $FILENAME
+    sed -i "s/,$//" $FILENAME
     sed -i "s/Format specifiers are:/&\n.RS 3/" $FILENAME
     sed -i "s/character./&\n.RE\n/" $FILENAME
 }

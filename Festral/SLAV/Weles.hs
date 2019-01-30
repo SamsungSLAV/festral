@@ -34,6 +34,10 @@ module Festral.SLAV.Weles (
     cancelAll,
     cancelJob,
     getAPIVersion,
+    getJobYaml,
+    filterID,
+    filterName,
+    filterEmpty,
     module Festral.SLAV.Weles.Data
 ) where
 
@@ -83,6 +87,17 @@ curlJobs addr = do
 
 useV0API :: NetAddress -> CurlAesonException -> IO [Job]
 useV0API addr e = curlJobsOld addr
+
+-- |Get YAML file of the job specified by ID. This function works only with
+-- Weles API v1 and later.
+--
+-- @since 1.3.3
+getJobYaml :: NetAddress -> Int -> IO (Maybe String)
+getJobYaml addr id = do
+    yamlID <- listToMaybe <$> (getArtifacts addr
+        $ (filterID id) <||> (ArtifactFilter $ emptyArtifact {a_type = "YAML"}))
+    maybe (return Nothing) genericJobOutFile
+        $ (testFileUrlV1 addr) <$> a_id <$> yamlID
 
 -- |Get job by its ID.
 getJob :: NetAddress -> Int -> IO (Maybe Job)

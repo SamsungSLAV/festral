@@ -49,6 +49,7 @@ data JobOpts
     | JobSTDOut Bool
     | ListFiles Bool String
     | CancelJob Bool
+    | JobYaml   Bool
 
 -- |Representation of the weles command options.
 data WelesSubOpts
@@ -229,6 +230,13 @@ welesJobSTDOUT = JobSTDOut
         ( long  "job-stdout"
         <>help  "Print standard output and error streams of job." )
 
+welesJobYaml :: Parser JobOpts
+welesJobYaml = JobSTDOut
+    <$> switch
+        ( long  "testcase"
+        <>short 't'
+        <>help  "Print YAML with testcase of requested job." )
+
 welesListFiles :: Parser JobOpts
 welesListFiles = ListFiles
     <$> switch
@@ -281,7 +289,11 @@ welesStartJob = StartJob
 
 welesJobOpt :: Parser WelesSubOpts
 welesJobOpt = JobSubOpt
-    <$> (welesWaitJob <|> welesJobSTDOUT <|> welesListFiles <|> welesCancelJob)
+    <$> (welesWaitJob
+        <|> welesJobSTDOUT
+        <|> welesListFiles
+        <|> welesCancelJob
+        <|> welesJobYaml)
     <*> option auto
         ( long  "job-id"
         <>short 'i'
@@ -398,6 +410,7 @@ jobCmd a (ListFiles True "") id = show <$> getFileList a id >>= putStrLn
 jobCmd a (ListFiles True x) id = getJobOutFile a id x
     >>= justPutStrLn "No such job."
 jobCmd a (CancelJob True) id = cancelJob a id
+jobCmd a (JobYaml True) id = getJobYaml a id >>= print
 jobCmd _ _ _ = runCmd None
 
 justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
