@@ -46,7 +46,6 @@
 -- ###########################################################
 -- @
 module Festral.Tests.TestParser (
-    TestData (..),
     TestParser (..),
     writeReportFile,
     fromFile,
@@ -61,18 +60,7 @@ import Data.Char
 import Data.List
 
 import Festral.Internal.Files
-
--- |This data structure stores information needed by database for importing
--- tests results.
-data TestData = TestData
-    { testGroup :: String   -- ^Group of the test, e.g. regression21015
-    , testIdx   :: Int      -- ^Index of the test in the group
-    , testName  :: String   -- ^Name of the test
-    , preRes    :: String   -- ^Result of the preparing for test (TEST_PASS on success)
-    , testRes   :: String   -- ^Result of the test (TEST_PASS on success)
-    , postRes   :: String   -- ^Result of the post-test operations (TEST_PASS on success)
-    , testTime  :: String   -- ^Time taken by test execution
-    } deriving Show
+import Festral.Tests.Data
 
 data TestParser = TestParser
     { out   :: String   -- ^ Test output
@@ -103,10 +91,10 @@ parseDefault parser = zipWith (\[name,res] i ->
                             "Default test"
                             i
                             name
-                            (tr res)
-                            (tr res)
-                            (tr res)
-                            "0.5") res [1 ..]
+                            (read $ tr res)
+                            (read $ tr res)
+                            (read $ tr res)
+                            0.5) res [1 ..]
     where
         res = map (dropWhile isSpace) <$> (filter ((== 2) . length) $
                 splitOn "..." <$> splitOn "\n" (out parser))
@@ -115,8 +103,9 @@ parseDefault parser = zipWith (\[name,res] i ->
 
 -- |Parser for the output of the XTest - official test suit of OPTEE.
 parseXTest :: TestParser -> [TestData]
-parseXTest parser = zipWith (\[name,res] i ->
-                        TestData "Xtest" i name res res res "0.5") res [1 ..]
+parseXTest parser = zipWith (\[name,res'] i ->
+                        let res = read res' in
+                        TestData "Xtest" i name res res res 0.5) res [1 ..]
     where
         res = map (\x-> [head x, if "OK" `elem` x
                                     then "TEST_PASS"
@@ -138,6 +127,6 @@ writeReportFile resLst fname = do
 
     where
     processRow x = init $ foldl (\y str -> str ++ "," ++ y) "" $
-                    reverse [a, show b, c,d,e,f,g]
+                    reverse [a,show b,c,show d,show e,show f,show (realToFrac g)]
         where
             (TestData a b c d e f g) = x

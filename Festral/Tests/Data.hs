@@ -29,11 +29,15 @@ module Festral.Tests.Data (
     JobExecutionResult(..),
     TestConfig (..),
     TestUnit (..),
+    TestData(..),
+    TestRawResult(..),
     showJobResultId
 ) where
 
 import Data.Aeson
 import GHC.Generics
+import Data.Time.Clock
+import Data.List.Split
 
 -- |This data structure describes test configuration for one repository
 --specified by name.
@@ -129,6 +133,40 @@ data JobExecutionResult
     | JobNotStarted JobStartResult
     -- |Job was timed out and cancelled by Weles
     | Cancelled FileContents JobStartResult
+
+-- |Results of one test representation.
+data TestData = TestData
+    { testSetName   :: String
+    -- ^ Name of the test set
+    , testId        :: Int
+    -- ^ Order number of test
+    , testName      :: String
+    -- ^ Name of the test
+    , prepareRes    :: TestRawResult
+    -- ^ Result of preparation for the test
+    , testRes       :: TestRawResult
+    -- ^ Test result
+    , testCleanRes  :: TestRawResult
+    -- ^ Result of the cleaning after test execution
+    , testDuration  :: NominalDiffTime
+    -- ^ Time of test execution
+    } deriving (Show)
+
+data TestRawResult = TEST_PASS | TEST_FAIL deriving (Show, Read)
+
+instance Read TestData where
+    readsPrec _ str =
+        [(TestData
+            a
+            (read b)
+            c
+            (read d1)
+            (read d2)
+            (read d3)
+            (realToFrac (read e :: Double))
+         , concat xs)]
+        where
+            (a:b:c:d1:d2:d3:e:xs) = splitOn "," str
 
 instance Show JobStartResult where
     show BuildFailed        = "BUILD FAILED"
