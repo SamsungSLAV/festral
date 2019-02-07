@@ -27,10 +27,12 @@ import Data.Version (showVersion)
 import Paths_Festral (version)
 import System.Environment
 import System.Process
+import Data.UUID
 
 import Festral.Config
 import Festral.SLAV.Boruta
 import Festral.Internal.Files
+import Festral.Internal.Logger
 
 main = runCmd =<< customExecParser (prefs showHelpOnEmpty)
     (info (helper <*> parseOptsCmd <|> prgVersion)
@@ -239,15 +241,20 @@ borutaSubCmd a (AllRequests True) = show <$> allRequests a >>= putStrLn
 borutaSubCmd a (Console x force) = borutaConsoleCall a x force
 borutaSubCmd a (CloseRequest x) = closeRequest a x
 borutaSubCmd a (DryadCmd x) = dryadCmdCall a x
-borutaSubCmd a (Boot id opts) = dutBoot a id opts
-borutaSubCmd a (SetMaintanence id) = setMaintenace a id
-borutaSubCmd a (SetIdle id) = setIdle a id
+borutaSubCmd a (Boot id opts)
+    = uuidOrDie (\id -> dutBoot a id opts) (fromString id)
+borutaSubCmd a (SetMaintanence id) = uuidOrDie (setMaintenace a) $ fromString id
+borutaSubCmd a (SetIdle id) = uuidOrDie (setIdle a) $ fromString id
 borutaSubCmd _ _ = runCmd None
 
+uuidOrDie = maybe (putColorBold Red "Invalid UUID\n")
+
 dryadCmdCall a (BorutaExec cmds opts)
-    = (execFromOpts opts) a (dryadId opts) (unwords cmds) (options opts)
+    = uuidOrDie (\ id -> (execFromOpts opts) a id (unwords cmds) (options opts))
+    (fromString $ dryadId opts)
 dryadCmdCall a (BorutaPush files out opts)
-    = (pushFromOpts opts) a (dryadId opts) files out (options opts)
+    = uuidOrDie (\ id -> (pushFromOpts opts) a id files out (options opts))
+    (fromString $ dryadId opts)
 
 execFromOpts (DryadAction True _ _) = execDUT
 execFromOpts _ = execMuxPi
@@ -256,7 +263,8 @@ pushFromOpts (DryadAction True _ _) = pushDUT
 pushFromOpts _ = pushMuxPi
 
 borutaConsoleCall a (ConsoleFromType x) f = execAnyDryadConsole a x f
-borutaConsoleCall a (ConsoleFromUUID x) f = execSpecifiedDryadConsole a x f
+borutaConsoleCall a (ConsoleFromUUID x) f
+    = uuidOrDie (\ x -> execSpecifiedDryadConsole a x f) (fromString x)
 
 justPutStrLn :: (Show a, Eq a) => String -> Maybe a -> IO ()
 justPutStrLn errMsg x

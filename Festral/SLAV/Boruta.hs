@@ -61,6 +61,7 @@ import qualified Data.ByteString.Lazy.Char8 as BL (pack, unpack)
 import Data.Aeson
 import qualified Control.Monad.Parallel as Par
 import System.FilePath.Posix
+import Data.UUID
 
 import Festral.Internal.Logger
 import Festral.Config
@@ -162,7 +163,8 @@ getBusyTargetAuth addr selector caps = do
     maybe (return Nothing) (getKey addr) id
 
 
-getSpecifiedTargetAuth targetUUID f = do
+getSpecifiedTargetAuth id f = do
+    let targetUUID = toString id
     let caps = Caps "" "" targetUUID
     let selector = (\ x -> (uuid $ reqCapsIn x) == targetUUID)
     f selector caps
@@ -223,17 +225,17 @@ execAnyDryadConsole addr x opts = do
 
 -- |Run ssh session for device specified by its UUID
 execSpecifiedDryadConsole :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
-                          -> String     -- ^ Device UUID
+                          -> UUID       -- ^ Device UUID
                           -> RequestOptions
                           -> IO ()
-execSpecifiedDryadConsole addr x opts = do
-    auth <- getSpecifiedTargetAuth x (authMethod addr opts)
+execSpecifiedDryadConsole addr uuid opts = do
+    auth <- getSpecifiedTargetAuth uuid (authMethod addr opts)
     execDryad addr (sshCmd "") auth
     optCloseAuth addr opts auth
 
 -- |Execute command on MuxPi
 execMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
-          -> String     -- ^ UUID of the device
+          -> UUID       -- ^ UUID of the device
           -> String     -- ^ Command
           -> RequestOptions
           -> IO ()
@@ -244,7 +246,7 @@ execMuxPi addr uid cmd opts = do
 
 -- |Execute command on the device under test of the Dryad specified by UUID
 execDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
-        -> String     -- ^ UUID of the device
+        -> UUID       -- ^ UUID of the device
         -> String     -- ^ Command
         -> RequestOptions
         -> IO ()
@@ -255,7 +257,7 @@ execDUT addr uid cmd opts = do
 
 -- |Push file from host to the MuxPi of Dryad identified by UUID
 pushMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
-          -> String     -- ^ UUID of the device
+          -> UUID       -- ^ UUID of the device
           -> [FilePath] -- ^ Files to be copied from host
           -> FilePath   -- ^ Destination file name on the MuxPi
           -> RequestOptions
@@ -267,7 +269,7 @@ pushMuxPi addr uid sources to opts = do
 
 -- |The same as 'pushMuxPi' but push file to the device under test
 pushDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
-        -> String     -- ^ UUID of the device
+        -> UUID       -- ^ UUID of the device
         -> [FilePath] -- ^ Files to be copied from host
         -> FilePath   -- ^ Destination file name on the Device Under Test (DUT)
         -> RequestOptions
@@ -338,22 +340,22 @@ dutBoot addr uid opts = do
 
 -- |Set specified by UUID dryad in MAINTENANCE mode: Weles will not be able to
 -- start tests on it.
-setMaintenace :: NetAddress -> String -> IO ()
+setMaintenace :: NetAddress -> UUID -> IO ()
 setMaintenace a uuid = setState a (WorkerState "MAINTENANCE") uuid
 
 -- |Set specified by UUID dryad in IDLE mode: it can be used by Weles normally.
-setIdle :: NetAddress -> String -> IO ()
+setIdle :: NetAddress -> UUID -> IO ()
 setIdle a uuid = setState a (WorkerState "IDLE") uuid
 
 -- |Set specified by UUID dryad in specified 'WorkerState' mode.
-setState :: NetAddress -> WorkerState -> String -> IO ()
+setState :: NetAddress -> WorkerState -> UUID -> IO ()
 setState borutaAddr req uuid = do
     let (addr, port) = getAddr borutaAddr
     (curlAeson
             parseJSON
             "POST"
             (addr ++ ":" ++ show port ++
-                "/api/v1/workers/" ++ uuid ++ "/setstate")
+                "/api/v1/workers/" ++ toString uuid ++ "/setstate")
             [CurlFollowLocation True]
             (Just req)) :: IO ()
 
