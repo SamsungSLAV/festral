@@ -150,9 +150,12 @@ data TestData = TestData
     -- ^ Result of the cleaning after test execution
     , testDuration  :: NominalDiffTime
     -- ^ Time of test execution
-    } deriving (Show)
+    } deriving (Show, Generic)
 
-data TestRawResult = TEST_PASS | TEST_FAIL deriving (Show, Read)
+data TestRawResult = TEST_PASS | TEST_FAIL deriving (Show, Read, Eq, Generic)
+
+instance ToJSON TestData
+instance ToJSON TestRawResult
 
 instance Read TestData where
     readsPrec _ str =

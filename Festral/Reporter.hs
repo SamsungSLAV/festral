@@ -16,26 +16,42 @@
  - limitations under the License
  -}
 
+{-# LANGUAGE DeriveGeneric #-}
+
 -- | Module for generating reports from build and test results.
 module Festral.Reporter (
     reportHTML,
-    formatTextReport
+    formatTextReport,
+    getTestResults,
+    testReport,
+    aging,
+    csv2TestData,
+    report2csv,
+    mapT2,
+    AgingResult(..)
 ) where
 
 import System.IO
 import System.Directory
 import Data.List.Split
-import qualified Data.ByteString.Lazy as LB
+import qualified Data.ByteString.Lazy.Char8 as LB
 import Data.Aeson
 import Data.List
 import Data.Time.LocalTime
 import Data.List.Utils
+import Text.Read
+import Data.Maybe
+import Control.Exception
+import qualified Data.HashMap.Strict as Map
+import GHC.Generics
 
 import Festral.Template
 import Festral.Internal.Files
 import Festral.Meta hiding (repoName, testName)
 import qualified Festral.Meta as M (repoName, testName)
 import Festral.Config
+import qualified Festral.Tests.Data as T
+import Festral.Tests.Data (TestData)
 
 data BuildSummary = BuildSummary
     { repoName      :: String
@@ -50,6 +66,23 @@ data TestSummary = TestSummary
     , targetName    :: String
     , testResult    :: String
     }
+
+-- |Representation of aging test result. It assumes that same set of tests was
+-- ran multiple times and 'TestData' contains  lots of records wits same name
+-- of test and mostly same results, where in some iterations of test deviations
+-- from first running can appear.
+--
+-- @since 1.4.0
+data AgingResult = AgingResult
+    { results       :: TestData
+    -- ^ Results of the first iteration of tests.
+    , deviations    :: [Int]
+    -- ^ Numbers of test iterations where deviations of pass appeared.
+    , nIterations   :: Int
+    -- ^ Total number of performed iterations of test.
+    } deriving (Show, Generic)
+
+instance ToJSON AgingResult
 
 defaultHTML time =
               "<!DOCTYPE html>\n"
@@ -71,7 +104,52 @@ defaultHTML time =
            ++ "</body>\n"
            ++ "</html>\n"
 
--- |Generate HTML report file with results given by second parameter
+-- |Get parsed result of test specified by id in CSV format with #(hash)
+-- characters line at the begin and at the end of results. Manually it is just
+-- parsed by "Festral.Tests.TestParser" raw test output. If test was performed
+-- successfully returns parsed result, otherwise returns 'Nothing'.
+--
+-- @since 1.4.0
+getTestResults :: AppConfig -> String -> IO (Maybe String)
+getTestResults appConf id = do
+    handle badFile $ Just <$> (readFile $ reportFilePath appConf id)
+    where
+        badFile :: SomeException -> IO (Maybe String)
+        badFile _ = return Nothing
+
+-- |Get results of test specified by its id.
+--
+-- @since 1.4.0
+testReport :: AppConfig -> String -> IO [TestData]
+testReport a id = do
+    report <- getTestResults a id
+    return $ maybe [] (csv2TestData . report2csv) report
+
+-- |Count deviations and merge results of aging tests. It assumes that one
+-- test set was ran multiple times so passed 'TestData' contains a lot of
+-- repeated tests, where some of these repeated tests can has different from
+-- first iteration results (named deviations).
+--
+-- Returned data contains only one first iteration result of every performed
+-- test and information about its deviations and total iterations performed.
+--
+-- @since 1.4.0
+aging :: [TestData] -> [AgingResult]
+aging tests = Map.elems $ foldl' acc Map.empty tests
+    where
+        acc res x = Map.insertWith f (T.testName x) (AgingResult x [] 1) res
+        f :: AgingResult -> AgingResult -> AgingResult
+        f new old = old
+            { deviations = (incIfDiff old new)
+            , nIterations = (nIterations old) + 1
+            }
+        incIfDiff :: AgingResult -> AgingResult -> [Int]
+        incIfDiff old new = if g old == g new
+                                then (deviations old)
+                                else (deviations old) ++ [nIterations old]
+        g x = [T.prepareRes, T.testRes, T.testCleanRes] <*> [results x]
+
+-- |Generate HTML report file with results given by second parameter.
 reportHTML :: AppConfig -- ^ Program configuration with build and test log directories specified.
            -> String    -- ^ Template HTML file to be filled with report data.
                         -- If it is empty, generate default simpliest HTML page.
@@ -125,16 +203,21 @@ reportHTML config src dirs = generateFromTemplate src (templateHTML config dirs)
 -- +---------+-----------------------+-----------------------------------------+
 -- | %R      | pass rating passed/all| 55/210                                  |
 -- +---------+-----------------------+-----------------------------------------+
+-- | %A      | aging test results:   |                                         |
+-- |         | deviations from first |                                         |
+-- |         | iteration/number of   |                                         |
+-- |         | all iterations        | 4/2.98                                  |
+-- +---------+-----------------------+-----------------------------------------+
 -- |%%       | insert % character    | %                                       |
 -- +---------+-----------------------+-----------------------------------------+
 --
 -- Default format is \"%r[%B] Build: %s Test: %R\".
 formatTextReport :: AppConfig   -- ^ Program configuration with buildLog and
-                                -- testLog configured
+                                -- testLog configured.
                  -> String      -- ^ Format string.
                  -> [String]    -- ^ List of names of builds and tests in format
                                 -- returned by 'build' and
-                                -- 'performForallNewBuilds'
+                                -- 'performForallNewBuilds'.
                  -> IO [String] -- ^ Generated textual report.
 formatTextReport config format dirs = do
     metas <- mapM (metaByName config) dirs
@@ -143,18 +226,35 @@ formatTextReport config format dirs = do
     where
         f (n,m) = do
             let str = foldl (\ s (f,o) -> replace f (o m) s) format formats
-            r <- if isTest m
+            (r, a) <- if isTest m
                 then do
                     t <- (testSummary config) n
-                    return $ testResult t
-                else return ""
-            return $ replace "%R" r str
+                    report <- testReport config n
+                    let a = aging report
+                    let (agingDeviations, agingTotalIter)
+                            = foldl'
+                            (\(d,i) x -> (d + (length $ deviations x),
+                                          i + (nIterations x)))
+                            (0,0) a
+                    let agingRes = if testStatus m == "COMPLETE"
+                                    then show agingDeviations
+                                        ++ "/"
+                                        ++ show (fromIntegral agingTotalIter
+                                        / fromIntegral (length a))
+                                    else testStatus m
+                    return $ (testResult t, agingRes)
+                else return ("", "")
+            return $ foldl
+                (\ str (key, f) -> replace key f str)
+                str
+                (zip ["%R", "%A"] [r, a])
 
 testOnly f m@MetaTest{} = f m
 testOnly _ _ = ""
 
 formats =
-    [("%b", ($>>) board)
+    [("%%", (\ _ -> "%"))
+    ,("%b", ($>>) board)
     ,("%t", ($>>) buildType)
     ,("%c", ($>>) commit)
     ,("%T", ($>>) buildTime)
@@ -171,8 +271,21 @@ formats =
     ,("%n", testOnly M.testName)
     ,("%S", testOnly testStatus)
     ,("%d", testOnly testDevice)
-    ,("%%", (\ _ -> "%"))
     ]
+
+-- |Converts string in CSV format into the 'TestData'.
+--
+-- @since 1.4.0
+csv2TestData :: String -> [TestData]
+csv2TestData = catMaybes . map readMaybe . lines
+
+-- |Converts raw report format into the CSV format. Actually get only part of
+-- string located between more than 20 #(sharp) characters.
+--
+-- @since 1.4.0
+report2csv :: String -> String
+report2csv = unlines . parseTestRes
+           . splitWhen (isInfixOf $ replicate 20 '#') . lines
 
 makeBuildRow :: BuildSummary -> String
 makeBuildRow b
@@ -209,13 +322,8 @@ testSummary :: AppConfig -> String -> IO TestSummary
 testSummary config dir = do
     meta <- fromMetaFile $ testLogDir config ++ "/" ++ dir ++ "/meta.txt"
 
-    let reportPath = testLogDir config ++ "/" ++ dir ++ "/report.txt"
-    report <- safeReadFile reportPath
-
-    let tests = parseTestRes $ splitWhen (isInfixOf "###############") $
-            splitOn "\n" report
-    let pass= foldl (\ (x,y) b -> (if b then x+1 else x, y+1)) (0,0) $
-            processReport <$> splitOn "," <$> tests
+    report <- testReport config dir
+    let pass = mapT2 length (filter isPassed report, report)
     let link = "http://" ++ webPageIP config ++ ":" ++ show (webPagePort config)
              ++ "/getlog?type=test&hash=" ++ hash $>> meta
              ++ "&time=" ++ testTime meta
@@ -235,15 +343,14 @@ percents (0,0) status = status
 percents x@(pass, all) "SEGFAULT" = show pass ++ "/" ++ show all ++ "(SEGFAULT)"
 percents x@(pass, all) _ = show pass ++ "/" ++ show all
 
-col x = "rgb(" ++ show (round (maxCol - passCol x)) ++ ","
-    ++ show (round (passCol x)) ++ ",0)"
-passCol (pass, all) = (maxCol/fromIntegral(all)) * fromIntegral(pass)
+isPassed :: TestData -> Bool
+isPassed x = T.testRes x == T.TEST_PASS
 
-maxCol = 150
-
-processReport :: [String] -> Bool
-processReport (_:_:_:_:"TEST_PASS":_) = True
-processReport _ = False
+-- |Equivalent of the 'map' function for mono type tuples. This function is
+-- useful for mapping throw 'partition' output and similar functions.
+--
+-- @since 1.4.0
+mapT2 f (a,b) = (f a, f b)
 
 parseTestRes :: [[String]] -> [String]
 parseTestRes (_:x:_) = x
