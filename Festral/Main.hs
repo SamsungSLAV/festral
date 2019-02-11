@@ -28,6 +28,8 @@ import Paths_Festral (version)
 import System.Environment
 import System.Process
 import Data.Maybe
+import Data.Aeson (encode)
+import qualified Data.ByteString.Lazy.Char8 as LB
 
 import Festral.WWW.Server
 import Festral.Config
@@ -93,6 +95,7 @@ data ReportType
         }
     | TextReport Bool String
     | TestResults Bool
+    | AgingTest Bool
 
 -- |Options of the program called without commands (festral entery point).
 data Options
@@ -204,9 +207,16 @@ reportTestRes = TestResults
         <> help     "Show results of given in arguments tests if it was \
         \performed and parsed successfully." )
 
+reportAgingTest :: Parser ReportType
+reportAgingTest = AgingTest
+    <$> switch
+        (  long     "aging-json"
+        <> help     "Show full results of the aging tests given by test IDs \
+        \passed in arguments. Returned results are in JSON format." )
+
 report :: Parser Command
 report = Report
-    <$> (reportHTMLParser <|> reportText <|> reportTestRes)
+    <$> (reportHTMLParser <|> reportText <|> reportTestRes <|> reportAgingTest)
     <*> strOption
         (  long     "out"
         <> metavar  "FILENAME"
@@ -374,6 +384,10 @@ reportCmd (TextReport True format) o args c =
 
 reportCmd (TestResults True) o args c =
     writeOut o =<< unlines <$> catMaybes <$> mapM (getTestResults c) args
+
+reportCmd (AgingTest True) o args c =
+    writeOut o =<< LB.unpack
+                <$> encode <$> fmap aging <$> mapM (testReport c) args
 
 reportCmd _ _ _ _ = runCmd None
 
