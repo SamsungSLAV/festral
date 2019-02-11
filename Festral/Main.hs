@@ -192,7 +192,9 @@ reportText = TextReport
         \username, %s - build status, %h - build hash, %o - build output \
         \directory, %r - name of the repository, %B - brunch name, %l - tester\
         \login, %L - tester name, %e - test time, %n - test name, %S - test\
-        \status, %d - device name, %R - pass rating passed/all, \
+        \status, %d - device name, %R - pass rating passed/all, %A - show \
+        \aging test result in format deviations/total iterations. This value \
+        \is counted by repeating in test log same test names and its results. \
         \% or %% - insert % character." )
 
 reportTestRes :: Parser ReportType
