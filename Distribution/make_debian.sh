@@ -26,7 +26,7 @@ echo "$(grep ^Version Festral.cabal)" >> ${CONTROL}
 echo "Maintainer: Uladzislau Harbuz" >> ${CONTROL}
 echo "Architecture: all" >> ${CONTROL}
 echo "Description: Automated testing system. Client for SLAV stack." >> ${CONTROL}
-echo "Depends: curl, git, ssh" >> ${CONTROL}
+echo "Depends: curl, git, ssh, libcurl3" >> ${CONTROL}
 
 echo "#!/bin/bash" > ${POSTINST}
 echo "festral --bash-completion-script festral >/etc/bash_completion.d/festral" >> ${POSTINST}
