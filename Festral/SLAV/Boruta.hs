@@ -1,5 +1,5 @@
 {-
- - Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+ - Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
  -
  - Author: Uladzislau Harbuz <u.harbuz@samsung.com>
  -
@@ -76,11 +76,11 @@ workerDeviceType worker = device_type $ caps worker
 curlWorkers :: NetAddress -> IO [Worker]
 curlWorkers borutaAddr = do
     let (addr, port) = getAddr borutaAddr
-    (err, str) <-
-        curlGetString
-            (addr ++ ":" ++ show port ++ "/api/workers")
+    handle (handleCurl "Can't get worker list") $ curlAeson
+            parseJSON "POST"
+            (addr ++ ":" ++ show port ++ "/api/v1/workers/list")
             [CurlFollowLocation True]
-    return $ fromMaybe [] (decode (BL.pack str) :: Maybe [Worker])
+            (Nothing :: Maybe Worker)
 
 -- |Create request for given target defined by `Caps` with given priority and
 -- time to live. Returns ID of the created request or 'Nothing'.
@@ -113,11 +113,11 @@ createRequest borutaAddr caps priority timeout = do
 allRequests :: NetAddress -> IO [BorutaRequest]
 allRequests borutaAddr = do
     let (addr, port) = getAddr borutaAddr
-    (err, str) <-
-        curlGetString
-            (addr ++ ":" ++ show port ++ "/api/reqs")
+    handle (handleCurl "Cant get list of requests") $ curlAeson
+            parseJSON "POST"
+            (addr ++ ":" ++ show port ++ "/api/v1/reqs/list")
             [CurlFollowLocation True]
-    return $ fromMaybe [] (decode (BL.pack str) :: Maybe [BorutaRequest])
+            (Nothing :: Maybe BorutaRequest)
 
 -- |Get request information specified by its Id.
 -- See also 'allRequests' for more details.
@@ -367,3 +367,6 @@ f ./ x = f $ "/usr/local/bin/" ++ x
 oneSec = 1000000
 
 getAddr x = (netIP x, netPort x)
+
+handleCurl :: String -> CurlAesonException -> IO [a]
+handleCurl msg _ = putStrColor Yellow msg >> return []
