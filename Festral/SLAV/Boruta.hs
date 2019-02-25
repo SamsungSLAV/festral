@@ -76,7 +76,7 @@ workerDeviceType worker = device_type $ caps worker
 curlWorkers :: NetAddress -> IO [Worker]
 curlWorkers borutaAddr = do
     let (addr, port) = getAddr borutaAddr
-    handle (handleCurl "Can't get worker list") $ curlAeson
+    handle (handleCurl "Can't get worker list\n") $ curlAeson
             parseJSON "POST"
             (addr ++ ":" ++ show port ++ "/api/v1/workers/list")
             [CurlFollowLocation True]
@@ -113,7 +113,7 @@ createRequest borutaAddr caps priority timeout = do
 allRequests :: NetAddress -> IO [BorutaRequest]
 allRequests borutaAddr = do
     let (addr, port) = getAddr borutaAddr
-    handle (handleCurl "Cant get list of requests") $ curlAeson
+    handle (handleCurl "Cant get list of requests\n") $ curlAeson
             parseJSON "POST"
             (addr ++ ":" ++ show port ++ "/api/v1/reqs/list")
             [CurlFollowLocation True]
