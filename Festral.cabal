@@ -1,5 +1,5 @@
 Name:               Festral
-Version:            1.4.4
+Version:            1.5.0
 Cabal-Version:      >= 1.2
 License:            Apache-2.0
 License-file:       LICENSE
@@ -46,6 +46,9 @@ Library
        Festral.SLAV.Boruta.Data,
        Festral.SLAV.Weles,
        Festral.SLAV.Weles.Data,
+       Festral.SLAV.Weles.API.Old,
+       Festral.SLAV.Weles.API.V1,
+       Festral.SLAV.Weles.API.V2,
        Festral.SLAV.Boruta,
        Festral.Template,
        Festral.Tests.TestParser,
@@ -70,6 +73,9 @@ Executable festral
        Festral.Reporter,
        Festral.SLAV.Weles,
        Festral.SLAV.Weles.Data,
+       Festral.SLAV.Weles.API.Old,
+       Festral.SLAV.Weles.API.V1,
+       Festral.SLAV.Weles.API.V2,
        Festral.Template,
        Festral.Tests.TestParser,
        Festral.Tests.Data,
