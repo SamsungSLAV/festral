@@ -29,8 +29,8 @@ module Festral.SLAV.Weles.Data
     , ArtifactFilter  (..)
     , SimpleJob       (..)
     , emptyArtifact
-    , (<||>)
-    , (<|||>)
+    , (<&&>)
+    , (<&&&>)
 ) where
 
 import Data.Aeson
@@ -166,9 +166,9 @@ a   \| _ = a
 0 |\ a = a
 a |\ _ = a
 
--- |Logical OR for 'Artifact'. If both fields are not empty, resulting field
+-- |Logical AND for 'Artifact'. If both fields are not empty, resulting field
 -- will have value from the first argument.
-a <|||> b = Artifact
+a <&&&> b = Artifact
     (a_id a     |\ a_id b)
     (a_path a   \| a_path b)
     (a_status a \| a_status b)
@@ -178,10 +178,10 @@ a <|||> b = Artifact
     (a_type a   \| a_type b)
     (a_uri a    \| a_uri b)
 
--- |Logical OR for 'ArtifactFilter'. Use it like
+-- |Logical AND for 'ArtifactFilter'. Use it like
 --
 -- @
---   'filterID' 5 \<||\> 'filterName' "name" \<||\>
+--   'filterID' 5 \<&&\> 'filterName' "name" \<&&\>
 --   ('ArtifactFilter' $ 'emptyArtifact'{'a_type' = \"READY\"})
 -- @
-a <||> b = ArtifactFilter (a_filter a <|||> a_filter b)
+a <&&> b = ArtifactFilter (a_filter a <&&&> a_filter b)
