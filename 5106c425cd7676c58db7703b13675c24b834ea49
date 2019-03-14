@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "13a2e425_b27db9d1",
+        "filename": "Festral/SLAV/Weles/API/V1.hs",
+        "patchSetId": 2
+      },
+      "lineNbr": 65,
+      "author": {
+        "id": 1015718
+      },
+      "writtenOn": "2019-03-14T11:16:42Z",
+      "side": 1,
+      "message": "RESULT",
+      "range": {
+        "startLine": 65,
+        "startChar": 50,
+        "endLine": 65,
+        "endChar": 62
+      },
+      "revId": "5106c425cd7676c58db7703b13675c24b834ea49",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
