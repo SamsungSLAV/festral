@@ -1,5 +1,5 @@
 {-
- - Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+ - Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
  -
  - Author: Uladzislau Harbuz <u.harbuz@samsung.com>
  -
@@ -19,7 +19,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Festral.WWW.Server (
-    runServerOnPort
+    runServerOnPort,
+    runFileServerOnly
 )
 where
 
@@ -52,6 +53,13 @@ data ContentType
 runServerOnPort config = do
     run (webPagePort config) $ fileServer config
 
+-- |Run server on port given in configuration.
+runFileServerOnly config = do
+    run (webPagePort config) $ fileServerOnly config
+
+fileServerOnly config req respond = do
+    respondFileServerOnly config respond $ T.unpack <$> pathInfo req
+
 fileServer config req respond = do
     let opts = parseQuery $ show $ rawQueryString req
     sendRespond opts config respond $ T.unpack <$> pathInfo req
@@ -67,12 +75,16 @@ sendRespond opts config r ("reports"    :xs) = sendRespond opts config
     r $ ["files"] ++ xs
 sendRespond opts config r ("reports.php":xs) = sendRespond opts config
     r $ ["files"] ++ xs
-sendRespond opts config r ("files"      :xs) = do
-    let fullpath = intercalate "/" $ filter (\ x ->
-                    not $ any (x ==) ["", ".", ".."]) xs
-    listFiles config fullpath >>= r
+sendRespond opts config r ("files"      :xs) =
+    listFiles config (removeRelPaths xs) "/files/" >>= r
 sendRespond opts config r ("secosci":x) = sendRespond opts config r x
 sendRespond a b c d = indexRespond a b c d
+
+removeRelPaths = intercalate "/"
+    . filter (\ x -> not $ any (x ==) ["", ".", ".."])
+
+respondFileServerOnly config r path =
+    listFiles config (removeRelPaths path) "" >>= r
 
 download opts config = do
     let dir = buildLogDir config
@@ -81,23 +93,23 @@ download opts config = do
     responseFile status200 (contentTypeFromExt "" fname)
         (dir ++ "/" ++ build_hash ++ "/" ++ fname) Nothing
 
-listFiles :: AppConfig -> String -> IO Response
-listFiles config fullpath = do
+listFiles :: AppConfig -> String -> String -> IO Response
+listFiles config fullpath prefix = do
     isDirectory <- doesDirectoryExist $ (serverRoot config) ++ "/" ++ fullpath
     let ftype = if isDirectory
                     then Directory
                     else Download
-    showFile ftype config fullpath
+    showFile ftype config fullpath prefix
 
-showFile :: ContentType -> AppConfig -> FilePath -> IO Response
-showFile Directory config fullpath = do
-    reports <- listDirectory $  (serverRoot config) ++ "/" ++ fullpath
+showFile :: ContentType -> AppConfig -> FilePath -> String -> IO Response
+showFile Directory config fullpath prefix = do
+    reports <- listDirectory $ (serverRoot config) ++ "/" ++ fullpath
     return $ responseBuilder status200 [("Content-Type", "text/html")]
         $ mconcat $ map copyByteString
-        $ map (\x -> BSU.fromString $ "<a href=\"/files/" ++
-            fullpath ++"/" ++ x ++"\">"
+        $ map (\x -> BSU.fromString $ "<a href=\""
+            ++ prefix ++ fullpath ++ "/" ++ x ++"\">"
         ++ x ++"</a><br>") (sort reports)
-showFile Download config x = do
+showFile Download config x _ = do
             return $ responseFile status200
                 (contentTypeFromExt (takeExtension x) x)
                 (serverRoot config ++ "/" ++ x) Nothing

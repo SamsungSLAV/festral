@@ -80,7 +80,9 @@ data Command
         , buildPaths:: [FilePath]
         }
     | Server
-        { serverPort :: Int }
+        { serverPort :: Int
+        , fileServerOnly :: Bool
+        }
     | Report
         { rtype     :: ReportType
         , rOutFile  :: FilePath
@@ -352,8 +354,13 @@ runServer = Server
         ( long  "port"
         <>short 'p'
         <>metavar "PORT_NUMPER"
-        <>value 8888
+        <>value (-1)
         <>help  "Port of the file server to start on" )
+    <*> switch
+        ( long  "fileserver-only"
+        <>help  "Run server in file server only mode. It means that server \
+        \will show file tree just under port it listen on, without files/ \
+        \prefix. In this mode HTTP API is disabled." )
 
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
@@ -421,7 +428,11 @@ subCmd (Build config repos noClean outFile) appCfg = do
             (buildLogDir appCfg)))
         builder
 
-subCmd (Server port) c = runServerOnPort c
+subCmd (Server (-1) mode) c = (serverType mode) c
+subCmd (Server port mode) c = (serverType mode) c{webPagePort=port}
+
+serverType True = runFileServerOnly
+serverType _ = runServerOnPort
 
 welesSubCmd a (AllJobs True) = show <$> curlJobs a >>= putStrLn
 welesSubCmd a (CloseAllJobs True) = cancelAll a
