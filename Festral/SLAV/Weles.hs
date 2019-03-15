@@ -71,7 +71,7 @@ welesAddr x = (netIP x, netPort x, netFilePort x)
 curlJobs :: NetAddress -> IO [Job]
 curlJobs addr = do
     apiVersion <- getAPIVersion addr
-    case version <$> apiVersion of
+    case server <$> apiVersion of
         (Just "0.2.0") -> V2.curlJobs addr
         (Just "0.1.0") -> V1.curlJobs addr
         _              -> Old.curlJobs addr
@@ -165,7 +165,7 @@ startJob addr yamlFileName = do
 getFileList :: NetAddress -> Int -> IO (Maybe [String])
 getFileList addr id = do
     apiVersion <- getAPIVersion addr
-    (apiDependFileList $ version <$> apiVersion) addr id
+    (apiDependFileList $ server <$> apiVersion) addr id
     where
         apiDependFileList (Just "0.2.0") = V2.getFileList
         apiDependFileList (Just "0.1.0") = V1.getFileList
@@ -185,7 +185,7 @@ genericJobOutFile fileUrl = do
 getJobOutFile :: NetAddress -> Int -> String -> IO (Maybe String)
 getJobOutFile addr id fname = do
     apiVersion <- getAPIVersion addr
-    (apiJobOutFile $ version <$> apiVersion) addr id fname
+    (apiJobOutFile $ server <$> apiVersion) addr id fname
     where
         apiJobOutFile (Just "0.2.0") = V2.getJobOutFile
         apiJobOutFile (Just "0.1.0") = V1.getJobOutFile
