@@ -83,8 +83,9 @@ sendRespond a b c d = indexRespond a b c d
 removeRelPaths = intercalate "/"
     . filter (\ x -> not $ any (x ==) ["", ".", ".."])
 
+respondFileServerOnly config r [] = listFiles config "" "" >>= r
 respondFileServerOnly config r path =
-    listFiles config (removeRelPaths path) "" >>= r
+    listFiles config (removeRelPaths path) "/" >>= r
 
 download opts config = do
     let dir = buildLogDir config
