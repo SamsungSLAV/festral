@@ -136,7 +136,8 @@ yamlTemplater opts (RPMInstallLatest pkg) = do
     return $ yamlTemplaterRpm uri pkg
 yamlTemplater opts (FileContent fname) = do
     content <- safeReadFile fname
-    parsedFile <- generateFromTemplate (preprocess (_testData opts) content)
+    preprocessed <- preprocess (_testData opts) content
+    parsedFile <- generateFromTemplate preprocessed
         $ yamlTemplater opts
     return parsedFile
 yamlTemplater _ (ExecLog cmd logfile) = return $

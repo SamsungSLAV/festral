@@ -1,5 +1,5 @@
 Name:               Festral
-Version:            1.5.3
+Version:            2.0.0
 Cabal-Version:      >= 1.2
 License:            Apache-2.0
 License-file:       LICENSE
@@ -32,7 +32,7 @@ Library
         temporary >= 1.2.1,
         ansi-terminal, MissingH,
         text,
-        unordered-containers, uuid
+        unordered-containers, uuid, parsec
     Exposed-modules:
        Festral.Builder.Builder,
        Festral.Builder.GBSParser,
