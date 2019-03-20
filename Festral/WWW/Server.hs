@@ -84,7 +84,7 @@ removeRelPaths = intercalate "/"
     . filter (\ x -> not $ any (x ==) ["", ".", ".."])
 
 respondFileServerOnly config r path =
-    listFiles config (removeRelPaths path) "" >>= r
+    listFiles config (removeRelPaths path) "/" >>= r
 
 download opts config = do
     let dir = buildLogDir config
