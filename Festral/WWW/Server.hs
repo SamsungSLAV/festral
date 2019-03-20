@@ -83,8 +83,9 @@ sendRespond a b c d = indexRespond a b c d
 removeRelPaths = intercalate "/"
     . filter (\ x -> not $ any (x ==) ["", ".", ".."])
 
+respondFileServerOnly config r [] = listFiles config "" "" >>= r
 respondFileServerOnly config r path =
-    listFiles config (removeRelPaths path) "" >>= r
+    listFiles config (removeRelPaths path) "/" >>= r
 
 download opts config = do
     let dir = buildLogDir config
@@ -104,6 +105,7 @@ listFiles config fullpath prefix = do
 showFile :: ContentType -> AppConfig -> FilePath -> String -> IO Response
 showFile Directory config fullpath prefix = do
     reports <- listDirectory $ (serverRoot config) ++ "/" ++ fullpath
+    putStrLn $ show reports ++ fullpath
     return $ responseBuilder status200 [("Content-Type", "text/html")]
         $ mconcat $ map copyByteString
         $ map (\x -> BSU.fromString $ "<a href=\""
