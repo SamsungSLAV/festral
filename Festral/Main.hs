@@ -367,24 +367,28 @@ runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
 runCmd (Cmd x c) = resolvedAppConfig c >>= subCmd x
 runCmd _ = getExecutablePath >>= flip callProcess ["--help"]
 
-reportCmd (HTML True x) o [] c = do
+defaultIds = do
     testFile <- freshTests
     tests <- safeReadFile testFile
     buildFile <- freshBuilds
     builds <- safeReadFile buildFile
-    reportCmd (HTML True x) o (notEmptyEnteries $ builds ++ "\n" ++ tests) c
+    return $ notEmptyEnteries $ builds ++ "\n" ++ tests
+
+reportCmd (HTML True x) o [] c = do
+    args <- defaultIds
+    if length args <= 0
+        then putStrLn "Nothing to do"
+        else reportCmd (HTML True x) o args c
 
 reportCmd (HTML True x) o args c = do
     html <- (\ x -> reportHTML c x args) =<< (readNotEmpty x)
     writeOut o $ html
 
 reportCmd (TextReport True format) o [] c = do
-    testFile <- freshTests
-    tests <- safeReadFile testFile
-    buildFile <- freshBuilds
-    builds <- safeReadFile buildFile
-    reportCmd (TextReport True format) o
-        (notEmptyEnteries $ builds ++ "\n" ++ tests) c
+    args <- defaultIds
+    if length args <= 0
+        then putStrLn "Nothing to do"
+        else reportCmd (TextReport True format) o args c
 
 reportCmd (TextReport True format) o args c =
     writeOut o =<< unlines <$> formatTextReport c format args
