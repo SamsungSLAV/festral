@@ -1,5 +1,5 @@
 {-
- - Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+ - Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
  -
  - Author: Uladzislau Harbuz <u.harbuz@samsung.com>
  -
@@ -18,93 +18,208 @@
 
 -- |Module gives functions for file preprocessing with syntax as below:
 --
--- @
---   IF_EQ_INSERT(config_field) (value) (string)
--- @
--- This command check if __config_field__ equals for __value__, and if yes,
--- insert into this place __string__. The first argument can be name of the
--- 'TestUnit' field.
+-- Syntax tree of the test scenario language is below:
 --
 -- @
---   IF_EQ_INSERT_ELSE(config_field) (value) (if true value) (else value)
--- @
--- The same as IF_EQ_INSERT, but if first two arguments are not equal, insert
--- __else value__ into this place. The first argument can be name of the
--- 'TestUnit' field.
+-- b    ::= true | false | not b | b opb b | w cmp w
+-- opb  ::= && | ||
 --
--- @
---   INCLUDE(filepath)
--- @
--- Insert into this place preprocessed and untemplated contents of the given
--- filepath.
+-- w    ::= %text | $text
 --
+-- cmp  ::= == | !=
+--
+-- stmt ::= raw (text) | if (b) stmt else stmt | include (text)
+--          | insert (w) | [stmt;]
+--
+-- comments: /* */
 -- @
---   INSERT(TestUnit field)
--- @
--- Insert into this place content of the field of the 'TestUnit' with given name
--- or if there is no such field, just insert argument as string.
+--
+-- Variable prefixed with '%' char will be replaced with one of 'TestUnit'
+-- field.
 --
 -- Fields of 'TestUnit' understandable by preprocessor are: 'repo', 'parser',
 -- 'name', 'target', 'yaml'.
+--
+-- Variable prefixed with '$' character will be used as string literal.
 module Festral.Internal.Preprocessor (
     preprocess
 ) where
 
-import Data.List.Split
-import Data.Char
+import Text.Parsec
+import Text.Parsec.String
+import Text.Parsec.Expr
+import Text.Parsec.Token
+import Text.Parsec.Language
 
 import Festral.Tests.Data
+import Festral.Internal.Files
 
--- |Type represents preprocessor commands tree
-data PreprocessUnit
-    =
-    -- | IF_EQ_INSERT(config_field) (value) (string)
-    PreprocessIf
-        { ifField       :: String
-        , ifValue       :: String
-        , ifInsert      :: String
-        }
-    -- | IF_EQ_INSERT_ELSE(config_field) (value) (if true value) (else value)
-    | PreprocessIfElse
-        { ifField       :: String
-        , ifValue       :: String
-        , ifInsert      :: String
-        , elseInsert    :: String
-        }
-    -- | INCLUDE(filepath)
-    | PreprocessInclude String
-    -- | INSERT(TestUnit_field)
-    | PreprocessInsert  [String]
-    | NotPreprocess String
+data BExpr
+    = BVal Bool
+    | Not BExpr
+    | BinOp BOp BExpr BExpr
+    | EqlStr CmpExpr
     deriving Show
 
-extractArgs x = filter (not . isBlank) $
-                split (dropDelims . dropBlanks $ oneOf  "()") x
+data BOp = And | Or
+    deriving Show
 
-isBlank :: String -> Bool
-isBlank = all isSpace
+data CmpExpr
+    = Eql PWord PWord
+    | NEql PWord PWord
+    deriving Show
 
-processRow :: String -> PreprocessUnit
-processRow = processRow' . extractArgs
+data Stmt
+    = Raw String
+    | If BExpr Stmt Stmt
+    | Include FilePath
+    | Insert PWord
+    | Seq [Stmt]
+    deriving Show
 
-processRow' :: [String] -> PreprocessUnit
-processRow' ("IF_EQ_INSERT_ELSE":f:v:i:e:_) = PreprocessIfElse f v i e
-processRow' ("IF_EQ_INSERT":f:v:i:_) = PreprocessIf f v i
-processRow' ("INCLUDE":f:_) = PreprocessInclude f
-processRow' ("INSERT":xs) = PreprocessInsert xs
-processRow' x = NotPreprocess $ concat x
+data PWord = VarName String | Str String
+    deriving (Show, Eq)
 
-preprocess' :: TestUnit -> PreprocessUnit -> String
-preprocess' t (PreprocessIf f v i) = preprocess' t (PreprocessIfElse f v i "")
-preprocess' t (PreprocessIfElse f v i e) = if (t <-| f) == v then i else e
-preprocess' t (PreprocessInclude x) = "##TEMPLATE_FILE " ++ x ++ "##"
-preprocess' t (PreprocessInsert x) = concat $ map ((<-|) t) x
-preprocess' _ (NotPreprocess x) = x
+-- Preprocess given string wiht data from given test unit according syntax
+-- described in this module description.
+preprocess :: TestUnit -> String -> IO String
+preprocess test str = parseSource test str
 
--- |Preprocess given string wiht data from given test unit according syntax
--- described in "Preprocessor".
-preprocess :: TestUnit -> String -> String
-preprocess test str = unlines $ preprocess' test <$> processRow <$> lines str
+parseWord :: TestUnit -> PWord -> String
+parseWord u (VarName x) = u <-| x
+parseWord _ (Str x) = x
+
+parseSource :: TestUnit -> String -> IO String
+parseSource test x = fmap unlines $ parseSource' test $ parseStr test x
+
+parseSource' :: Show a => TestUnit -> Either a Stmt -> IO [String]
+parseSource' t (Right x) = lines <$> parseStatement t x
+parseSource' _ (Left x) = print x >> return []
+
+parseStr :: TestUnit -> String -> Either ParseError Stmt
+parseStr t x = parse (statementList t) "" x
+
+parseStatement :: TestUnit -> Stmt -> IO String
+parseStatement _ (Raw x) = return x
+parseStatement t (If c a1 a2) = parseStatement t
+    $ if (boolExpr c) then a1 else a2
+parseStatement t (Include x) = safeReadFile x >>= preprocess t
+parseStatement t (Insert x) = return $ parseWord t x
+parseStatement t (Seq (x:xs)) = do
+    a <- parseStatement t x
+    b <- parseStatement t (Seq xs)
+    return $ unlines [a, b]
+parseStatement _ _ = return ""
+
+boolExpr :: BExpr -> Bool
+boolExpr (BVal x) = x
+boolExpr (Not x) = not $ boolExpr x
+boolExpr (BinOp And a1 a2) = (boolExpr a1) && (boolExpr a2)
+boolExpr (BinOp Or a1 a2) = (boolExpr a1) || (boolExpr a2)
+
+cmpExpr :: TestUnit -> CmpExpr -> BExpr
+cmpExpr t (Eql a b) = if parseWord t a == parseWord t b
+                        then BVal True
+                        else BVal False
+cmpExpr t (NEql a b) = Not $ cmpExpr t (Eql a b)
+
+def = emptyDef
+    { commentStart  = "/*"
+    , commentEnd    = "*/"
+    , commentLine   = "//"
+    , identStart    = letter
+    , identLetter   = alphaNum
+    , opStart       = oneOf "&|=!%$"
+    , reservedOpNames = ["&&", "||", "==", "!=", "!", "%", "$"]
+    , reservedNames = [ "true", "false", "raw", "if", "else"
+                      , "include", "insert"
+                      ]
+    }
+
+tokenParser = makeTokenParser def
+resOp = reservedOp tokenParser
+
+varStmt :: Parser PWord
+varStmt = char '%' >> VarName <$> many1 alphaNum
+
+strStmt :: Parser PWord
+strStmt = char '$' >> Str <$> many1 alphaNum
+
+pwordStmt = varStmt <|> strStmt
+
+gEqExpr a b = do
+    x <- pwordStmt
+    spaces
+    reserved tokenParser a
+    y <- pwordStmt
+    spaces
+    return $ b x y
+
+eqExpr :: Parser CmpExpr
+eqExpr = try $ gEqExpr "==" Eql
+
+neqExpr :: Parser CmpExpr
+neqExpr = try $ gEqExpr "!=" NEql
+
+cmpStmt :: Parser CmpExpr
+cmpStmt = eqExpr <|> neqExpr
+
+bExpr :: TestUnit -> Parser BExpr
+bExpr t = buildExpressionParser bOperators (bTerm t)
+
+bOperators = [[Prefix (resOp "!"  >> return (Not))]
+             ,[Infix  (resOp "&&" >> return (BinOp And )) AssocLeft
+              ,Infix  (resOp "||" >> return (BinOp Or  )) AssocLeft
+             ]]
+
+bTerm t = (parens tokenParser) (bExpr t)
+    <|> (resOp "true"  >> return (BVal True))
+    <|> (resOp "false" >> return (BVal False))
+    <|> (cmpExpr t <$> cmpStmt)
+
+statementList :: TestUnit -> Parser Stmt
+statementList t = do
+    list <- (sepBy1 (statement t) $ semi tokenParser)
+    return $ if length list == 1 then head list else Seq list
+
+statement :: TestUnit -> Parser Stmt
+statement t = rawStmt <|> ifStmt t <|> includeStmt <|> insertStmt
+
+genStmt a b = do
+    reserved tokenParser a
+    between (char '(') (char ')') $ inParens b
+
+rawStmt :: Parser Stmt
+rawStmt = genStmt "raw" Raw
+
+includeStmt :: Parser Stmt
+includeStmt = genStmt "include" Include
+
+insertStmt :: Parser Stmt
+insertStmt = do
+    reserved tokenParser "insert"
+    spaces
+    char '('
+    spaces
+    x <- pwordStmt
+    spaces
+    char ')'
+    return $ Insert x
+
+ifStmt :: TestUnit -> Parser Stmt
+ifStmt t = do
+    reserved tokenParser "if"
+    cond <- bExpr t
+    stmt1 <- statement t
+    spaces
+    reserved tokenParser "else"
+    stmt2 <- statement t
+    return $ If cond stmt1 stmt2
+
+inParens :: (String -> Stmt) -> Parser Stmt
+inParens f = do
+    x <- manyTill anyChar (lookAhead $ string ")")
+    return $ f x
 
 x <-| "repo"    = repo $ tConfig x
 x <-| "parser"  = parser $ tConfig x
