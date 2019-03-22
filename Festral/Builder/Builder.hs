@@ -129,17 +129,17 @@ build build opts wdir outdir = do
     cloneRepo wdir build
     let srcDir = wdir ++ "/" ++ buildName build
     catMaybes <$> mapM (\x -> handle badFileMaybe $
-        withCurrentDirectory srcDir (buildOne srcDir x opts outdir build))
+        withCurrentDirectory srcDir (buildOne x opts outdir build))
         (branches build)
     where
         badFileMaybe :: SomeException -> IO (Maybe String)
         badFileMaybe _ = return Nothing
 
-buildOne srcDir branch opts outdir build = do
+buildOne branch opts outdir build = do
     (logfile, loghandle) <- getTemporaryDirectory >>=
         flip openTempFileWithDefaultPermissions "build.log"
     hSetEncoding loghandle latin1
-    prepareRepo srcDir branch
+    prepareRepo branch
     buildWithLog logfile (buildCmd build)
     parse <- getParser (buildResParser build) loghandle
     meta <- parse build branch
@@ -231,7 +231,7 @@ getCommitHash = do
     waitForProcess pid
     hGetLine out
 
-prepareRepo srcDir brunch =
+prepareRepo brunch =
     catch (callCommand $ "git checkout --force "
         ++ brunch ++ " ; git fetch ; git pull origin " ++ brunch) handler
     where
