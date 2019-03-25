@@ -134,10 +134,10 @@ writeWithOwn test outs outDir = do
 writeMetaTest status buildDir outDir name time meta device = do
     tester <- getEffectiveUserName
     let testMeta = MetaTest (id $>> meta) tester tester time name status device
-    let outDirName = outDir ++ "/" ++ hash $>> meta ++ "_" ++ time
+    let outDirName = outDir ++ "/" ++ hash $>> meta ++ "_T" ++ time
 
     latestFile <- freshTests
-    appendFile latestFile $ hash $>> meta ++ "_" ++ time ++ "\n"
+    appendFile latestFile $ hash $>> meta ++ "_T" ++ time ++ "\n"
 
     toFile testMeta (outDirName ++ "/meta.txt")
     toFile meta (outDirName ++ "/build.log")
@@ -147,7 +147,7 @@ parseTest' writer (TestResult status test) buildDir outDir = do
     tm <- timeStamp
     let pathPrefix = outDir ++ "/" ++ hash $>> meta
     time <- catch
-                ((createDirectory $ pathPrefix ++ "_" ++ tm) >> return tm)
+                ((createDirectory $ pathPrefix ++ "_T" ++ tm) >> return tm)
                 (recreate_dir pathPrefix)
     writeMetaTest
         (show status)
@@ -158,7 +158,7 @@ parseTest' writer (TestResult status test) buildDir outDir = do
         meta
         (target test)
     writeLog status time
-    return $ hash $>> meta ++ "_" ++ time
+    return $ hash $>> meta ++ "_T" ++ time
 
     where
         config = tConfig test
@@ -183,7 +183,7 @@ parseTest' writer (TestResult status test) buildDir outDir = do
         writeLog (BadJob x) t = do
             meta <- fromMetaFile $ buildDir ++ "/meta.txt"
             writeFile ((outDirName meta t) ++ "/tf.log") $ show x
-        outDirName meta time = outDir ++ "/" ++ hash $>> meta ++ "_" ++ time
+        outDirName meta time = outDir ++ "/" ++ hash $>> meta ++ "_T" ++ time
 
 
 -- |Create directory with appended timestamp. If directory exists,
@@ -194,12 +194,12 @@ recreate_dir path ex
         threadDelay 1000000 -- wait for 1 second
         time <- timeStamp
         catch
-            ((createDirectory $ path ++ "_" ++ time) >> return time)
+            ((createDirectory $ path ++ "_T" ++ time) >> return time)
             (recreate_dir path)
     | isDoesNotExistError ex = do
         time <- timeStamp
         catch
-            ((createDirectoryIfMissing True $ path ++ "_" ++ time)
+            ((createDirectoryIfMissing True $ path ++ "_T" ++ time)
                 >> return time)
             (recreate_dir path)
     | otherwise = (putStrLn $ show ex) >> timeStamp
