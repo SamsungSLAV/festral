@@ -130,7 +130,11 @@ readLog opts config = do
     let (dir, fname) = resolveDir logtype
     let hash = findField "hash" opts
     let time = findField "time" opts
-    let fpath = dir ++ "/" ++ hash ++ "_" ++ time ++ "/" ++ fname
+    let fpath = dir ++ "/" ++ hash ++ "_" ++ 
+                (if logtype == "build"
+                    then "B"
+                    else "T")
+                ++ time ++ "/" ++ fname
     BS.unpack <$> BS.readFile fpath
     where
         -- return pair (directory to the log/build from config, logfile name

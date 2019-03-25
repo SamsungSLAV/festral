@@ -147,7 +147,7 @@ buildOne branch opts outdir build = do
 
 writeBuildOut _ _ _ Nothing = return Nothing
 writeBuildOut logfile outdir opts (Just meta) = do
-    let out = hash $>> meta ++ "_" ++ buildTime $>> meta
+    let out = hash $>> meta ++ "_B" ++ buildTime $>> meta
     let outDirName = outdir ++ "/" ++ out
     let getBuildOut = if noCleanRes opts then copyDirectory else renameDirectory
 
