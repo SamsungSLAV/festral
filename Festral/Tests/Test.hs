@@ -258,8 +258,9 @@ getYaml config templatePath buildID test = do
     yamlTemplate <- safeReadFile templatePath
     if yamlTemplate == ""
         then return Nothing
-        else fmap Just $
-                generateFromTemplate (preprocess test yamlTemplate) $
+        else fmap Just $ do
+                preprocessed <- preprocess test yamlTemplate
+                generateFromTemplate preprocessed $
                     yamlTemplater $ TemplaterOpts buildOutDir test
                     $ simpleAddress (webPageIP config) (webPagePort config)
 
