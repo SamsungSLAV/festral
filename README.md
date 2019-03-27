@@ -603,7 +603,7 @@ Since `Festral 2.0` new language of test case is introduced which is described b
 File which is written in Festral test case preprocessor language **must have** `.ftc` extension.
 Otherwise it is interpreted as raw `YAML` file template.
 
-### Syntax
+##### Syntax
 
 The abstract syntax tree of the preprocessor language is presented below:
 
@@ -665,7 +665,7 @@ real value by preprocessor:
 The typical usage example for automated running tests with `cron`:
 
 ```
-0 21 * * * ./bin/festral build -c /home/bin/festral-build.config.json -r /home/secos-repo/
+0 21 * * * ./bin/festral build -b /home/bin/festral-build.config.json -r /home/secos-repo/
 0 0 * * * ./bin/festral test -r /home/bin/festral-test.config.json
 0 2 * * * ./bin/festral --html-report -o /home/www/reports/$(date +\%Y\%m\%d\%H\%M).html -f /home/www/template.html
 ```
