@@ -259,7 +259,9 @@ getYaml config templatePath buildID test = do
     if yamlTemplate == ""
         then return Nothing
         else fmap Just $ do
-                preprocessed <- preprocess test yamlTemplate
+                preprocessed <- if takeExtension templatePath == ".ftc"
+                    then preprocess test yamlTemplate
+                    else return yamlTemplate
                 generateFromTemplate preprocessed $
                     yamlTemplater $ TemplaterOpts buildOutDir test
                     $ simpleAddress (webPageIP config) (webPagePort config)
