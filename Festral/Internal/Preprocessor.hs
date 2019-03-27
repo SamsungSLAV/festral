@@ -24,11 +24,11 @@
 -- b    ::= true | false | not b | b opb b | w cmp w
 -- opb  ::= && | ||
 --
--- w    ::= %text | $text
+-- w    ::= %text | "text" | @text | [w.]
 --
 -- cmp  ::= == | !=
 --
--- stmt ::= raw (text) | if (b) stmt else stmt | include (text)
+-- stmt ::= raw (text) | if (b) stmt else stmt | include (w)
 --          | insert (w) | [stmt;]
 --
 -- comments: /* */
@@ -50,6 +50,11 @@ import Text.Parsec.String
 import Text.Parsec.Expr
 import Text.Parsec.Token
 import Text.Parsec.Language
+import System.Environment
+import Control.Exception hiding (try)
+import System.FilePath.Posix
+import System.IO.Unsafe
+import Debug.Trace
 
 import Festral.Tests.Data
 import Festral.Internal.Files
@@ -72,22 +77,30 @@ data CmpExpr
 data Stmt
     = Raw String
     | If BExpr Stmt Stmt
-    | Include FilePath
+    | Include PWord
     | Insert PWord
     | Seq [Stmt]
     deriving Show
 
-data PWord = VarName String | Str String
+data PWord = VarName String | Str String | Env String | PWSeq [PWord]
     deriving (Show, Eq)
 
 -- Preprocess given string wiht data from given test unit according syntax
 -- described in this module description.
 preprocess :: TestUnit -> String -> IO String
+preprocess _ "" = return ""
 preprocess test str = parseSource test str
 
+{-# NOINLINE parseWord #-}
 parseWord :: TestUnit -> PWord -> String
 parseWord u (VarName x) = u <-| x
 parseWord _ (Str x) = x
+parseWord _ (Env x) = unsafePerformIO $ handle envDoesNotExists $ getEnv x
+    where
+        envDoesNotExists :: SomeException -> IO String
+        envDoesNotExists _ = return ""
+parseWord t (PWSeq (x:xs)) = parseWord t x ++ parseWord t (PWSeq xs)
+parseWord _ _ = ""
 
 parseSource :: TestUnit -> String -> IO String
 parseSource test x = fmap unlines $ parseSource' test $ parseStr test x
@@ -97,13 +110,18 @@ parseSource' t (Right x) = lines <$> parseStatement t x
 parseSource' _ (Left x) = print x >> return []
 
 parseStr :: TestUnit -> String -> Either ParseError Stmt
-parseStr t x = parse (statementList t) "" x
+parseStr t x = parse (statement t) "" x
 
 parseStatement :: TestUnit -> Stmt -> IO String
 parseStatement _ (Raw x) = return x
 parseStatement t (If c a1 a2) = parseStatement t
     $ if (boolExpr c) then a1 else a2
-parseStatement t (Include x) = safeReadFile x >>= preprocess t
+parseStatement t (Include x) = do
+    let fname = parseWord t x
+    file <- safeReadFile fname
+    if (takeExtension fname == ".ftc")
+        then trace ("Parse " ++ fname) $ preprocess t file
+        else trace ("Skip parsing " ++ fname) $ return file
 parseStatement t (Insert x) = return $ parseWord t x
 parseStatement t (Seq (x:xs)) = do
     a <- parseStatement t x
@@ -129,8 +147,8 @@ def = emptyDef
     , commentLine   = "//"
     , identStart    = letter
     , identLetter   = alphaNum
-    , opStart       = oneOf "&|=!%$"
-    , reservedOpNames = ["&&", "||", "==", "!=", "!", "%", "$"]
+    , opStart       = oneOf "&|=!%$@"
+    , reservedOpNames = ["&&", "||", "==", "!=", "!", "%", "$", "@"]
     , reservedNames = [ "true", "false", "raw", "if", "else"
                       , "include", "insert"
                       ]
@@ -143,23 +161,36 @@ varStmt :: Parser PWord
 varStmt = char '%' >> VarName <$> many1 alphaNum
 
 strStmt :: Parser PWord
-strStmt = char '$' >> Str <$> many1 alphaNum
+strStmt = between (char '"') (char '"') $ inQuotes Str
 
-pwordStmt = varStmt <|> strStmt
+inQuotes :: (String -> PWord) -> Parser PWord
+inQuotes f = do
+    x <- manyTill anyChar (lookAhead $ string "\"")
+    return $ f x
+
+envStmt :: Parser PWord
+envStmt = char '@' >> Env <$> many1 alphaNum
+
+pwordSeq :: Parser PWord
+pwordSeq = do
+    list <- (sepBy1 pwordStmt $ dot tokenParser)
+    return $ if length list == 1 then head list else PWSeq list
+
+pwordStmt = varStmt <|> strStmt <|> envStmt
 
 gEqExpr a b = do
-    x <- pwordStmt
+    x <- pwordSeq
     spaces
     reserved tokenParser a
-    y <- pwordStmt
+    y <- pwordSeq
     spaces
     return $ b x y
 
 eqExpr :: Parser CmpExpr
-eqExpr = try $ gEqExpr "==" Eql
+eqExpr = gEqExpr "==" Eql
 
 neqExpr :: Parser CmpExpr
-neqExpr = try $ gEqExpr "!=" NEql
+neqExpr = gEqExpr "!=" NEql
 
 cmpStmt :: Parser CmpExpr
 cmpStmt = eqExpr <|> neqExpr
@@ -178,36 +209,45 @@ bTerm t = (parens tokenParser) (bExpr t)
     <|> (cmpExpr t <$> cmpStmt)
 
 statementList :: TestUnit -> Parser Stmt
-statementList t = do
-    list <- (sepBy1 (statement t) $ semi tokenParser)
+statementList t = trace "list" $ do
+    list <- (sepBy1 (statement' t) $ semi tokenParser)
     return $ if length list == 1 then head list else Seq list
 
 statement :: TestUnit -> Parser Stmt
-statement t = rawStmt <|> ifStmt t <|> includeStmt <|> insertStmt
+statement t = statementList t
+
+statement' :: TestUnit -> Parser Stmt
+statement' t
+    = (ifStmt t)
+    <|> includeStmt
+    <|> insertStmt
+    <|> rawStmt
 
 genStmt a b = do
     reserved tokenParser a
     between (char '(') (char ')') $ inParens b
 
 rawStmt :: Parser Stmt
-rawStmt = genStmt "raw" Raw
+rawStmt = trace "raw" $ genStmt "raw" Raw
 
-includeStmt :: Parser Stmt
-includeStmt = genStmt "include" Include
-
-insertStmt :: Parser Stmt
-insertStmt = do
-    reserved tokenParser "insert"
+genPword n y = trace n $ do
+    reserved tokenParser n
     spaces
     char '('
     spaces
-    x <- pwordStmt
+    x <- pwordSeq
     spaces
     char ')'
-    return $ Insert x
+    return $ y x
+
+includeStmt :: Parser Stmt
+includeStmt = genPword "include" Include
+
+insertStmt :: Parser Stmt
+insertStmt = genPword "insert" Insert
 
 ifStmt :: TestUnit -> Parser Stmt
-ifStmt t = do
+ifStmt t = trace "ifStmt" $ do
     reserved tokenParser "if"
     cond <- bExpr t
     stmt1 <- statement t
