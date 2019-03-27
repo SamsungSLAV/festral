@@ -598,26 +598,60 @@ test.log file.
 
 #### File preprocessor
 
-There is file preprocessor available, which allow to insert simple logic
-statements in to the YAML files with testcases. Statements of preprocessor can
-extract values of configuration of current test and compare it with users\
-values.
+Since `Festral 2.0` new language of test case is introduced which is described below.
 
-The syntax of preprocessor's macroses is:
+File which is written in Festral test case preprocessor language **must have** `.ftc` extension.
+Otherwise it is interpreted as raw `YAML` file template.
 
-* `IF_EQ_INSERT(config_field) (value) (string)` - if `config_field` equals for
-`value` replace this row by `string`, else replace this row with empty string.
-First argument can be name of the test configuration field.
-* `IF_EQ_INSERT_ELSE(config_field) (value) (if true value) (else value)` -
-The same as `IF_EQ_INSERT`, but if first two arguments are not equal, insert
-`else value` into this row.
-First argument can be name of the test configuration field.
-* `INCLUDE(filepath)` - insert into this place preprocessed and untemplated
-content of the file specified by given `filepath`. Mainly the same as
-`TEMPLATE_FILE`.
-* `INSERT(TestUnit field)` - insert into this place content of the field of
-the test configuration with given name or if there is no such field,
-just insert argument as string.
+### Syntax
+
+The abstract syntax tree of the preprocessor language is presented below:
+
+```
+
+ b    ::= true | false | not(b) | b opb b | w cmp w
+ opb  ::= && | ||
+
+ w    ::= %text | "text" | @text | [w.]
+
+ cmp  ::= == | !=
+
+ stmt ::= raw (text) | if (b) stmt else stmt | include (w)
+          | insert (w) | [stmt;]
+
+ comments: /* */
+```
+
+`b` is the boolean expressionwhixh can has values `true` or `false` or negated
+boolean expression or binary operation with two boolean expressions or result of
+comparsion of two words expression.
+
+`opb` - the binary boolean operation, just **AND** and **OR**.
+
+`cmp` - comparsion of two words expression (equals or not equals) that returns boolean value.
+
+`w` - word is one of three possible lexemes:
+
+- `%name` - insert in this place value of test configuration field with given name (see below)
+- `"text"` - just string literal
+- `@name` - insert in this place value of operating system environment variable specified by name
+
+Words can be concatenated by `.` symbol, e.g.
+```
+include(@HOME."/myfile.ftc")
+```
+
+`stmt` - statement which can be one of below:
+
+- `raw(text)` - insert in this place text given in parenses.
+- `if (b) stmt else stmt` - if boolean expression is evaluated as `true` insert
+the first statement, else insert the second statement.
+- `include(name)` - insert in this place preprocessed content of given file if this file is `.ftc`,
+otherwise insert just raw content of that file.
+- `insert(w)` - insert into this place value of evaluated word (test config value,
+environment variable or string literal)
+
+Statements are separated by `;` (semicolon) symbol. The last statement **have not** to have semicolon after it.
 
 There are available test configuration fields, which will be expanded to the
 real value by preprocessor:
