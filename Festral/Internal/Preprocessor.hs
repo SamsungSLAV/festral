@@ -54,7 +54,6 @@ import System.Environment
 import Control.Exception hiding (try)
 import System.FilePath.Posix
 import System.IO.Unsafe
-import Debug.Trace
 
 import Festral.Tests.Data
 import Festral.Internal.Files
@@ -120,8 +119,8 @@ parseStatement t (Include x) = do
     let fname = parseWord t x
     file <- safeReadFile fname
     if (takeExtension fname == ".ftc")
-        then trace ("Parse " ++ fname) $ preprocess t file
-        else trace ("Skip parsing " ++ fname) $ return file
+        then  preprocess t file
+        else  return file
 parseStatement t (Insert x) = return $ parseWord t x
 parseStatement t (Seq (x:xs)) = do
     a <- parseStatement t x
@@ -209,7 +208,7 @@ bTerm t = (parens tokenParser) (bExpr t)
     <|> (cmpExpr t <$> cmpStmt)
 
 statementList :: TestUnit -> Parser Stmt
-statementList t = trace "list" $ do
+statementList t = do
     list <- (sepBy1 (statement' t) $ semi tokenParser)
     return $ if length list == 1 then head list else Seq list
 
@@ -228,9 +227,9 @@ genStmt a b = do
     between (char '(') (char ')') $ inParens b
 
 rawStmt :: Parser Stmt
-rawStmt = trace "raw" $ genStmt "raw" Raw
+rawStmt = genStmt "raw" Raw
 
-genPword n y = trace n $ do
+genPword n y = do
     reserved tokenParser n
     spaces
     char '('
@@ -247,7 +246,7 @@ insertStmt :: Parser Stmt
 insertStmt = genPword "insert" Insert
 
 ifStmt :: TestUnit -> Parser Stmt
-ifStmt t = trace "ifStmt" $ do
+ifStmt t = do
     reserved tokenParser "if"
     cond <- bExpr t
     stmt1 <- statement t

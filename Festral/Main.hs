@@ -35,7 +35,9 @@ import Festral.WWW.Server
 import Festral.Config
 import Festral.SLAV.Weles hiding (info, APIVersion(..))
 import Festral.Tests.Test
+import Festral.Tests.Data
 import Festral.Internal.Files
+import Festral.Internal.Preprocessor
 import Festral.Reporter
 import Festral.Builder.Builder (builderFromFile, build, BuildOptions(..))
 
@@ -88,6 +90,8 @@ data Command
         , rOutFile  :: FilePath
         , rPaths    :: [FilePath]
         }
+    | SyntaxCheck
+        { fname     :: FilePath}
 
 -- |Helper type for segregating report command options.
 data ReportType
@@ -133,6 +137,9 @@ serverDesc  = "Run local file server for external parts of test process \
 \(like remote Weles server) could access needed files such built rpms."
 reportDesc  = "Create different types of reports based on test and build \
 \results."
+syntaxDesc  = "Check syntax of test case scenario file. Festral test case \
+\scenario files must have .ftc extension, othervise it will be interpreted \
+\as raw YAML file supported by Weles."
 
 opts :: Parser Command
 opts = hsubparser
@@ -141,6 +148,7 @@ opts = hsubparser
     <>command "test" (info testCtl (progDesc testDesc))
     <>command "server" (info runServer (progDesc serverDesc))
     <>command "report" (info report (progDesc reportDesc))
+    <>command "check" (info syntaxCheck (progDesc syntaxDesc))
     )
 
 buildopts :: Parser Command
@@ -362,6 +370,9 @@ runServer = Server
         \will show file tree just under port it listen on, without files/ \
         \prefix. In this mode HTTP API is disabled." )
 
+syntaxCheck :: Parser Command
+syntaxCheck = SyntaxCheck <$> argument str (metavar "TESTCASE_FILE")
+
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
 runCmd (Cmd x c) = resolvedAppConfig c >>= subCmd x
@@ -434,6 +445,11 @@ subCmd (Build config repos noClean outFile) appCfg = do
 
 subCmd (Server (-1) mode) c = (serverType mode) c
 subCmd (Server port mode) c = (serverType mode) c{webPagePort=port}
+
+subCmd (SyntaxCheck f) c = readFile f
+    >>= preprocess (TestUnit
+        (TestConfig "test" "test" "test" "name" 10 5 ["test"]) "test")
+    >>= putStrLn
 
 serverType True = runFileServerOnly
 serverType _ = runServerOnPort
