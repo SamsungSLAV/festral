@@ -37,18 +37,19 @@ import Data.List
 import Control.Exception
 import Data.Aeson
 import Data.Maybe
+import System.FilePath.Posix
 
 import Festral.Config
 import Festral.SLAV.Weles.Data
 import qualified Festral.SLAV.Weles.API.Old as Old
 
-welesAddr x = (netIP x, netPort x)
+welesAddr x = (netIP x, netPort x, netFilePort x)
 
 -- |Get list of all jobs on server under given address. This function use v1 API
 -- of weles and replaces 'curlJobs' function.
 curlJobs :: NetAddress -> IO [Job]
 curlJobs addr = do
-    let (ip, port) = welesAddr addr
+    let (ip, port, _) = welesAddr addr
     handle badCurl $ curlAeson
         parseJSON
         "POST"
@@ -61,17 +62,18 @@ curlJobs addr = do
 
 -- |Get url for download artifact by given id using V1 Weles API.
 testFileUrl addr id =
-    let (ip, port) = welesAddr addr in
+    let (ip, _, port) = welesAddr addr in
         ip ++ ":" ++ show port ++ "/" ++ show id ++ "/RESULT/"
 
 -- |Get names of files of job specified by id. Always returns Just.
 getFileList :: NetAddress -> Int -> IO (Maybe [String])
-getFileList = Old.getFileList
+getFileList a id =
+    (return . fmap (takeFileName <$>)) =<< Old.getFileList' testFileUrl a id
 
 -- |Get list of artifacts of Weles job specified by filter.
 getArtifacts :: NetAddress -> ArtifactFilter -> IO [Artifact]
 getArtifacts addr filter = do
-    let (ip, port) = welesAddr addr
+    let (ip, port, _) = welesAddr addr
     handle badCurl $ curlAeson
         parseJSON
         "POST"
@@ -104,7 +106,7 @@ getJobYaml addr id = do
 
 -- |Implementation of 'getJobOutFile' for Weles API V1.
 getJobOutFile :: NetAddress -> Int -> String -> IO (Maybe String)
-getJobOutFile = Old.getJobOutFile
+getJobOutFile = Old.getJobOutFile' testFileUrl
 
 genericJobOutFile fileUrl = do
     (errCode, content) <- curlGetString fileUrl [CurlFollowLocation True]

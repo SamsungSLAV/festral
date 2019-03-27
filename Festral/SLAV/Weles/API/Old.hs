@@ -22,6 +22,8 @@
 module Festral.SLAV.Weles.API.Old (
     curlJobs,
     getFileList,
+    getFileList',
+    getJobOutFile',
     getJobOutFile
 ) where
 
@@ -52,8 +54,15 @@ testFileUrl addr id =
 
 -- |Implementation of the old Weles API
 getFileList :: NetAddress -> Int -> IO (Maybe [String])
-getFileList addr id = do
-    let fileUrl = testFileUrl addr id
+getFileList = getFileList' testFileUrl
+
+
+-- |Internal version of 'getFileList' which takes helper function for getting
+-- file list URI
+--
+-- @since 2.0.0
+getFileList' f addr id = do
+    let fileUrl = f addr id
     (errCode, htmlOut) <- curlGetString fileUrl [CurlFollowLocation True]
     let res = if errCode == CurlOK
             then Just (extractHrefs htmlOut)
@@ -65,8 +74,14 @@ getFileList addr id = do
 
 -- |Implementation of 'getJobOutFile' for old Weles API.
 getJobOutFile :: NetAddress -> Int -> String -> IO (Maybe String)
-getJobOutFile addr id fname = do
-    let fileUrl = testFileUrl addr id
+getJobOutFile = getJobOutFile' testFileUrl
+
+-- |Internal implementation of 'getJobOutFile' for old Weles API that takes
+-- additional function for get file list URI from address.
+--
+-- @since 2.0.0
+getJobOutFile' f addr id fname = do
+    let fileUrl = f addr id
     (errCode, content) <- curlGetString
                             (fileUrl ++ fname)
                             [CurlFollowLocation True]
