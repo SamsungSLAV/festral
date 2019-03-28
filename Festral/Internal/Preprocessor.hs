@@ -105,7 +105,7 @@ parseSource :: TestUnit -> String -> IO String
 parseSource test x = fmap unlines $ parseSource' test $ parseStr test x
 
 parseSource' :: Show a => TestUnit -> Either a Stmt -> IO [String]
-parseSource' t (Right x) = lines <$> parseStatement t x
+parseSource' t (Right x) = filter (not . null) <$> lines <$> parseStatement t x
 parseSource' _ (Left x) = print x >> return []
 
 parseStr :: TestUnit -> String -> Either ParseError Stmt
@@ -148,7 +148,7 @@ def = emptyDef
     , identLetter   = alphaNum
     , opStart       = oneOf "&|=!%$@"
     , reservedOpNames = ["&&", "||", "==", "!=", "!", "%", "$", "@"]
-    , reservedNames = [ "true", "false", "raw", "if", "else"
+    , reservedNames = [ "true", "false", "raw", "if", "fi", "else"
                       , "include", "insert"
                       ]
     }
@@ -253,6 +253,8 @@ ifStmt t = do
     spaces
     reserved tokenParser "else"
     stmt2 <- statement t
+    spaces
+    reserved tokenParser "fi"
     return $ If cond stmt1 stmt2
 
 inParens :: (String -> Stmt) -> Parser Stmt
