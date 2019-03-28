@@ -28,7 +28,7 @@
 --
 -- cmp  ::= == | !=
 --
--- stmt ::= raw (text) | if (b) stmt else stmt | include (w)
+-- stmt ::= raw (text) | if (b) stmt else stmt fi | include (w)
 --          | insert (w) | [stmt;]
 --
 -- comments: /* */

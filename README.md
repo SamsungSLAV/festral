@@ -616,7 +616,7 @@ The abstract syntax tree of the preprocessor language is presented below:
 
  cmp  ::= == | !=
 
- stmt ::= raw (text) | if (b) stmt else stmt | include (w)
+ stmt ::= raw (text) | if (b) stmt else stmt fi | include (w)
           | insert (w) | [stmt;]
 
  comments: /* */
@@ -644,8 +644,8 @@ include(@HOME."/myfile.ftc")
 `stmt` - statement which can be one of below:
 
 - `raw(text)` - insert in this place text given in parenses.
-- `if (b) stmt else stmt` - if boolean expression is evaluated as `true` insert
-the first statement, else insert the second statement.
+- `if (b) stmt else stmt fi` - if boolean expression is evaluated as `true` insert
+the first statement, else insert the second statement. End of `else` case is specified by `fi`.
 - `include(name)` - insert in this place preprocessed content of given file if this file is `.ftc`,
 otherwise insert just raw content of that file.
 - `insert(w)` - insert into this place value of evaluated word (test config value,
