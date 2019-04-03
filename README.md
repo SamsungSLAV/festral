@@ -35,6 +35,7 @@ remote Weles server and recieving results of the tests.
 * `festral report` - generate reports in various formats
 * `festral weles` - utility for communication with Weles tests server.
 * `festral server` - simple built-in web server for sharing built files and
+* `festral check` - syntax checker for test scenarios files (`.ftc` files).
 logs.
 
 It additionaly has utility named `farmer` for accessing devices of Boruta farm.
@@ -657,6 +658,12 @@ There are available test configuration fields, which will be expanded to the
 real value by preprocessor:
 
 `repo`, `parser`, `name`, `target`, `yaml`.
+
+For check syntax of test case file use command
+```
+festral check <FILENAME>
+```
+In case errors this commant will print it, otherwise file parsed with dummy test data will be printed.
 
 ------------------
 
