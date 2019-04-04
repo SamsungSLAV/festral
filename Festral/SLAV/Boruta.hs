@@ -40,6 +40,7 @@ module Festral.SLAV.Boruta (
     setMaintenace,
     setIdle,
     setState,
+    deregister,
     RequestOptions(..)
 ) where
 
@@ -358,6 +359,15 @@ setState borutaAddr req uuid = do
                 "/api/v1/workers/" ++ toString uuid ++ "/setstate")
             [CurlFollowLocation True]
             (Just req)) :: IO ()
+
+-- |Deregister worker with specified UUID from Boruta
+--
+-- @since 2.1.0
+deregister :: NetAddress -> UUID -> IO ()
+deregister addr uuid = do
+    let (ip, port) = getAddr addr
+    curlPost (ip ++ ":" ++ show port
+          ++ "/api/v1/workers/" ++ toString uuid ++ "/deregister") []
 
 -- |Prepend executable path to the string and execute function
 infixr 4 ./

@@ -64,6 +64,7 @@ data BorutaSubOpt
     | Boot String RequestOptions
     | SetMaintanence String
     | SetIdle String
+    | Deregister String
 
 -- |Subcommands of Boruta client
 data BorutaCommand
@@ -95,7 +96,8 @@ parseOptsCmd = Cmd <$>
     <|>borutaDryadCmd
     <|>borutaBoot
     <|>borutaSetMaintanence
-    <|>borutaSetIdle)
+    <|>borutaSetIdle
+    <|>borutaDeregister)
     <*> strOption
         (  long     "config"
         <> metavar  "FILENAME"
@@ -231,6 +233,14 @@ borutaSetIdle = SetIdle
         <>metavar "DRYAD_UUID"
         <>help  "Set dryad specified by DRYAD_UUID in the IDLE mode" )
 
+borutaDeregister :: Parser BorutaSubOpt
+borutaDeregister = Deregister
+    <$> strOption
+        ( long  "deregister"
+        <>short 'd'
+        <>metavar "DRYAD_UUID"
+        <>help  "Deregister dryad specified by DRYAD_UUID from Boruta" )
+
 runCmd (Version True) = putStrLn $ "This farmer use festral v."
                         ++ showVersion version
 runCmd (Cmd x c) = resolveNetAddr c >>= flip borutaSubCmd x
@@ -245,6 +255,7 @@ borutaSubCmd a (Boot id opts)
     = uuidOrDie (\id -> dutBoot a id opts) (fromString id)
 borutaSubCmd a (SetMaintanence id) = uuidOrDie (setMaintenace a) $ fromString id
 borutaSubCmd a (SetIdle id) = uuidOrDie (setIdle a) $ fromString id
+borutaSubCmd a (Deregister id) = uuidOrDie (deregister a) $ fromString id
 borutaSubCmd _ _ = runCmd None
 
 uuidOrDie = maybe (putColorBold Red "Invalid UUID\n")
