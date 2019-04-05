@@ -131,49 +131,60 @@ activeStatuses = ["IN PROGRESS", "WAITING"]
 -- |Return ssh key for session for given by name target and request ID.
 -- If this target has running session it returns key for it,
 -- othervise it opens new request.
-getTargetAuth :: NetAddress             -- ^ Address of the Boruta API made by 'simpleAddress' function
-              -> (BorutaRequest -> Bool)-- ^ BorutaRequest recieved from Boruta
-              -> Caps                   -- ^ Capabilities of request
+getTargetAuth :: NetAddress
+              -- ^ Address of the Boruta API made by 'simpleAddress' function
+              -> (Caps -> Bool)
+              -- ^ BorutaRequest recieved from Boruta
+              -> Caps
+              -- ^ Capabilities of request
               -> IO (Maybe BorutaAuth)
-getTargetAuth addr selector caps = do
-    requests <- allRequests addr
-    let active = filter (\ x -> (selector x)
-                        && ((reqState x) `elem` activeStatuses))
-                requests
-    id <- if length active == 0
-        then createRequest addr caps 4 3600
+getTargetAuth addr selector targetCaps = do
+    workers <- curlWorkers addr
+    let idleWorkers = filter (\ x -> (selector $ caps x)
+                                && state x == "IDLE") workers
+    id <- if length idleWorkers > 0
+        then createRequest addr targetCaps 4 3600
         else do
-            putStrColor Yellow $ "Target is busy by request with ID "
-                ++ show (reqID $ head active) ++ "\n"
+            putStrColor Yellow $ "Target is busy or does not exists\n"
             return Nothing
     maybe (return Nothing) (getKey addr) id
 
 -- |The same as "getTargetAuth" but connect busy session instead of reject
 -- request such request.
-getBusyTargetAuth :: NetAddress             -- ^ Address of the Boruta API made by 'simpleAddress' function
-                  -> (BorutaRequest -> Bool)-- ^ BorutaRequest from Boruta
-                  -> Caps                   -- ^ Capabilities of request
+getBusyTargetAuth :: NetAddress
+                  -- ^ Address of the Boruta API made by 'simpleAddress' function
+                  -> (Caps -> Bool)
+                  -- ^ BorutaRequest from Boruta
+                  -> Caps
+                  -- ^ Capabilities of request
                   -> IO (Maybe BorutaAuth)
-getBusyTargetAuth addr selector caps = do
+getBusyTargetAuth addr selector targetCaps = do
     requests <- allRequests addr
-    let active = filter (\ x ->
-                (selector x) && (reqState x) == "IN PROGRESS") requests
-    id <- if length active == 0
-        then createRequest addr caps 4 3600
-        else return $ Just $ reqID $ head active
+    workers <- curlWorkers addr
+    let active = filter (\ x -> (selector $ reqCapsIn x)
+                        && (reqState x) == "IN PROGRESS")
+                requests
+    let idleWorkers = filter (\ x -> (selector $ caps x)
+                                && state x == "IDLE") workers
+    id <- if length idleWorkers > 0
+        then createRequest addr targetCaps 4 3600
+        else
+            if length active > 0
+            then return $ Just $ reqID $ head active
+            else return Nothing
     maybe (return Nothing) (getKey addr) id
 
 
 getSpecifiedTargetAuth id f = do
     let targetUUID = toString id
     let caps = Caps "" "" targetUUID
-    let selector = (\ x -> (uuid $ reqCapsIn x) == targetUUID)
+    let selector = (\ x -> uuid x == targetUUID)
     f selector caps
 
 -- |Get any accessible device of given device_type
 getDeviceTypeAuth device f = do
     let caps = Caps ""  device ""
-    let selector = (\ x -> device_type (reqCapsIn x) == device)
+    let selector = (\ x -> device_type x == device)
     f selector caps
 
 getKey :: NetAddress -> Int -> IO (Maybe BorutaAuth)
