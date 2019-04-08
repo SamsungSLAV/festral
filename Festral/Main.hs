@@ -102,6 +102,7 @@ data ReportType
     | TextReport Bool String
     | TestResults Bool
     | AgingTest Bool
+    | TestSummary Bool
 
 -- |Options of the program called without commands (festral entery point).
 data Options
@@ -224,9 +225,20 @@ reportAgingTest = AgingTest
         <> help     "Show full results of the aging tests given by test IDs \
         \passed in arguments. Returned results are in JSON format." )
 
+reportSummary :: Parser ReportType
+reportSummary = TestSummary
+    <$> switch
+        (  long     "summary"
+        <> short    's'
+        <> help     "show summary of all performed tests passed as arguments" )
+
 report :: Parser Command
 report = Report
-    <$> (reportHTMLParser <|> reportText <|> reportTestRes <|> reportAgingTest)
+    <$> (reportHTMLParser
+        <|> reportText
+        <|> reportTestRes
+        <|> reportAgingTest
+        <|> reportSummary)
     <*> strOption
         (  long     "out"
         <> metavar  "FILENAME"
@@ -410,6 +422,14 @@ reportCmd (TestResults True) o args c =
 reportCmd (AgingTest True) o args c =
     writeOut o =<< LB.unpack
                 <$> encode <$> fmap aging <$> mapM (testReport c) args
+
+reportCmd (TestSummary True) o args c = do
+    s <- summary c args
+    let out = "Total: "++ show (allTests s)
+           ++ "\nTotal passed: " ++ show (passed s)
+           ++ "\nTotal test groups: " ++ show (allGroups s)
+           ++ "\nExecuted groups: " ++ show (doneGroups s)
+    writeOut o out
 
 reportCmd _ _ _ _ = runCmd None
 

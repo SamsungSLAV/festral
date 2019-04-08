@@ -1,5 +1,5 @@
 {-
- - Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+ - Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
  -
  - Author: Uladzislau Harbuz <u.harbuz@samsung.com>
  -
@@ -25,10 +25,12 @@ module Festral.Reporter (
     getTestResults,
     testReport,
     aging,
+    summary,
     csv2TestData,
     report2csv,
     mapT2,
-    AgingResult(..)
+    AgingResult(..),
+    Summary(..)
 ) where
 
 import System.IO
@@ -44,6 +46,7 @@ import Data.Maybe
 import Control.Exception
 import qualified Data.HashMap.Strict as Map
 import GHC.Generics
+import Data.Foldable (foldlM)
 
 import Festral.Template
 import Festral.Internal.Files
@@ -81,6 +84,13 @@ data AgingResult = AgingResult
     , nIterations   :: Int
     -- ^ Total number of performed iterations of test.
     } deriving (Show, Generic)
+
+data Summary = Summary
+    { passed    :: Int
+    , allTests  :: Int
+    , doneGroups:: Int
+    , allGroups :: Int
+    } deriving Show
 
 instance ToJSON AgingResult
 
@@ -160,6 +170,30 @@ reportHTML :: AppConfig -- ^ Program configuration with build and test log direc
 reportHTML config "" dirs = show <$> getZonedTime >>=
     (\time -> reportHTML config (defaultHTML time) dirs)
 reportHTML config src dirs = generateFromTemplate src (templateHTML config dirs)
+
+emptySummary = Summary 0 0 0 0
+
+-- |Get summary results of all test passed as second parameter in format
+-- of 'Summary'.
+--
+-- @since 2.1.2
+summary :: AppConfig -> [String] -> IO Summary
+summary config dirs = foldlM f emptySummary dirs
+    where
+        f s dir = do
+           t <- testReport config dir
+           if length t == 0
+            then
+                return s{allGroups=(allGroups s + 1)}
+            else
+                return $ (foldl f' s t){ allGroups=(allGroups s + 1)
+                                       , doneGroups=(doneGroups s + 1)
+                                       }
+        f' s t = s{ passed=(if T.testRes t == T.TEST_PASS
+                                then passed s + 1
+                                else passed s),
+                    allTests=(allTests s + 1)
+                  }
 
 -- |Make text report when every line has a format like passed in first argument.
 -- Format string has special characters:
