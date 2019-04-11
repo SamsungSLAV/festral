@@ -182,13 +182,11 @@ summary config dirs = foldlM f emptySummary dirs
     where
         f s dir = do
            t <- testReport config dir
-           if length t == 0
-            then
-                return s{allGroups=(allGroups s + 1)}
-            else
-                return $ (foldl f' s t){ allGroups=(allGroups s + 1)
-                                       , doneGroups=(doneGroups s + 1)
-                                       }
+           return $ (foldl f' s t) {allGroups=(allGroups s + 1)
+                                   ,doneGroups = (if length t == 0
+                                                    then doneGroups s
+                                                    else doneGroups s + 1)
+                                   }
         f' s t = s{ passed=(if T.testRes t == T.TEST_PASS
                                 then passed s + 1
                                 else passed s),
