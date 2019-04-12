@@ -147,7 +147,7 @@ instance Show BorutaRequest where
 instance Show Caps where
     show x = "  {\n"
            ++"    \"Addr\":"          ++ show (addr x)        ++ ",\n"
-           ++"    \"device_type\":"   ++ device_type x        ++ ",\n"
+           ++"    \"device_type\":"   ++ show (device_type x) ++ ",\n"
            ++"    \"UUID\":"          ++ show (uuid x)        ++ "\n"
            ++"  }"
 
