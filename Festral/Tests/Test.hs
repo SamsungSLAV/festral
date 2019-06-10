@@ -1,5 +1,5 @@
 {-
- - Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+ - Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
  -
  - Author: Uladzislau Harbuz <u.harbuz@samsung.com>
  -
@@ -85,13 +85,7 @@ performAsyncTestWithConfig :: AppConfig -- ^ Program configuration
 performAsyncTestWithConfig appConfig confPath lock target = do
     confStr <- safeReadFile confPath
     let Just config = decode (LBU.fromString confStr) :: Maybe [TestConfig]
-    tests <- runTestsAsync appConfig lock config target
-    mapM (\ testRes ->
-            parseTest
-                testRes
-                (buildLogDir appConfig ++ "/" ++ target)
-                (testLogDir appConfig))
-        tests
+    testsParseAsync appConfig lock config target
 
 builtInParsers = ["Default", "XTest"]
 testFileName = "test.log"
@@ -224,29 +218,34 @@ getParser x testRes = do
 runTests :: AppConfig       -- ^ Program configuration
          -> [TestConfig]    -- ^ List of test configurations
          -> String          -- ^ Build name to be tested
-         -> IO [TestResult] -- ^ List of the results of testing
-runTests c x y = newMVar () >>= (\ v -> runTestsAsync c v x y)
+         -> IO [String]     -- ^ List of the results of testing
+runTests c x y = newMVar () >>= (\ v -> testsParseAsync c v x y)
 
-runTestsAsync :: AppConfig
+testsParseAsync :: AppConfig
               -> MVar a
               -> [TestConfig]
               -> String
-              -> IO [TestResult]
-runTestsAsync appConfig lock config target = do
+              -> IO [String]
+testsParseAsync appConfig lock config target = do
     meta <- fromMetaFile $
                 (buildLogDir appConfig) ++ "/" ++ target ++ "/meta.txt"
     let configs = filterConf config meta
 
-    concat <$> Par.mapM (runTestsForRepoAsync appConfig lock target) configs
+    concat <$> Par.mapM (testParseRepoAsync appConfig lock target) configs
 
-runTestsForRepoAsync :: AppConfig
+testParseRepoAsync :: AppConfig
                      -> MVar a
                      -> String
                      -> TestConfig
-                     -> IO [TestResult]
-runTestsForRepoAsync appConfig lock target config = do
-    Par.mapM (runTestAsync appConfig lock target) $
-        map (TestUnit config) $ targets config
+                     -> IO [String]
+testParseRepoAsync appConfig lock target config = do
+    Par.mapM (\x -> (runTestAsync appConfig lock target x)
+                >>= (\x -> 
+                    parseTest x (buildLogDir appConfig ++ "/" ++ target) 
+                    (testLogDir appConfig)
+                )
+            )
+        $ map (TestUnit config) $ targets config
 
 buildResDir config buildId = do
     return $ (buildLogDir config) ++ "/" ++ buildId ++ "/build_res"
