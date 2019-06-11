@@ -388,7 +388,10 @@ syntaxCheck = SyntaxCheck <$> argument str (metavar "TESTCASE_FILE")
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
 runCmd (Cmd x c) = resolvedAppConfig c >>= subCmd x
-runCmd _ = getExecutablePath >>= flip callProcess ["--help"]
+runCmd _ = do
+    p <- getExecutablePath
+    args <- getArgs
+    callProcess p $ args ++ ["--help"]
 
 defaultIds = do
     testFile <- freshTests
