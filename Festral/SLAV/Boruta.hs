@@ -224,7 +224,7 @@ waitJobClosed addr auth = do
             then threadDelay oneSec >> waitJobClosed addr auth
             else return ()) req
 
-optCloseAuth a opts auth = when (not $ noClose opts) (closeAuth a auth)
+optCloseAuth a opts auth = when (close opts) (closeAuth a auth)
 
 -- |Run ssh session for any device which matches specified 'device_type'.
 -- Second parameter decide if connect forcely if device is busy.
@@ -316,8 +316,8 @@ execDryad _ _ Nothing = do
     putStrLn "Use --force option to connect for existing session if you are \
     \sure you know you do."
     putColorBold Red "IMPORTANT: "
-    putStr "force connecting to the running job will cause \
-    \closing it after your command done (see also --no-close option), so "
+    putStr "force connecting to the running job will give you access for device\
+    \ running by somebody else, so "
     putColorBold Red "YOU MAY BROKE OTHER'S WORK!!!\n"
 execDryad borutaAddr f (Just auth) = do
     let addr = netIP borutaAddr

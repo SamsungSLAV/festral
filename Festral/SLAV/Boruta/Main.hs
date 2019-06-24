@@ -119,9 +119,9 @@ requestOptions = RequestOptions
         \Current boruta's request will be closed after command execution \
         \if no --no-close option enabled, so you can broke other's work!" )
     <*> switch
-        ( long  "no-close"
-        <>short 'n'
-        <>help  "Do not close Boruta request after finish." )
+        ( long  "close"
+        <>short 'c'
+        <>help  "Close Boruta request after finish." )
 
 borutaSubOpts :: Parser BorutaCommand
 borutaSubOpts = hsubparser
@@ -200,7 +200,7 @@ borutaConsole = Console <$> (borutaConsoleUUID <|> borutaConsoleDevice)
 borutaCloseRequest :: Parser BorutaSubOpt
 borutaCloseRequest = CloseRequest
     <$> option auto
-        ( long  "close"
+        ( long  "close-id"
         <>short 'c'
         <>metavar "REQUEST_ID"
         <>help  "Close request specified by its ID" )

@@ -103,8 +103,8 @@ data DryadSSH = DryadSSH
 
 -- |Helper data type for incapsulate options of Boruta request.
 data RequestOptions = RequestOptions
-    { force     :: Bool -- ^ Enforce connection
-    , noClose   :: Bool -- ^ Do not close request after finish
+    { force :: Bool -- ^ Enforce connection and do not close request after it
+    , close :: Bool -- ^ Close request after finish
     }
 
 -- |Helper type for send JSON with WorkerState to the Boruta.
