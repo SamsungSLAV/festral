@@ -1,5 +1,5 @@
 {-
- - Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+ - Copyright (c) 2018-2019 Samsung Electronics Co., Ltd All Rights Reserved
  -
  - Author: Uladzislau Harbuz <u.harbuz@samsung.com>
  -
@@ -46,7 +46,7 @@ data AppConfig = AppConfig
     , webPagePort   :: Int      -- ^Default: 8888
     , serverRoot    :: FilePath -- ^Default: \/tmp\/festral_server
     , borutaIP      :: String   -- ^Default: 127.0.0.1
-    , borutaPort    :: Int      -- ^Default: 6666
+    , borutaPort    :: Int      -- ^Default: 8487
     } deriving (Show, Generic)
 
 data NetAddress = NetAddress
@@ -66,7 +66,7 @@ instance FromJSON AppConfig where
         webPagePort     <- o .:? "festralPort"  .!= 8888
         serverRoot      <- o .:? "serverRoot"   .!= "/tmp/festral_server"
         borutaIP        <- o .:? "borutaIP"     .!= "127.0.0.1"
-        borutaPort      <- o .:? "borutaPort"   .!= 6666
+        borutaPort      <- o .:? "borutaPort"   .!= 8487
         return AppConfig{..}
 instance ToJSON AppConfig
 
