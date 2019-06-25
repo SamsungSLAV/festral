@@ -82,8 +82,9 @@ data Command
         , buildPaths:: [FilePath]
         }
     | Server
-        { serverPort :: Int
-        , fileServerOnly :: Bool
+        { serverPort        :: Int
+        , fileServerOnly    :: Bool
+        , sharedPath        :: FilePath
         }
     | Report
         { rtype     :: ReportType
@@ -381,6 +382,11 @@ runServer = Server
         <>help  "Run server in file server only mode. It means that server \
         \will show file tree just under port it listen on, without files/ \
         \prefix. In this mode HTTP API is disabled." )
+    <*> argument str 
+        ( metavar   "SHARED_DIR"
+        <>value     ""
+        <>help      "Directory to be shared by fileserver. If not set, get\
+        \ it from configuration file.")
 
 syntaxCheck :: Parser Command
 syntaxCheck = SyntaxCheck <$> argument str (metavar "TESTCASE_FILE")
@@ -466,8 +472,10 @@ subCmd (Build config repos noClean outFile) appCfg = do
             (buildLogDir appCfg)))
         builder
 
-subCmd (Server (-1) mode) c = (serverType mode) c
-subCmd (Server port mode) c = (serverType mode) c{webPagePort=port}
+subCmd (Server (-1) mode "") c = (serverType mode) c
+subCmd (Server port mode "") c = (serverType mode) c{webPagePort=port}
+subCmd (Server port mode path) c 
+    = (serverType mode) c{webPagePort=port, serverRoot=path}
 
 subCmd (SyntaxCheck f) c = readFile f
     >>= preprocess (TestUnit
