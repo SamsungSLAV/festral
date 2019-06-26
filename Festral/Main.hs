@@ -382,7 +382,7 @@ runServer = Server
         <>help  "Run server in file server only mode. It means that server \
         \will show file tree just under port it listen on, without files/ \
         \prefix. In this mode HTTP API is disabled." )
-    <*> argument str 
+    <*> argument str
         ( metavar   "SHARED_DIR"
         <>value     ""
         <>help      "Directory to be shared by fileserver. If not set, get\
@@ -474,7 +474,7 @@ subCmd (Build config repos noClean outFile) appCfg = do
 
 subCmd (Server (-1) mode "") c = (serverType mode) c
 subCmd (Server port mode "") c = (serverType mode) c{webPagePort=port}
-subCmd (Server port mode path) c 
+subCmd (Server port mode path) c
     = (serverType mode) c{webPagePort=port, serverRoot=path}
 
 subCmd (SyntaxCheck f) c = readFile f
