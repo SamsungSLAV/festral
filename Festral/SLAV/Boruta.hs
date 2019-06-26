@@ -224,7 +224,9 @@ waitJobClosed addr auth = do
             then threadDelay oneSec >> waitJobClosed addr auth
             else return ()) req
 
-optCloseAuth a opts auth = when (close opts) (closeAuth a auth)
+optCloseAuth a opts auth 
+    | force opts = when (close opts) (closeAuth a auth)
+    | otherwise  = closeAuth a auth
 
 -- |Run ssh session for any device which matches specified 'device_type'.
 -- Second parameter decide if connect forcely if device is busy.

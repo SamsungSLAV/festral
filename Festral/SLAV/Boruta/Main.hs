@@ -115,12 +115,12 @@ requestOptions = RequestOptions
     <$> switch
         ( long  "force"
         <>short 'f'
-        <>help  "Force execute command even if target is busy. WARNING: \
-        \Current boruta's request will be closed after command execution \
-        \if no --no-close option enabled, so you can broke other's work!" )
+        <>help  "Force execute command even if target is busy. Borute request \
+        \will not be closed after forced command, for close it use \
+        \--close-after option. WARNING: you can broke other's work!" )
     <*> switch
-        ( long  "close"
-        <>short 'c'
+        ( long  "close-after"
+        <>short 'x'
         <>help  "Close Boruta request after finish." )
 
 borutaSubOpts :: Parser BorutaCommand
@@ -200,7 +200,7 @@ borutaConsole = Console <$> (borutaConsoleUUID <|> borutaConsoleDevice)
 borutaCloseRequest :: Parser BorutaSubOpt
 borutaCloseRequest = CloseRequest
     <$> option auto
-        ( long  "close-id"
+        ( long  "close"
         <>short 'c'
         <>metavar "REQUEST_ID"
         <>help  "Close request specified by its ID" )
