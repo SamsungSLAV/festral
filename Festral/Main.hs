@@ -524,8 +524,8 @@ subCmd (Build config repos noClean outFile) appCfg = do
     builder <- builderFromFile config
     (writeOut outFile) =<<  maybe
         (return "ERROR: Check your configuration JSON: it has bad format.")
-        ((unlines <$>).(concat <$>)
-            .mapM (\x -> build x (BuildOptions noClean) repos
+        ((fmap (unlines . concat))
+            . mapM (\x -> build x (BuildOptions noClean) repos
             (buildLogDir appCfg)))
         builder
 
