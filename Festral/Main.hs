@@ -92,7 +92,15 @@ data Command
         , rPaths    :: [FilePath]
         }
     | SyntaxCheck
-        { fname     :: FilePath}
+        { fname         :: FilePath
+        , check_repo    :: String
+        , check_yaml    :: FilePath
+        , check_parser  :: String
+        , check_name    :: String
+        , check_timeout :: Int
+        , check_runTTL  :: Int
+        , check_target  :: String
+        }
 
 -- |Helper type for segregating report command options.
 data ReportType
@@ -389,7 +397,56 @@ runServer = Server
         \ it from configuration file.")
 
 syntaxCheck :: Parser Command
-syntaxCheck = SyntaxCheck <$> argument str (metavar "TESTCASE_FILE")
+syntaxCheck = SyntaxCheck
+    <$> argument str (metavar "TESTCASE_FILE")
+    <*> strOption
+        ( long  "repo"
+        <>short 'r'
+        <>metavar "REPOSITORY_NAME"
+        <>value "test"
+        <>help  "Set name of the repository to REPOSITORY_NAME while check\
+        \ test scenario (%repo field in .ftc files)." )
+    <*> strOption
+        ( long  "yaml"
+        <>short 'y'
+        <>metavar "YAML_PATH"
+        <>value "test"
+        <>help  "Set path of the yaml file to YAML_PATH while check\
+        \ test scenario (%yaml field in .ftc files)." )
+    <*> strOption
+        ( long  "parser"
+        <>short 'p'
+        <>metavar "PARSER_NAME"
+        <>value "test"
+        <>help  "Set test log parser name or binary path to PARSER_NAME\
+        \ while check test scenario (%parser field in .ftc files)." )
+    <*> strOption
+        ( long  "name"
+        <>short 'n'
+        <>metavar "TEST_NAME"
+        <>value "test"
+        <>help  "Set test name to TEST_NAME while check test scenario\
+        \ (%name field in .ftc files)." )
+    <*> option auto
+        ( long  "timeout"
+        <>short 't'
+        <>metavar "JOB_TIMEOUT"
+        <>value 10
+        <>help  "Set test job timeout to JOB_TIMEOUT while check test scenario")
+    <*> option auto
+        ( long  "runTTL"
+        <>short 'l'
+        <>metavar "RUN_TTL"
+        <>value 10
+        <>help  "Set test job time to live after test was started to RUN_TTL\
+        \ while check test scenario")
+    <*> strOption
+        ( long  "target"
+        <>short 'd'
+        <>metavar "TARGET_DEVICE"
+        <>value "test"
+        <>help  "Set target name name to TARGET_DEVICE while check test\
+        \ scenario (%target field in .ftc files)." )
 
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
@@ -477,9 +534,8 @@ subCmd (Server port mode "") c = (serverType mode) c{webPagePort=port}
 subCmd (Server port mode path) c
     = (serverType mode) c{webPagePort=port, serverRoot=path}
 
-subCmd (SyntaxCheck f) c = readFile f
-    >>= preprocess (TestUnit
-        (TestConfig "test" "test" "test" "name" 10 5 ["test"]) "test")
+subCmd (SyntaxCheck f r y p n t l d) c = readFile f
+    >>= preprocess (TestUnit (TestConfig r y p n t l [d]) d)
     >>= putStrLn
 
 serverType True = runFileServerOnly
