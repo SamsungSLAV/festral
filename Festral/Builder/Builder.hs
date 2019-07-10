@@ -149,7 +149,7 @@ writeBuildOut _ _ _ Nothing = return Nothing
 writeBuildOut logfile outdir opts (Just meta) = do
     let out = hash $>> meta ++ "_B" ++ buildTime $>> meta
     let outDirName = outdir ++ "/" ++ out
-    let getBuildOut = if noCleanRes opts then copyDirectory else renameDirectory
+    let getBuildOut = if noCleanRes opts then copyDirectory else (\ x y -> renameDirectory x y >> createDirectory x)
 
     createDirectoryIfMissing True outDirName
     toFile meta (outDirName ++ "/meta.txt")
