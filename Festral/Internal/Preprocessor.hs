@@ -128,7 +128,7 @@ parseStatement t (Include x) = do
         else  return file
 parseStatement t (Insert x) = return $ parseWord t x
 parseStatement t (Exec x) = return $
-    "              ##TEMPLATE_RUN " ++ parseWord t x
+    "              ##TEMPLATE_RUN " ++ parseWord t x ++ "##\n"
 parseStatement t (Push src dest) = return $
     pushHelper "TEMPLATE_URL" t src parsedDest
     where parsedDest = parseWord t dest
