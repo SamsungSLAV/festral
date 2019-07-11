@@ -29,7 +29,8 @@
 -- cmp  ::= == | !=
 --
 -- stmt ::= raw (text) | if (b) stmt else stmt fi | include (w)
---          | insert (w) | [stmt;]
+--          | insert (w) | exec(text) | push(text1, text2) | push_latest(src,dst) | pull(text1)
+--          | [stmt;]
 --
 -- comments: /* */
 -- @
@@ -78,6 +79,10 @@ data Stmt
     | If BExpr Stmt Stmt
     | Include PWord
     | Insert PWord
+    | Exec PWord
+    | Push PWord PWord
+    | PushLatest PWord PWord
+    | Pull PWord
     | Seq [Stmt]
     deriving Show
 
@@ -122,11 +127,30 @@ parseStatement t (Include x) = do
         then  preprocess t file
         else  return file
 parseStatement t (Insert x) = return $ parseWord t x
+parseStatement t (Exec x) = return $
+    "              ##TEMPLATE_RUN " ++ parseWord t x
+parseStatement t (Push src dest) = return $
+    pushHelper "TEMPLATE_URL" t src parsedDest
+    where parsedDest = parseWord t dest
+parseStatement t (PushLatest src dest) = return $
+    pushHelper "TEMPLATE_LATEST" t src parsedDest
+    where parsedDest = parseWord t dest
+parseStatement t (Pull src) = return $
+    "              - pull:\n\
+    \                  src: '" ++ parsedSrc ++ "'\n\
+    \                  alias: '"++ parsedSrc ++ "'\n"
+    where parsedSrc = parseWord t src
 parseStatement t (Seq (x:xs)) = do
     a <- parseStatement t x
     b <- parseStatement t (Seq xs)
     return $ unlines [a, b]
 parseStatement _ _ = return ""
+
+pushHelper x t src dst =
+    "              - push:\n\
+    \                  ##" ++ x ++ " " ++ parseWord t src ++ "##\n\
+    \                  dest: '" ++ dst ++ "'\n\
+    \                  alias: '"++ dst ++ "'\n"
 
 boolExpr :: BExpr -> Bool
 boolExpr (BVal x) = x
@@ -141,15 +165,13 @@ cmpExpr t (Eql a b) = if parseWord t a == parseWord t b
 cmpExpr t (NEql a b) = Not $ cmpExpr t (Eql a b)
 
 def = emptyDef
-    { commentStart  = "/*"
-    , commentEnd    = "*/"
-    , commentLine   = "//"
-    , identStart    = letter
+    { identStart    = letter
     , identLetter   = alphaNum
     , opStart       = oneOf "&|=!%$@"
     , reservedOpNames = ["&&", "||", "==", "!=", "!", "%", "$", "@"]
     , reservedNames = [ "true", "false", "raw", "if", "fi", "else"
-                      , "include", "insert"
+                      , "include", "insert", "exec", "push", "pull"
+                      , "push_latest"
                       ]
     }
 
@@ -221,6 +243,10 @@ statement' t
     <|> includeStmt
     <|> insertStmt
     <|> rawStmt
+    <|> execStmt
+    <|> pushLatestStmt
+    <|> pushStmt
+    <|> pullStmt
 
 genStmt a b = do
     reserved tokenParser a
@@ -228,6 +254,18 @@ genStmt a b = do
 
 rawStmt :: Parser Stmt
 rawStmt = genStmt "raw" Raw
+
+execStmt :: Parser Stmt
+execStmt = genPword "exec" Exec
+
+pushStmt :: Parser Stmt
+pushStmt = genPword2Args "push" Push
+
+pushLatestStmt :: Parser Stmt
+pushLatestStmt = genPword2Args "push_latest" PushLatest
+
+pullStmt :: Parser Stmt
+pullStmt = genPword "pull" Pull
 
 genPword n y = do
     reserved tokenParser n
@@ -238,6 +276,20 @@ genPword n y = do
     spaces
     char ')'
     return $ y x
+
+genPword2Args n y = do
+    reserved tokenParser n
+    spaces
+    char '('
+    spaces
+    x1 <- pwordSeq
+    spaces
+    char ','
+    spaces
+    x2 <- pwordSeq
+    spaces
+    char ')'
+    return $ y x1 x2
 
 includeStmt :: Parser Stmt
 includeStmt = genPword "include" Include

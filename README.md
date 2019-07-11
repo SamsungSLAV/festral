@@ -619,7 +619,8 @@ The abstract syntax tree of the preprocessor language is presented below:
  cmp  ::= == | !=
 
  stmt ::= raw (text) | if (b) stmt else stmt fi | include (w)
-          | insert (w) | [stmt;]
+          | insert (w) | exec(cmd) | push(src, dst)
+          | push_latest(src,dst) | pull(src) | [stmt;]
 
 ```
 
@@ -651,6 +652,10 @@ the first statement, else insert the second statement. End of `else` case is spe
 otherwise insert just raw content of that file.
 - `insert(w)` - insert into this place value of evaluated word (test config value,
 environment variable or string literal)
+- `exec(cmd)` - execute command given as argument on device under test.
+- `push(src,dst)` - push file from current build with name `src` to the device under test as `dst`.
+- `push_latest(src,dst)` - push latest built file from all performed ever builds with name `src` to the device under test as `dst`.
+- `pull(src)` - pull file with name `src` from device under test to the test result files.
 
 Statements are separated by `;` (semicolon) symbol. The last statement **have not** to have semicolon after it.
 
