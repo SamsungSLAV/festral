@@ -138,7 +138,7 @@ parseStatement t (PushLatest src dest) = return $
 parseStatement t (Pull src) = return $
     "              - pull:\n\
     \                  src: '" ++ parsedSrc ++ "'\n\
-    \                  alias: '"++ parsedSrc ++ "'\n"
+    \                  alias: '"++ takeFileName parsedSrc ++ "'\n"
     where parsedSrc = parseWord t src
 parseStatement t (Seq (x:xs)) = do
     a <- parseStatement t x
@@ -150,7 +150,7 @@ pushHelper x t src dst =
     "              - push:\n\
     \                  ##" ++ x ++ " " ++ parseWord t src ++ "##\n\
     \                  dest: '" ++ dst ++ "'\n\
-    \                  alias: '"++ dst ++ "'\n"
+    \                  alias: '"++ takeFileName dst ++ "'\n"
 
 boolExpr :: BExpr -> Bool
 boolExpr (BVal x) = x

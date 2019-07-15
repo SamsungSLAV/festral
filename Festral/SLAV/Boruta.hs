@@ -292,7 +292,7 @@ pushDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' f
         -> IO ()
 pushDUT addr uid sources to opts = do
     auth <- getSpecifiedTargetAuth uid (authMethod addr opts)
-    Par.mapM_ (\ from -> do
+    mapM_ (\ from -> do
         execDryad addr (scpCmd from $ tmpfile from) auth
         execDryad addr (sshCmd ./ "dut_copyto.sh " ++ tmpfile from ++ " " ++ to)
             auth
