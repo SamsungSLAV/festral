@@ -519,7 +519,7 @@ Push file `~/file_from` from host to the device under test directly
 ```
 Boot device up:
 ```
- $ farmer --boot 355e0604-7832-4c21-948c-86c55989118f
+ $ farmer boot -u 355e0604-7832-4c21-948c-86c55989118f
 ```
 Execute command `uname -a` on device under test:
 ```
