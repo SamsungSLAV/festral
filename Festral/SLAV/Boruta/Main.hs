@@ -61,7 +61,6 @@ data BorutaSubOpt
     | Console BorutaConsole RequestOptions
     | CloseRequest Int
     | DryadCmd BorutaCommand
-    | Boot String RequestOptions
     | SetMaintanence String
     | SetIdle String
     | Deregister String
@@ -76,6 +75,10 @@ data BorutaCommand
         { pushFiles :: [FilePath]
         , targetFile:: FilePath
         , pushOpts  :: DryadAction
+        }
+    | BorutaBoot
+        { targetID  :: String
+        , bootOpts  :: RequestOptions
         }
 
 data Options
@@ -94,7 +97,6 @@ parseOptsCmd = Cmd <$>
     <|>borutaConsole
     <|>borutaCloseRequest
     <|>borutaDryadCmd
-    <|>borutaBoot
     <|>borutaSetMaintanence
     <|>borutaSetIdle
     <|>borutaDeregister)
@@ -109,6 +111,7 @@ borutaDesc  = "Give access for the device farm of the Boruta and managament \
 \devices under test by hands."
 borutaExecDesc = "Execute command on dryad or on DUT"
 borutaPushDesc = "Push file(s) to the dryad or to the DUT"
+borutaBootDesc = "Boot up (reboot) DUT"
 
 requestOptions :: Parser RequestOptions
 requestOptions = RequestOptions
@@ -127,6 +130,7 @@ borutaSubOpts :: Parser BorutaCommand
 borutaSubOpts = hsubparser
     ( command "exec" (info borutaExec (progDesc borutaExecDesc))
     <>command "push" (info borutaPush (progDesc borutaPushDesc))
+    <>command "boot" (info borutaBoot (progDesc borutaBootDesc))
     )
 
 borutaExec :: Parser BorutaCommand
@@ -143,6 +147,15 @@ borutaPush = BorutaPush
         <> short    'o'
         <> help     "Target filename" )
     <*> dryadAction
+
+borutaBoot :: Parser BorutaCommand
+borutaBoot = BorutaBoot
+        <$> strOption
+            (  long     "uuid"
+            <> metavar  "DRYAD_UUID"
+            <> short    'u'
+            <> help     "UUID of the dryad" )
+        <*> requestOptions
 
 dryadAction :: Parser DryadAction
 dryadAction = DryadAction
@@ -208,15 +221,6 @@ borutaCloseRequest = CloseRequest
 borutaDryadCmd :: Parser BorutaSubOpt
 borutaDryadCmd = DryadCmd <$> borutaSubOpts
 
-borutaBoot :: Parser BorutaSubOpt
-borutaBoot = Boot
-    <$> strOption
-        ( long  "boot"
-        <>short 'b'
-        <>metavar "DRYAD_UUID"
-        <>help  "Boot device under test of Dryad dpecified by UUID" )
-    <*> requestOptions
-
 borutaSetMaintanence :: Parser BorutaSubOpt
 borutaSetMaintanence = SetMaintanence
     <$> strOption
@@ -251,8 +255,6 @@ borutaSubCmd a (AllRequests True) = show <$> allRequests a >>= putStrLn
 borutaSubCmd a (Console x force) = borutaConsoleCall a x force
 borutaSubCmd a (CloseRequest x) = closeRequest a x
 borutaSubCmd a (DryadCmd x) = dryadCmdCall a x
-borutaSubCmd a (Boot id opts)
-    = uuidOrDie (\id -> dutBoot a id opts) (fromString id)
 borutaSubCmd a (SetMaintanence id) = uuidOrDie (setMaintenace a) $ fromString id
 borutaSubCmd a (SetIdle id) = uuidOrDie (setIdle a) $ fromString id
 borutaSubCmd a (Deregister id) = uuidOrDie (deregister a) $ fromString id
@@ -266,6 +268,8 @@ dryadCmdCall a (BorutaExec cmds opts)
 dryadCmdCall a (BorutaPush files out opts)
     = uuidOrDie (\ id -> (pushFromOpts opts) a id files out (options opts))
     (fromString $ dryadId opts)
+dryadCmdCall a (BorutaBoot id opts)
+    = uuidOrDie (\id -> dutBoot a id opts) (fromString id)
 
 execFromOpts (DryadAction True _ _) = execDUT
 execFromOpts _ = execMuxPi
