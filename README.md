@@ -657,7 +657,8 @@ environment variable or string literal)
 - `push_latest(src,dst)` - push latest built file from all performed ever builds with name `src` to the device under test as `dst`.
 - `pull(src)` - pull file with name `src` from device under test to the test result files.
 
-Statements are separated by `;` (semicolon) symbol. The last statement **have not** to have semicolon after it.
+Statements are ended and separated by `;` (semicolon) symbol.
+Example of scenario file you can find under `Examples/scenario.ftc` and `Examples/header.ftc` files.
 
 There are available test configuration fields, which will be expanded to the
 real value by preprocessor:

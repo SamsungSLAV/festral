@@ -1,0 +1,21 @@
+insert("device_type: ".%target);
+insert("job_name: ".%target."-test");
+raw(
+priority: medium
+
+actions:
+);
+raw(
+  - boot:
+      login: login
+      password: password
+  - test:
+);
+insert("      name: ".%repo."-".%name."-".%target);
+raw(
+      test_cases:
+);
+insert("        - case_name: ".%name);
+raw(
+          test_actions:
+);
