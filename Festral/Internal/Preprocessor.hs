@@ -231,7 +231,7 @@ bTerm t = (parens tokenParser) (bExpr t)
 
 statementList :: TestUnit -> Parser Stmt
 statementList t = do
-    list <- (sepBy1 (statement' t) $ semi tokenParser)
+    list <- (endBy1 (statement' t) $ semi tokenParser)
     return $ if length list == 1 then head list else Seq list
 
 statement :: TestUnit -> Parser Stmt
