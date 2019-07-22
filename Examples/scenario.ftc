@@ -1,0 +1,3 @@
+include(@PWD."/header.ftc");
+exec("uname -a > /tmp/test.log");
+pull("/tmp/test.log");
