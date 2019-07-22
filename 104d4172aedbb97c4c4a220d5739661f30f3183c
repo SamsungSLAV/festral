@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "4e8f6d83_a0849654",
+        "filename": "Examples/header.ftc",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 1015718
+      },
+      "writtenOn": "2019-07-22T14:33:34Z",
+      "side": 1,
+      "message": "Unused duplication",
+      "range": {
+        "startLine": 7,
+        "startChar": 2,
+        "endLine": 8,
+        "endChar": 4
+      },
+      "revId": "104d4172aedbb97c4c4a220d5739661f30f3183c",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": true
+    }
+  ]
+}
