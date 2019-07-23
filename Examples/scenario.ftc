@@ -1,4 +1,10 @@
 test_header();
+boot("login", "pasword");
 test();
-exec("uname -a > /tmp/test.log");
-pull("/tmp/test.log");
+if (%target == "Rpi3" || %name == "uname_test")
+    exec("uname -a > /tmp/".%testOutFile);
+else
+    push(@PWD."/scenario.ftc", "/tmp/file.txt");
+    exec("cp /tmp/file.txt /tmp/".%testOutFile);
+fi;
+pull("/tmp/".%testOutFile);
