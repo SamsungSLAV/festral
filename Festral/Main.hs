@@ -100,6 +100,7 @@ data Command
         , check_timeout :: Int
         , check_runTTL  :: Int
         , check_target  :: String
+        , check_outFile :: FilePath
         }
 
 -- |Helper type for segregating report command options.
@@ -447,6 +448,12 @@ syntaxCheck = SyntaxCheck
         <>value "test"
         <>help  "Set target name name to TARGET_DEVICE while check test\
         \ scenario (%target field in .ftc files)." )
+    <*> strOption
+        ( long  "output-file"
+        <>short 'o'
+        <>metavar "TEST_LOG_FILE"
+        <>value "test.log"
+        <>help  "Name of the file where test results are put on DUT." )
 
 runCmd :: Options -> IO ()
 runCmd (Version True) = putStrLn $ "festral v." ++ showVersion version
@@ -534,8 +541,8 @@ subCmd (Server port mode "") c = (serverType mode) c{webPagePort=port}
 subCmd (Server port mode path) c
     = (serverType mode) c{webPagePort=port, serverRoot=path}
 
-subCmd (SyntaxCheck f r y p n t l d) c = readFile f
-    >>= preprocess (TestUnit (TestConfig r y p n t l [d]) d)
+subCmd (SyntaxCheck f r y p n t l d o) c = readFile f
+    >>= preprocess (TestUnit (TestConfig r y p n t l [d] o) d)
     >>= putStrLn
 
 serverType True = runFileServerOnly

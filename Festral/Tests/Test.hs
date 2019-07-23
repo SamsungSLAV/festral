@@ -88,7 +88,6 @@ performAsyncTestWithConfig appConfig confPath lock target = do
     testsParseAsync appConfig lock config target
 
 builtInParsers = ["Default", "XTest"]
-testFileName = "test.log"
 
 -- |Get result of the test, its build directory and output root directory
 -- and creates directory with test logs. Returns name of created subdirectory
@@ -103,7 +102,7 @@ parseTest res@(TestResult _ config) buildDir outDir
     | otherwise = parseTest' writeWithOwn res buildDir outDir
 
 writeWithParser config outs outDir = do
-    par <- getParser (parser $ tConfig config) outs
+    par <- getParser (tConfig config) outs
     writeReportFile par (outDir ++ "/report.txt")
 
 writeWithOwn test outs outDir = do
@@ -123,6 +122,7 @@ writeWithOwn test outs outDir = do
         err :: SomeException -> IO ()
         err ex = putStrLn (show ex) >> return ()
         config = tConfig test
+        testFileName = testOutFile $ tConfig test
 
 -- |Writes information about test to the metafile
 writeMetaTest status buildDir outDir name time meta device = do
@@ -208,10 +208,10 @@ parserFromName "XTest" = parseXTest
 parserFromName _ = parseDefault
 
 -- |Converts string name of parser from config JSON to the test parser.
-getParser :: String -> [(String, String)] -> IO [TestData]
-getParser x testRes = do
-    p <- fromWelesFiles testRes testFileName
-    return $ (parserFromName x) p
+getParser :: TestConfig -> [(String, String)] -> IO [TestData]
+getParser conf testRes = do
+    p <- fromWelesFiles testRes $ testOutFile conf
+    return $ (parserFromName $ parser conf) p
 
 -- |Run tests for each given configuration for target 'Build' result.
 -- Returns list of test results.

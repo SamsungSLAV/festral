@@ -44,29 +44,32 @@ import Data.List.Split
 data TestConfig = TestConfig
     {
     -- |Repository name. Required.
-      repo      :: String
+      repo          :: String
     -- |Path to the YAML file with test description. Required.
-    , yaml      :: FilePath
+    , yaml          :: FilePath
     -- |Name of built-in parser or path to the own test parser executable.
     -- Default valie: \"Default\"
-    , parser    :: String
+    , parser        :: String
     -- |Test name which will be displayed in the reports. Default value:
     -- \"unknown\"
-    , name      :: String
+    , name          :: String
     -- |Time to live of test job from the moment it was created in seconds.
     -- After this limit expired job will be cancelled even if it was just
     -- waiting in queue and has not started execution. This limit is needed for
     -- force cancellation of jobs if execution time of all jobs is larger then
     -- running next tests iteration starts. See 'runTTL' to limit execution
     -- time.
-    , timeout   :: Int
+    , timeout       :: Int
     -- |Time to live of test job from its execution on the target started
     -- in seconds. This option is needed for limiting of execution time
     -- of test. Test job will be cancelled after one of the 'timeout' or
     -- 'runTTL' will expired.
-    , runTTL    :: Int
+    , runTTL        :: Int
     -- |List of target device types which this test need to be executed on.
-    , targets   :: [String]
+    , targets       :: [String]
+    -- |Name of the file on DUT which will be parsed as file with test results.
+    -- Default value: \"test.log\"
+    , testOutFile   :: FilePath
     } deriving (Show, Generic)
 
 -- |Single test description created for each target device for specified test.
@@ -195,6 +198,7 @@ instance FromJSON TestConfig where
         timeout <- o .:? "timeout"  .!= 3600
         runTTL  <- o .:? "runTTL"   .!= 1200
         targets <- o .:? "targets"  .!= []
+        testOutFile <- o .:? "testOutFile" .!= "test.log"
         return TestConfig{..}
 
 instance ToJSON TestConfig

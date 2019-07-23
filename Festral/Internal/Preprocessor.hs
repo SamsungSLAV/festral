@@ -29,7 +29,10 @@
 -- cmp  ::= == | !=
 --
 -- stmt ::= raw (text) | if (b) stmt else stmt fi | include (w)
---          | insert (w) | exec(text) | push(text1, text2) | push_latest(src,dst) | pull(text1)
+--          | insert (w) | exec(text) | push(text1, text2)
+--          | push_latest(src,dst) | pull(text1)
+--          | images(w,w,...) | partition(int, w) | test_header()
+--          | boot(login, password) | test()
 --          | [stmt;]
 --
 -- comments: /* */
@@ -42,6 +45,9 @@
 -- 'name', 'target', 'yaml'.
 --
 -- Variable prefixed with '$' character will be used as string literal.
+
+{-# LANGUAGE FlexibleContexts #-}
+
 module Festral.Internal.Preprocessor (
     preprocess
 ) where
@@ -83,6 +89,11 @@ data Stmt
     | Push PWord PWord
     | PushLatest PWord PWord
     | Pull PWord
+    | Partition PWord PWord
+    | Images [PWord]
+    | TestHeader
+    | Boot PWord PWord
+    | Test
     | Seq [Stmt]
     deriving Show
 
@@ -140,6 +151,34 @@ parseStatement t (Pull src) = return $
     \                  src: '" ++ parsedSrc ++ "'\n\
     \                  alias: '"++ takeFileName parsedSrc ++ "'\n"
     where parsedSrc = parseWord t src
+parseStatement t (Images lst) = return $
+    "  - deploy:\n\
+    \      images:\n"
+    ++ (uris lst)
+    where
+        uris [] = "      partition_layout:\n"
+        uris (x:xs) =
+            "        - " ++ parseWord t x ++ "\n\
+            \          compression: 'zip'\n"
+            ++ uris xs
+parseStatement t (Partition n f) = return $
+    "        - id: " ++ parseWord t n ++ "\n\
+    \          image_name: " ++ parseWord t f ++ "\n"
+parseStatement t TestHeader = return $
+    "device_type: " ++ parseWord t (VarName "target") ++ "\n\
+    \job_name: " ++ testCaseName t ++ "\n\
+    \priority: medium\n\
+    \actions:\n"
+parseStatement t (Boot login password) = return $
+    "  - boot:\n\
+    \      login: " ++ parseWord t login ++ "\n\
+    \      password: " ++ parseWord t password ++ "\n"
+parseStatement t Test = return $
+    "  - test:\n\
+    \      name: " ++ testCaseName t ++ "\n\
+    \      test_cases:\n\
+    \        - case_name: " ++ parseWord t (VarName "name") ++ "\n\
+    \          test_actions:\n"
 parseStatement t (Seq (x:xs)) = do
     a <- parseStatement t x
     b <- parseStatement t (Seq xs)
@@ -151,6 +190,9 @@ pushHelper x t src dst =
     \                  ##" ++ x ++ " " ++ parseWord t src ++ "##\n\
     \                  dest: '" ++ dst ++ "'\n\
     \                  alias: '"++ takeFileName dst ++ "'\n"
+
+testCaseName t = parseWord t (VarName "name") ++ "-"
+    ++ parseWord t (VarName "target")
 
 boolExpr :: BExpr -> Bool
 boolExpr (BVal x) = x
@@ -171,7 +213,8 @@ def = emptyDef
     , reservedOpNames = ["&&", "||", "==", "!=", "!", "%", "$", "@"]
     , reservedNames = [ "true", "false", "raw", "if", "fi", "else"
                       , "include", "insert", "exec", "push", "pull"
-                      , "push_latest"
+                      , "push_latest", "images", "partition", "test_header"
+                      , "boot", "test"
                       ]
     }
 
@@ -247,6 +290,11 @@ statement' t
     <|> pushLatestStmt
     <|> pushStmt
     <|> pullStmt
+    <|> imagesStmt
+    <|> partitionStmt
+    <|> testHeaderStmt
+    <|> bootStmt
+    <|> testStmt
 
 genStmt a b = do
     reserved tokenParser a
@@ -267,28 +315,51 @@ pushLatestStmt = genPword2Args "push_latest" PushLatest
 pullStmt :: Parser Stmt
 pullStmt = genPword "pull" Pull
 
+partitionStmt :: Parser Stmt
+partitionStmt = genPword2Args "partition" Partition
+
+testHeaderStmt :: Parser Stmt
+testHeaderStmt = genEmpty "test_header" TestHeader
+
+bootStmt :: Parser Stmt
+bootStmt = genPword2Args "boot" Boot
+
+testStmt :: Parser Stmt
+testStmt = genEmpty "test" Test
+
+imagesStmt :: Parser Stmt
+imagesStmt = do
+    reserved tokenParser "images"
+    spacyChar '('
+    x <- (sepBy1 pwordStmt $ spacyChar ',')
+    spacyChar ')'
+    return $ Images x
+
+spacyChar x
+    =  spaces >> optional newline >> spaces
+    >> char x
+    >> spaces >> optional newline >> spaces
+
+genEmpty n y = do
+    reserved tokenParser n
+    spacyChar '('
+    spacyChar ')'
+    return y
+
 genPword n y = do
     reserved tokenParser n
-    spaces
-    char '('
-    spaces
+    spacyChar '('
     x <- pwordSeq
-    spaces
-    char ')'
+    spacyChar ')'
     return $ y x
 
 genPword2Args n y = do
     reserved tokenParser n
-    spaces
-    char '('
-    spaces
+    spacyChar '('
     x1 <- pwordSeq
-    spaces
-    char ','
-    spaces
+    spacyChar ','
     x2 <- pwordSeq
-    spaces
-    char ')'
+    spacyChar ')'
     return $ y x1 x2
 
 includeStmt :: Parser Stmt
@@ -314,9 +385,10 @@ inParens f = do
     x <- manyTill anyChar (lookAhead $ string ")")
     return $ f x
 
-x <-| "repo"    = repo $ tConfig x
-x <-| "parser"  = parser $ tConfig x
-x <-| "name"    = name $ tConfig x
-x <-| "target"  = target x
-x <-| "yaml"    = yaml $ tConfig x
-x <-| s         = s
+x <-| "repo"        = repo $ tConfig x
+x <-| "parser"      = parser $ tConfig x
+x <-| "name"        = name $ tConfig x
+x <-| "target"      = target x
+x <-| "yaml"        = yaml $ tConfig x
+x <-| "testOutFile" = testOutFile $ tConfig x
+x <-| s             = s
