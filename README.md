@@ -15,7 +15,7 @@
    * [Weles client](#festral-weles)
    * [Boruta client](#farmer)
    * [File serwer](#festral-server)
-- [Test case description](#test-cases-description)
+- [Test case description (FTCL)](#test-cases-description)
    * [YAML templates](#yaml-templates)
    * [File preprocessor](#file-preprocessor)
 - [How it works](#how-it-works)
@@ -549,13 +549,14 @@ Web pages of this server have API as follow:
   by `build_dir` parameter
 
 -----------------
-### Test cases description
+### Test cases description (FTCL)
 
 Tests are described by YAML files used by `Weles` but extended with
-templates syntax (see examles at `Examples/*.yml`) and preprocessor with logic
-defind by user.
+templates syntax (see examles at `Examples/*.yml`) and Festral Test Case Language (FTCL) which syntax is described below.
 
 #### YAML templates
+
+YAML templates are pre-formatted rows inserted in your raw YAML file which will be replaced by `festral` with actual for current test values.
 
 You can use templated rows in your yamls according below syntax:
 
@@ -598,7 +599,7 @@ files for ommiting repeating of code.
 test.log file.
 * `TEMPLATE_RUN cmd` - run command on target device.
 
-#### File preprocessor
+#### Festral Test Case Language (FTCL)
 
 Since `Festral 2.0` new language of test case is introduced which is described below.
 
@@ -619,8 +620,9 @@ The abstract syntax tree of the preprocessor language is presented below:
  cmp  ::= == | !=
 
  stmt ::= raw (text) | if (b) stmt else stmt fi | include (w)
-          | insert (w) | exec(cmd) | push(src, dst)
-          | push_latest(src,dst) | pull(src) | [stmt;]
+          | insert (w) | exec(w) | push(w, w)
+          | push_latest(w, w) | pull(w) | test_header() | images(w, w, w,...)
+          | partition(w, w) | boot(w, w) | test() | [stmt;]
 
 ```
 
@@ -652,10 +654,31 @@ the first statement, else insert the second statement. End of `else` case is spe
 otherwise insert just raw content of that file.
 - `insert(w)` - insert into this place value of evaluated word (test config value,
 environment variable or string literal)
-- `exec(cmd)` - execute command given as argument on device under test.
-- `push(src,dst)` - push file from current build with name `src` to the device under test as `dst`.
-- `push_latest(src,dst)` - push latest built file from all performed ever builds with name `src` to the device under test as `dst`.
-- `pull(src)` - pull file with name `src` from device under test to the test result files.
+- `exec(cmd)` - execute command given as argument on device under test. **(from v.2.5)**
+- `push(src,dst)` - push file from current build with name `src` to the device under test as `dst`. **(from v.2.5)**
+- `push_latest(src,dst)` - push latest built file from all performed ever builds with name `src` to the device under test as `dst`. **(from v.2.5)**
+- `pull(src)` - pull file with name `src` from device under test to the test result files. **(from v.2.5)**
+- `test_header()` - insert automatic generated header f the YAML test case file. You can use it if you do not want to configure some details by yourself. **(from v.2.6)**
+- `images(i1, i2, ...)` - download images for target device, it can be OS images or some boot-time files targeted to `fota`. **(from v.2.6)**
+- `partition(id, filename)` - flash partition with given id by file with given name. This operation is executed by `fota`. **(from v.2.6)**
+- `boot(login, password)` - boot device using given login and password. **(from v.2.6)**
+- `test()` - start testing section. **(from v.2.6)**
+
+Some of commands above **must have special order** if it used. The order of commands in test case scenario is shown below:
+
+```
+[test_header();]
+[images("i1", "i2", "i3", ...);
+ partition("1", "f1");
+ partition("2", "f2");
+ ...
+]
+[boot("login", "password");]
+test();
+[push/pull/exec/push_latest/insert/raw/if else fi/include;]
+```
+
+In brackets are shown optional commands. Commands which **must** be together are shown in same brackets.
 
 Statements are ended and separated by `;` (semicolon) symbol.
 Example of scenario file you can find under `Examples/scenario.ftc` and `Examples/header.ftc` files.
