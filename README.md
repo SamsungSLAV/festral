@@ -15,7 +15,7 @@
    * [Weles client](#festral-weles)
    * [Boruta client](#farmer)
    * [File serwer](#festral-server)
-- [Test case description (FTCL)](#test-cases-description)
+- [Test case description](#test-cases-description)
    * [YAML templates](#yaml-templates)
    * [File preprocessor](#file-preprocessor)
 - [How it works](#how-it-works)
@@ -549,7 +549,7 @@ Web pages of this server have API as follow:
   by `build_dir` parameter
 
 -----------------
-### Test cases description (FTCL)
+### Test cases description
 
 Tests are described by YAML files used by `Weles` but extended with
 templates syntax (see examles at `Examples/*.yml`) and Festral Test Case Language (FTCL) which syntax is described below.
