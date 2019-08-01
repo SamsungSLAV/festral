@@ -229,11 +229,15 @@ strStmt = between (char '"') (char '"') $ inQuotes Str
 
 inQuotes :: (String -> PWord) -> Parser PWord
 inQuotes f = do
-    x <- manyTill anyChar (lookAhead $ string "\"")
+    x <- many quotedStringChar
     return $ f x
+    where
+        quotedStringChar = escapedChar <|> normalChar
+        escapedChar = char '\\' >> (oneOf ['\\', '"'])
+        normalChar = noneOf "\""
 
 envStmt :: Parser PWord
-envStmt = char '@' >> Env <$> many1 alphaNum
+envStmt = char '@' >> Env <$> many1 (alphaNum <|> oneOf "_-,#")
 
 pwordSeq :: Parser PWord
 pwordSeq = do
