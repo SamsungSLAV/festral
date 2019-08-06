@@ -76,6 +76,11 @@ data BorutaCommand
         , targetFile:: FilePath
         , pushOpts  :: DryadAction
         }
+    | BorutaPull
+        { pullFiles :: [FilePath]
+        , pullTarget:: FilePath
+        , pullOpts  :: DryadAction
+        }
     | BorutaBoot
         { targetID  :: String
         , bootOpts  :: RequestOptions
@@ -111,6 +116,7 @@ borutaDesc  = "Give access for the device farm of the Boruta and managament \
 \devices under test by hands."
 borutaExecDesc = "Execute command on dryad or on DUT"
 borutaPushDesc = "Push file(s) to the dryad or to the DUT"
+borutaPullDesc = "Pull file(s) from dryad or from DUT to host"
 borutaBootDesc = "Boot up (reboot) DUT"
 
 requestOptions :: Parser RequestOptions
@@ -130,6 +136,7 @@ borutaSubOpts :: Parser BorutaCommand
 borutaSubOpts = hsubparser
     ( command "exec" (info borutaExec (progDesc borutaExecDesc))
     <>command "push" (info borutaPush (progDesc borutaPushDesc))
+    <>command "pull" (info borutaPull (progDesc borutaPullDesc))
     <>command "boot" (info borutaBoot (progDesc borutaBootDesc))
     )
 
@@ -139,7 +146,12 @@ borutaExec = BorutaExec
     <*> dryadAction
 
 borutaPush :: Parser BorutaCommand
-borutaPush = BorutaPush
+borutaPush = borutaFileTransfer BorutaPush
+
+borutaPull :: Parser BorutaCommand
+borutaPull = borutaFileTransfer BorutaPull
+
+borutaFileTransfer x = x
     <$> some (argument str (metavar "FILES..."))
     <*> strOption
         (  long     "out"
@@ -268,6 +280,9 @@ dryadCmdCall a (BorutaExec cmds opts)
 dryadCmdCall a (BorutaPush files out opts)
     = uuidOrDie (\ id -> (pushFromOpts opts) a id files out (options opts))
     (fromString $ dryadId opts)
+dryadCmdCall a (BorutaPull files out opts)
+    = uuidOrDie (\ id -> (pullFromOpts opts) a id files out (options opts))
+    (fromString $ dryadId opts)
 dryadCmdCall a (BorutaBoot id opts)
     = uuidOrDie (\id -> dutBoot a id opts) (fromString id)
 
@@ -276,6 +291,9 @@ execFromOpts _ = execMuxPi
 
 pushFromOpts (DryadAction True _ _) = pushDUT
 pushFromOpts _ = pushMuxPi
+
+pullFromOpts (DryadAction True _ _) = pullDUT
+pullFromOpts _ = pullMuxPi
 
 borutaConsoleCall a (ConsoleFromType x) f = execAnyDryadConsole a x f
 borutaConsoleCall a (ConsoleFromUUID x) f

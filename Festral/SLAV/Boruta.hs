@@ -34,6 +34,8 @@ module Festral.SLAV.Boruta (
     execDUT,
     pushMuxPi,
     pushDUT,
+    pullMuxPi,
+    pullDUT,
     dutBoot,
     createRequest,
     workerDeviceType,
@@ -279,8 +281,21 @@ pushMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress'
           -> RequestOptions
           -> IO ()
 pushMuxPi addr uid sources to opts = do
+    muxPiTransferFile addr uid sources to opts scpCmd
+
+-- |Pull file from the MuxPi of Dryad identified by UUID to host
+pullMuxPi :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
+          -> UUID       -- ^ UUID of the device
+          -> [FilePath] -- ^ Files to be copied from supervisor (MuxPi or other)
+          -> FilePath   -- ^ Destination file name on the host
+          -> RequestOptions
+          -> IO ()
+pullMuxPi addr uid sources to opts = do
+    muxPiTransferFile addr uid sources to opts scpCmdPull
+
+muxPiTransferFile addr uid sources to opts scp = do
     auth <- getSpecifiedTargetAuth uid (authMethod addr opts)
-    Par.mapM_ (\ from -> execDryad addr (scpCmd from to) auth) sources
+    Par.mapM_ (\ from -> execDryad addr (scp from to) auth) sources
     optCloseAuth addr opts auth
 
 -- |The same as 'pushMuxPi' but push file to the device under test
@@ -301,6 +316,24 @@ pushDUT addr uid sources to opts = do
     where
         tmpfile x = "/tmp/" ++ takeFileName x
 
+-- |The same as 'pullMuxPi' but pull file from the device under test
+pullDUT :: NetAddress -- ^ Address of requested Boruta made by 'simpleAddress' function
+        -> UUID       -- ^ UUID of the device
+        -> [FilePath] -- ^ Files to be copied from DUT
+        -> FilePath   -- ^ Destination file name on host
+        -> RequestOptions
+        -> IO ()
+pullDUT addr uid sources to opts = do
+    auth <- getSpecifiedTargetAuth uid (authMethod addr opts)
+    mapM_ (\ from -> do
+        execDryad addr
+            (sshCmd ./ "dut_copyfrom.sh " ++ from ++ " " ++ tmpfile to) auth
+        execDryad addr (scpCmdPull (tmpfile to) to) auth
+        execDryad addr (sshCmd $ "rm " ++ tmpfile to) auth) sources
+    optCloseAuth addr opts auth
+    where
+        tmpfile x = "/tmp/" ++ takeFileName x
+
 sshCmd cmd x = "ssh -oStrictHostKeyChecking=no "
     ++ dsUser x ++ "@" ++ dsIp x ++ " -p " ++ show (dsPort x)
     ++ " -i " ++ idFile x ++ " " ++ cmd
@@ -308,6 +341,9 @@ scpCmd fname out x = "scp -oStrictHostKeyChecking=no "
     ++ "-i " ++ idFile x ++ " -P " ++ show (dsPort x) ++ " "
     ++ fname ++ " " ++ dsUser x
     ++ "@" ++ dsIp x ++ ":" ++ out
+scpCmdPull fname out x = "scp -oStrictHostKeyChecking=no "
+    ++ "-i " ++ idFile x ++ " -P " ++ show (dsPort x) ++ " " ++ dsUser x
+    ++ "@" ++ dsIp x ++ ":" ++ fname ++ " " ++ out
 
 type DryadCmd = (DryadSSH -> String)
 
