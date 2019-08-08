@@ -168,22 +168,22 @@ of your `buildCmd` command.
  BOARD=#name of the board or arch of target
  BUILD_TYPE=#debug or somthing else, I don't know for what it is
  COMMIT=#name of the built commit
- BUILD_TIME=#build time in format YYYYMMDDHHMMSS
+ BUILD_TIME=#build time in format YYYYMMDDHHMMSS. This field is mandatory for build meta.
  TOOLCHAIN=#name of toolchain used for build
  BUILDER=#username of builder
  BUILD_STATUS=#result of build (SUCCEED and FAILED are known, but may be
- #there are other ones)
+ #there are other ones). This field is mandatory for build parsers.
  BUILD_HASH=#hash of the build
  REPO_NAME=#name of the built repository
  BRANCH=#name of the built branch
- OUT_DIR=#output directory where build put built targets
+ OUT_DIR=#output directory where build put built targets. This field is mandatory for build meta.
 
  #In the tests directories meta.txt has additional fields:
  TESTER=#login of the tester
  TESTER_NAME=#name of the tester
- TEST_TIME=#time where test was performed
+ TEST_TIME=#time where test was performed. This field is requered for test meta.
  TEST_NAME=#name of the test
- TEST_STATUS=#Status of the executed tests. See below for possible values.
+ TEST_STATUS=#Status of the executed tests. See below for possible values. This field is mandatory for test meta.
  TEST_DEVICE=#Name of the device which test was performed on.
 ```
 

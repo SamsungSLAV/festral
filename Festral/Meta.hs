@@ -140,16 +140,14 @@ readMeta str = chooseMeta filledMeta
     f x = map (splitOn "=") $ filter (isInfixOf "=") $ splitOn "\n" x
 
 chooseMeta m@MetaTest{}
-    | testName          m == ""
+    |      testStatus   m == ""
         || testTime     m == ""
-        || testStatus   m == ""
-        || testDevice   m == ""
         = chooseMeta $ Meta $>> m
     | otherwise = Just m
 chooseMeta m@Meta{}
-    | status        $>> m == ""
-        || hash     $>> m == ""
-        || repoName $>> m == ""
+    |      status       $>> m == ""
+        || buildTime    $>> m == ""
+        || outDir       $>> m == ""
         = Nothing
     | otherwise = Just m
 

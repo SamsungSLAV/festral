@@ -44,23 +44,26 @@
 --  BOARD=name of the board or arch of target
 --  BUILD_TYPE= debug or somthing else, I don't know for what it is
 --  COMMIT=name of the built commit
---  BUILD_TIME=build time in format YYYYMMDDHHMMSS
+--  BUILD_TIME=build time in format YYYYMMDDHHMMSS. This field is mandatory
+--  for build meta.
 --  TOOLCHAIN=name of toolchain used for build
 --  BUILDER=username of builder
---  BUILD_STATUS=result of build (SUCCEED and FAILED are known, but may be there
---  are other ones)
+--  BUILD_STATUS=result of build (SUCCEED or FAILED). This field is mandatory
+--  for build parser.
 --  BUILD_HASH=hash of the build
 --  REPO_NAME=name of the built repository
 --  BRANCH=name of the built branch
---  OUT_DIR=directory where build command put output files
+--  OUT_DIR=directory where build command put output files. This field
+--  is mandatory for build meta.
 --
 --  #In the tests directories meta.txt has additional fields:
 --  TESTER=login of the tester
 --  TESTER_NAME=name of the tester
 --  TEST_STATUS=Exit status of the test executing. If test was performed and
 --  logs was made, it contains COMPLETE, but it does not mean that test was
---  passed.
---  TEST_TIME=time where test was performed
+--  passed. This field is mandatory for test parser.
+--  TEST_TIME=time where test was performed. This field is mandatory for
+--  test meta.
 --  TEST_NAME=Name of the test
 --  TEST_DEVICE=name of the device which test was performed on.
 -- @
