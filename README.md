@@ -17,7 +17,7 @@
    * [File serwer](#festral-server)
 - [Test case description](#test-cases-description)
    * [YAML templates](#yaml-templates)
-   * [File preprocessor](#file-preprocessor)
+   * [Festral Test Case Language (FTCL)](#festral-test-case-language)
 - [How it works](#how-it-works)
 
 # Festral
@@ -30,7 +30,7 @@ Festral consists of some small utilities:
 * `festral build` - utility for building repositories. It takes simple json file
 with information about what to build, how to build and what branches to build
 and just do it.
-* `festral test` - utility for performing tests described by yaml files on
+* `festral test` - utility for performing tests described by FTCL files on
 remote Weles server and recieving results of the tests.
 * `festral report` - generate reports in various formats
 * `festral weles` - utility for communication with Weles tests server.
@@ -102,7 +102,8 @@ Available commands are: `build`, `test`, `report`, `weles`, `server`, `check`.
 ### configuration
 
 Whole program is configured by file
-`~/.festral.conf` formatted as below (see example at `Examples/config.json`):
+`~/.festral.conf` (configuration file can be specified by `--config` option
+passed before command) formatted as below (see example at `Examples/config.json`):
 
 ```
 {
@@ -258,16 +259,17 @@ fields as follow:
 [
         {
             "repo" : "name of the repository",
-            "yaml" : "path to the yaml file to use with this repository",
+            "yaml" : "path to the .ftc or yaml file to use with this repository",
             "name" : "Test name (this is optional field, defoult value is 'undefined')",
             "parser" : "name or path to the binary of the parser of tests output",
             "runTTL" : 3600 - time to live of the test job after start of execution,
             "timeout": 18000 - time to live of test job from it was created even it was waiting only,
-            "targets" : ["rpi3", "PC"] - list of targetw to run this test on
+            "targets" : ["rpi3", "PC"] - list of targetw to run this test on,
+            "testOutFile" : "name of the file on Weles where Festral will search for test logs."
         },
         {
             "repo" : "tests",
-            "yaml" : "/home/tests.yml",
+            "yaml" : "/home/tests.ftc",
             "parser" : "~/test_parser.sh",
             "targets" : ["rpi3"]
         }
@@ -321,7 +323,7 @@ When you run `festral test` command, it will do actions:
 
   * read every record in `TEST_CONFIG_FILE` and go to the properly build
   directory
-  * read YAML template specified in config for this test and make really YAML
+  * read FTCL file or YAML template specified in config for this test and make really YAML
   file from it: find existing packages listed in `~/.festral/build.cache`
   and replace templated names with it, get field `webPageIP` form
   `~/.festral.conf` file and create uri for downloading packages from
@@ -332,10 +334,6 @@ When you run `festral test` command, it will do actions:
   * send this yaml for the Weles server and wait for test
   finishes in specified time, if not, cancel this job and run next test
   * if test finished, pass output of test to the specified in config parser.
-
-  **Only** `test.*log` **file is passed to the test parser**
-  so **YOU MUST REDIRECT THESE TEST OUTPUTS TO THE RIGHT FILE
-  IN YOUR YAML FILE**.
 
   * create directory named as `buildCommitSha1Hash_testTime` in the directory
   specified in `testLogDir` field of the `~/.festral.conf` file
@@ -533,9 +531,15 @@ the web browser.
 
 The syntax of this command is simple:
 ```
-festral server -p PORT_NUMBER
+festral server [-p PORT_NUMBER] [--fileserver-only] [SHARED_DIR]
 ```
 where PORT_NUMBER is just number of port where server will listen to.
+
+If `--fileserver-only` option is enabled, server will share directoriy at this
+base address (without main menu of server, like only *127.0.0.1:xxxx/files* is enabled under *127.0.0.1:xxxx*)
+
+`SHARED_DIR` is name of directory to be shared by server. It it is not
+specified, this directory will be got from configuration file.
 
 Web pages of this server have API as follow:
 
@@ -552,7 +556,8 @@ Web pages of this server have API as follow:
 ### Test cases description
 
 Tests are described by YAML files used by `Weles` but extended with
-templates syntax (see examles at `Examples/*.yml`) and Festral Test Case Language (FTCL) which syntax is described below.
+templates syntax and Festral Test Case Language (FTCL)
+which syntax is described below (see examles at `Examples/*.ftc`).
 
 #### YAML templates
 
@@ -599,9 +604,9 @@ files for ommiting repeating of code.
 test.log file.
 * `TEMPLATE_RUN cmd` - run command on target device.
 
-#### Festral Test Case Language (FTCL)
+#### Festral Test Case Language
 
-Since `Festral 2.0` new language of test case is introduced which is described below.
+Since `Festral 2.0` new language of test case is introduced which is described below (FTCL).
 
 File which is written in Festral test case preprocessor language **must have** `.ftc` extension.
 Otherwise it is interpreted as raw `YAML` file template.
@@ -658,7 +663,7 @@ environment variable or string literal)
 - `push(src,dst)` - push file from current build with name `src` to the device under test as `dst`. **(from v.2.5)**
 - `push_latest(src,dst)` - push latest built file from all performed ever builds with name `src` to the device under test as `dst`. **(from v.2.5)**
 - `pull(src)` - pull file with name `src` from device under test to the test result files. **(from v.2.5)**
-- `test_header()` - insert automatic generated header f the YAML test case file. You can use it if you do not want to configure some details by yourself. **(from v.2.6)**
+- `test_header()` - insert automatic generated header of the YAML test case file. You can use it if you do not want to configure some details by yourself. **(from v.2.6)**
 - `images(i1, i2, ...)` - download images for target device, it can be OS images or some boot-time files targeted to `fota`. **(from v.2.6)**
 - `partition(id, filename)` - flash partition with given id by file with given name. This operation is executed by `fota`. **(from v.2.6)**
 - `boot(login, password)` - boot device using given login and password. **(from v.2.6)**
@@ -686,22 +691,25 @@ Example of scenario file you can find under `Examples/scenario.ftc` and `Example
 There are available test configuration fields, which will be expanded to the
 real value by preprocessor:
 
-`repo`, `parser`, `name`, `target`, `yaml`.
+`repo`, `parser`, `name`, `target`, `yaml`, `testOutFile`.
 
 For check syntax of test case file use command
 ```
 festral check <FILENAME>
 ```
-In case errors this commant will print it, otherwise file parsed with dummy test data will be printed.
+In case of errors this commant will print it, otherwise file parsed with dummy test data will be printed.
+
+`festral check` command allows to specify own values of test configuration
+by options (see `festral check --help` or `man festral check` for details).
 
 ------------------
 
 ### How it works
 
-The typical usage example for automated running tests with `cron`:
+The usage example for automated running tests with `cron`:
 
 ```
-0 21 * * * ./bin/festral build -b /home/bin/festral-build.config.json -r /home/secos-repo/
+0 21 * * * ./bin/festral build -b /home/bin/festral-build.config.json -r /home/repos/
 0 0 * * * ./bin/festral test -r /home/bin/festral-test.config.json
 0 2 * * * ./bin/festral --html-report -o /home/www/reports/$(date +\%Y\%m\%d\%H\%M).html -f /home/www/template.html
 ```
