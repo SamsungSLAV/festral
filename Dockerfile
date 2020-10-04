@@ -1,4 +1,4 @@
-FROM haskell:8
+FROM haskell:8.6.5
 LABEL maintainer="Uladzislau Harbuz <u.harbuz@samsung.com>"
 
 RUN apt update
